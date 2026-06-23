@@ -8,6 +8,11 @@ class MB_Admin {
 
     public static function init() {
         add_action('admin_menu', [self::class, 'register_menu']);
+        add_action('admin_init', function() {
+            register_setting('monatsblitz_settings', 'monatsblitz_author');
+            register_setting('monatsblitz_settings', 'monatsblitz_template');
+            register_setting('monatsblitz_settings', 'monatsblitz_api_key');
+        });
     }
 
     public static function register_menu() {
@@ -20,6 +25,99 @@ class MB_Admin {
             'dashicons-chart-bar',
             26
         );
+
+        // 👉 Unterpunkt: Einstellungen
+        add_submenu_page(
+            'monatsblitz',
+            'Monatsblitz Einstellungen',
+            'Einstellungen',
+            'manage_options',
+            'monatsblitz-settings',
+            [self::class, 'render_settings_page']
+        );
+    }
+
+    public static function render_settings_page() { 
+
+        // Aktuelle Werte laden
+        $author    = get_option('monatsblitz_author', '');
+        $template  = get_option('monatsblitz_template', '');
+        $api_key   = get_option('monatsblitz_api_key', '');
+
+        // Wenn "Neuen Key generieren" gedrückt wurde (eigenes Formular!)
+        if (isset($_POST['monatsblitz_generate_key'])) {
+
+            check_admin_referer('monatsblitz_generate_key_action');
+
+            $new_key = wp_generate_password(32, false, false);
+            update_option('monatsblitz_api_key', $new_key);
+            $api_key = $new_key;
+
+            echo '<div class="updated"><p>Neuer API‑Key wurde generiert.</p></div>';
+        }
+
+        // Userliste
+        $users = get_users([
+            'fields' => ['ID', 'user_login']
+        ]);
+
+        echo '<div class="wrap">';
+        echo '<h1>Monatsblitz – Einstellungen</h1>';
+
+        /*
+        * FORMULAR 1: API‑Key generieren (NICHT über options.php)
+        */
+        echo '<form method="post">';
+        wp_nonce_field('monatsblitz_generate_key_action');
+
+        echo '<table class="form-table">';
+        echo '<tr><th scope="row">API‑Key</th><td>';
+        echo '<input type="text" value="' . esc_attr($api_key) . '" class="regular-text" style="width:350px;" readonly>';
+        echo '<p class="description">Diesen Key muss die Blitzabend‑App im Header <code>X-MB-Key</code> mitsenden.</p>';
+        echo '<p><input type="submit" name="monatsblitz_generate_key" class="button" value="Neuen API‑Key generieren"></p>';
+        echo '</td></tr>';
+        echo '</table>';
+
+        echo '</form>';
+
+        /*
+        * FORMULAR 2: Normale Einstellungen (läuft über options.php)
+        */
+        echo '<form method="post" action="options.php">';
+        settings_fields('monatsblitz_settings');
+
+        echo '<table class="form-table">';
+
+        // API‑Key auch hier einfügen, damit WordPress ihn speichert
+        echo '<tr><th scope="row">API‑Key (gespeichert)</th><td>';
+        echo '<input type="text" name="monatsblitz_api_key" value="' . esc_attr($api_key) . '" class="regular-text" style="width:350px;" readonly>';
+        echo '<p class="description">Wird automatisch aktualisiert, wenn ein neuer Key generiert wird.</p>';
+        echo '</td></tr>';
+
+        // Autor-Auswahl
+        echo '<tr><th scope="row">Autor des Beitrags</th><td>';
+        echo '<select name="monatsblitz_author">';
+        echo '<option value="">— Bitte wählen —</option>';
+
+        foreach ($users as $u) {
+            $selected = selected($author, $u->ID, false);
+            echo "<option value='{$u->ID}' $selected>{$u->user_login}</option>";
+        }
+
+        echo '</select>';
+        echo '</td></tr>';
+
+        // Template-Name
+        echo '<tr><th scope="row">Template‑Name</th><td>';
+        echo '<input type="text" name="monatsblitz_template" value="' . esc_attr($template) . '" class="regular-text">';
+        echo '</td></tr>';
+
+        echo '</table>';
+
+        submit_button();
+        echo '</form>';
+
+        echo '</div>';
     }
 
     public static function render_page() {

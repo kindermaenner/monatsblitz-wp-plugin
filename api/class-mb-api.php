@@ -15,57 +15,78 @@ class MB_API {
         register_rest_route('monatsblitz/v1', '/player', [
             'methods'  => 'POST',
             'callback' => [self::class, 'create_player'],
-            'permission_callback' => '__return_true' // später absichern!
+            'permission_callback' => [self::class, 'verify_api_key']
         ]);
 
         register_rest_route('monatsblitz/v1', '/tournament', [
             'methods'  => 'POST',
             'callback' => [__CLASS__, 'create_tournament'],
+            'permission_callback' => [self::class, 'verify_api_key']
         ]);
 
         register_rest_route('monatsblitz/v1', '/game', [
             'methods'  => 'POST',
             'callback' => [self::class, 'create_game'],
-            'permission_callback' => '__return_true' // später absichern!
+            'permission_callback' => [self::class, 'verify_api_key']
         ]);
 
         register_rest_route('monatsblitz/v1', '/players', [
             'methods'  => 'GET',
             'callback' => [__CLASS__, 'get_players'],
+            'permission_callback' => [self::class, 'verify_api_key']
         ]);
 
         register_rest_route('monatsblitz/v1', '/tournaments', [
             'methods'  => 'GET',
             'callback' => [__CLASS__, 'get_tournaments'],
+            'permission_callback' => [self::class, 'verify_api_key']
         ]);
 
         register_rest_route('monatsblitz/v1', '/tournament/(?P<id>\d+)', [
             'methods'  => 'GET',
             'callback' => [__CLASS__, 'get_tournament'],
+            'permission_callback' => [self::class, 'verify_api_key']
         ]);
 
         register_rest_route('monatsblitz/v1', '/games/(?P<tournament_id>\d+)', [
             'methods'  => 'GET',
             'callback' => [__CLASS__, 'get_games'],
+            'permission_callback' => [self::class, 'verify_api_key']
         ]);
 
         register_rest_route('monatsblitz/v1', '/result', [
             'methods'  => 'POST',
             'callback' => [__CLASS__, 'create_result'],
-            'permission_callback' => '__return_true' // später absichern!
+            'permission_callback' => [self::class, 'verify_api_key']
         ]);
 
         register_rest_route('monatsblitz/v1', '/results/(?P<tournament_id>\d+)', [
             'methods'  => 'GET',
             'callback' => [__CLASS__, 'get_results'],
+            'permission_callback' => [self::class, 'verify_api_key']
         ]);
 
         register_rest_route('monatsblitz/v1', '/finalize', [
             'methods'  => 'POST',
             'callback' => [__CLASS__, 'finalize_tournament'],
-            'permission_callback' => '__return_true'
+            'permission_callback' => [self::class, 'verify_api_key']
         ]);
 
+    }
+
+    public static function verify_api_key() {
+        $api_key = get_option('monatsblitz_api_key');
+        $header_key = $_SERVER['HTTP_X_MB_KEY'] ?? '';
+
+        if (!$api_key || $header_key !== $api_key) {
+            return new WP_Error(
+                'rest_forbidden',
+                'Unauthorized',
+                ['status' => 401]
+            );
+        }
+
+        return true;
     }
 
     public static function finalize_tournament($request) {
@@ -86,6 +107,10 @@ class MB_API {
         if (!$t) {
             return new WP_Error('not_found', 'Turnier nicht gefunden', ['status' => 404]);
         }
+
+        // Einstellungen laden
+        $post_author_id = intval( get_option('monatsblitz_author') );
+        $template_name  = sanitize_text_field( get_option('monatsblitz_template') );
 
         // Datum formate
         $date_str = sprintf('%02d.%02d.%04d', $t['day'], $t['month'], $t['year']);
@@ -115,7 +140,7 @@ class MB_API {
         );
 
         // Template-Post laden (Template_Monatsblitz)
-        $template_post = get_page_by_title('Template_Monatsblitz', OBJECT, 'post');
+        $template_post = get_page_by_title($template_name, OBJECT, 'post');
         $template_content = '';
         if ($template_post && !is_wp_error($template_post)) {
             $template_content = $template_post->post_content;
@@ -245,15 +270,21 @@ class MB_API {
             $template_content
         );
 
-        // Post-Titel im gewünschten Format: 0Monatsblitz YYYY-MM-DD
+        // Post-Titel im gewünschten Format: Monatsblitz YYYY-MM-DD
         $post_title = 'Monatsblitz ' . $iso_date;
+        $post_time = '23:30:00';
+        $post_date_local = $iso_date . ' ' . $post_time;
+        $post_date_gmt   = get_gmt_from_date( $post_date_local );
 
         // Neuen Beitrag anlegen und direkt veröffentlichen
         $postarr = [
-            'post_title'   => $post_title,
-            'post_content' => $content,
-            'post_status'  => 'publish',
-            'post_type'    => 'post'
+            'post_title'     => $post_title,
+            'post_content'   => $content,
+            'post_status'    => 'publish',
+            'post_type'      => 'post',
+            'post_date'      => $post_date_local,
+            'post_date_gmt'  => $post_date_gmt,
+            'post_author'    => $post_author_id
         ];
 
         $post_id = wp_insert_post($postarr);
