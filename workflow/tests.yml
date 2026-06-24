@@ -1,0 +1,53 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+
+jobs:
+  pest:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php: [8.2, 8.3]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, intl, pdo, pdo_mysql, dom
+          coverage: xdebug
+
+      - name: Validate composer.json
+        run: composer validate --no-check-publish
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      # ✅ Tests + Coverage + Gate
+      - name: Run Pest tests with coverage gate
+        run: vendor/bin/pest --coverage --min=80
+
+      # 📊 Coverage XML erzeugen (für Reports)
+      - name: Generate coverage report
+        run: vendor/bin/pest --coverage-clover coverage.xml
+
+      # 📦 Artifact speichern
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-php-${{ matrix.php }}
+          path: coverage.xml
+
+      # 🚀 OPTIONAL: Codecov
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: true
