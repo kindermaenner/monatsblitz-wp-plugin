@@ -15,9 +15,9 @@ define('MB_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('MB_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // 📦 Includes
-require_once MB_PLUGIN_PATH . 'includes/class-mb-database.php';
-require_once MB_PLUGIN_PATH . 'api/class-mb-api.php';
-require_once MB_PLUGIN_PATH . 'admin/class-mb-admin.php';
+require_once MB_PLUGIN_PATH . 'includes/MB_Database.php';
+require_once MB_PLUGIN_PATH . 'api/MB_API.php';
+require_once MB_PLUGIN_PATH . 'admin/MB_Admin.php';
 
 // 🔌 Aktivierung (Tabellen anlegen)
 register_activation_hook(__FILE__, ['MB_Database', 'init']);
