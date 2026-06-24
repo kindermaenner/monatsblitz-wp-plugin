@@ -20,10 +20,10 @@ require_once MB_PLUGIN_PATH . 'api/MB_API.php';
 require_once MB_PLUGIN_PATH . 'admin/MB_Admin.php';
 
 // 🔌 Aktivierung (Tabellen anlegen)
-register_activation_hook(__FILE__, ['MB_Database', 'init']);
+register_activation_hook(__FILE__, [\monatsblitz\MB_Database::class, 'init']);
 
 // 🚀 Initialisierung
 add_action('plugins_loaded', function () {
-    MB_API::init();
-    MB_Admin::init();
+    \monatsblitz\MB_API::init();
+    \monatsblitz\MB_Admin::init();
 });

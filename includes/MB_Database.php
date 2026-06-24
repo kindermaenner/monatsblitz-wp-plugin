@@ -1,5 +1,7 @@
 <?php
 
+namespace monatsblitz;
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -87,3 +89,5 @@ class MB_Database {
         dbDelta($sql);
     }
 }
+
+\class_alias(__NAMESPACE__ . '\\MB_Database', 'MB_Database');

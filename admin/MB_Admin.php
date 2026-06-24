@@ -1,5 +1,7 @@
 <?php
 
+namespace monatsblitz;
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -274,3 +276,5 @@ class MB_Admin {
         echo '</tbody></table>';
     }
 }
+
+\class_alias(__NAMESPACE__ . '\\MB_Admin', 'MB_Admin');

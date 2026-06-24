@@ -22,13 +22,12 @@
         }
     }, 
     "autoload": {
-        "classmap": [
-            "api/",
-            "admin/",
-            "includes/"
-        ],
         "psr-4": {
-            "monatsblitz\\": "api/"
+            "monatsblitz\\": [
+                "api/",
+                "admin/",
+                "includes/"
+            ]
         }
     },
 "autoload-dev": {

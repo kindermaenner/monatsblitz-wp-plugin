@@ -1,6 +1,8 @@
 <?php
 
 use monatsblitz\MB_API;
+use monatsblitz\MB_Admin;
+use monatsblitz\MB_Database;
 
 it('can instantiate the API class', function () {
     $api = new MB_API();

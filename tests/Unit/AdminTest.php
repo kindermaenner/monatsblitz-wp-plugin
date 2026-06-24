@@ -1,5 +1,8 @@
 <?php
 
+use monatsblitz\MB_Admin;
+require_once __DIR__ . '/../../includes/MB_Database.php';
+
 require_once __DIR__ . '/../../admin/MB_Admin.php';
 
 it('registers admin hooks on init', function () {
