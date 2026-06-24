@@ -61,6 +61,43 @@ it('creates a new player if not exists', function () {
     expect($result['player_id'])->toBe(999);
 });
 
+it('creates batch players from a top-level array', function () {
+    global $wpdb;
+
+    $wpdb->get_var_queue = [null, null];
+    $wpdb->insert_id = 500;
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                ['forename' => 'Thorsten', 'surname' => 'Ehlers'],
+                ['forename' => 'Justus', 'surname' => 'Kindermann'],
+            ];
+        }
+    };
+
+    $result = MB_API::create_player($request);
+
+    expect($result['success'])->toBeTrue();
+    expect($result['count'])->toBe(2);
+    expect($result['items'])->toHaveCount(2);
+    expect($result['items'][0]['player_id'])->toBe(500);
+});
+
+it('rejects invalid players batch payloads', function () {
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'players' => 'not-an-array',
+            ];
+        }
+    };
+
+    $result = MB_API::create_player($request);
+
+    expect($result)->toBeInstanceOf(WP_Error::class);
+});
+
 it('fails on invalid date', function () {
     $request = new class {
         public function get_json_params() {
@@ -164,6 +201,47 @@ it('creates game with explicit leg_type', function () {
 
     expect($result['success'])->toBeTrue();
     expect($wpdb->last_insert_data['leg_type'])->toBe(2);
+});
+
+it('creates batch games from a games array', function () {
+    global $wpdb;
+
+    $wpdb->get_var_queue = [1, 1, 1, 1, 1, 1];
+    $wpdb->insert_id = 200;
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'tournament_id' => 3,
+                'games' => [
+                    ['player1_id' => 1, 'player2_id' => 8, 'result' => '1-0', 'leg_type' => 1],
+                    ['player1_id' => 1, 'player2_id' => 8, 'result' => '0-1', 'leg_type' => 2],
+                ],
+            ];
+        }
+    };
+
+    $result = MB_API::create_game($request);
+
+    expect($result['success'])->toBeTrue();
+    expect($result['count'])->toBe(2);
+    expect($result['items'])->toHaveCount(2);
+    expect($result['items'][0]['game_id'])->toBe(200);
+});
+
+it('rejects invalid games batch payloads', function () {
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'tournament_id' => 3,
+                'games' => 'not-an-array',
+            ];
+        }
+    };
+
+    $result = MB_API::create_game($request);
+
+    expect($result)->toBeInstanceOf(WP_Error::class);
 });
 
 it('returns player list', function () {
@@ -423,6 +501,48 @@ it('creates new result when none exists', function () {
     expect($wpdb->last_insert_data['points'])->toBe(2.5);
 });
 
+it('creates batch results from a results array', function () {
+    global $wpdb;
+
+    $wpdb->get_var_queue = [1, 5, null, 1, 3, null, 1, 1, null];
+    $wpdb->insert_id = 100;
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'tournament_id' => 3,
+                'results' => [
+                    ['player_id' => 5, 'points' => 8, 'rank' => 1],
+                    ['player_id' => 3, 'points' => 6, 'rank' => 2],
+                    ['player_id' => 1, 'points' => 3, 'rank' => 3],
+                ],
+            ];
+        }
+    };
+
+    $result = MB_API::create_result($request);
+
+    expect($result['success'])->toBeTrue();
+    expect($result['count'])->toBe(3);
+    expect($result['items'])->toHaveCount(3);
+    expect($result['items'][0]['result_id'])->toBe(100);
+});
+
+it('rejects invalid batch result payloads', function () {
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'tournament_id' => 3,
+                'results' => 'not-an-array',
+            ];
+        }
+    };
+
+    $result = MB_API::create_result($request);
+
+    expect($result)->toBeInstanceOf(WP_Error::class);
+});
+
 it('returns results list', function () {
     global $wpdb;
 
@@ -434,6 +554,56 @@ it('returns results list', function () {
 
     expect($result)->toBeArray();
     expect($result[0]['rank'])->toBe(1);
+});
+
+it('normalizes a single string to an array', function () {
+    $request = new class {
+        public function get_json_params() {
+            return ['items' => 'item1'];
+        }
+    };
+
+    $result = MB_API::normalize_items($request);
+
+    expect($result['count'])->toBe(1);
+    expect($result['items'])->toBe(['item1']);
+});
+
+it('keeps an array of strings and removes empty values', function () {
+    $request = new class {
+        public function get_json_params() {
+            return ['items' => ['item1', '', '  ', 'item2']];
+        }
+    };
+
+    $result = MB_API::normalize_items($request);
+
+    expect($result['count'])->toBe(2);
+    expect($result['items'])->toBe(['item1', 'item2']);
+});
+
+it('rejects null input for normalization', function () {
+    $request = new class {
+        public function get_json_params() {
+            return ['items' => null];
+        }
+    };
+
+    $result = MB_API::normalize_items($request);
+
+    expect($result)->toBeInstanceOf(WP_Error::class);
+});
+
+it('rejects invalid normalization input types', function () {
+    $request = new class {
+        public function get_json_params() {
+            return ['items' => ['item1', 123]];
+        }
+    };
+
+    $result = MB_API::normalize_items($request);
+
+    expect($result)->toBeInstanceOf(WP_Error::class);
 });
 
 it('fails finalize when tournament_id is missing', function () {

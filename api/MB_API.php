@@ -74,6 +74,12 @@ class MB_API {
             'permission_callback' => [self::class, 'verify_api_key']
         ]);
 
+        register_rest_route('monatsblitz/v1', '/normalize-items', [
+            'methods'  => 'POST',
+            'callback' => [__CLASS__, 'normalize_items'],
+            'permission_callback' => [self::class, 'verify_api_key']
+        ]);
+
     }
 
     public static function verify_api_key() {
@@ -311,11 +317,84 @@ class MB_API {
         ]);
     }
 
+    public static function normalize_items($request) {
+        $params = $request->get_json_params();
+        $input = $params;
+
+        if (is_array($params) && array_key_exists('items', $params) && count($params) === 1) {
+            $input = $params['items'];
+        }
+
+        $items = self::normalize_string_list($input);
+
+        if (is_wp_error($items)) {
+            return $items;
+        }
+
+        return rest_ensure_response([
+            'count' => count($items),
+            'items' => $items,
+        ]);
+    }
+
     public static function create_player($request) {
         global $wpdb;
 
         $params = $request->get_json_params();
 
+        if (self::is_player_batch_payload($params)) {
+            return self::create_players_batch($wpdb, $params);
+        }
+
+        return self::create_single_player($wpdb, $params);
+    }
+
+    private static function is_player_batch_payload($params) {
+        if (!is_array($params)) {
+            return false;
+        }
+
+        if (isset($params['players'])) {
+            return true;
+        }
+
+        return array_is_list($params);
+    }
+
+    private static function create_players_batch($wpdb, array $params) {
+        $entries = isset($params['players']) ? $params['players'] : $params;
+
+        if (!is_array($entries)) {
+            return new \WP_Error('invalid_data', 'players must be an array', ['status' => 400]);
+        }
+
+        if (count($entries) === 0) {
+            return new \WP_Error('invalid_data', 'At least one player is required', ['status' => 400]);
+        }
+
+        $responses = [];
+        foreach ($entries as $playerEntry) {
+            if (!is_array($playerEntry)) {
+                return new \WP_Error('invalid_data', 'Each player must be an object', ['status' => 400]);
+            }
+
+            $playerResponse = self::create_single_player($wpdb, $playerEntry);
+
+            if (is_wp_error($playerResponse)) {
+                return $playerResponse;
+            }
+
+            $responses[] = $playerResponse;
+        }
+
+        return rest_ensure_response([
+            'success' => true,
+            'count'   => count($responses),
+            'items'   => $responses,
+        ]);
+    }
+
+    private static function create_single_player($wpdb, array $params) {
         $forename = sanitize_text_field($params['forename'] ?? '');
         $surname  = sanitize_text_field($params['surname'] ?? '');
 
@@ -411,6 +490,46 @@ class MB_API {
 
         $params = $request->get_json_params();
 
+        if (isset($params['games'])) {
+            return self::create_games_batch($wpdb, $params);
+        }
+
+        return self::create_single_game($wpdb, $params);
+    }
+
+    private static function create_games_batch($wpdb, array $params) {
+        if (intval($params['tournament_id'] ?? 0) <= 0) {
+            return new \WP_Error('invalid_data', 'Turnier-ID erforderlich', ['status' => 400]);
+        }
+
+        if (!is_array($params['games'])) {
+            return new \WP_Error('invalid_data', 'games must be an array', ['status' => 400]);
+        }
+
+        $responses = [];
+        foreach ($params['games'] as $gameEntry) {
+            if (!is_array($gameEntry)) {
+                return new \WP_Error('invalid_data', 'Each game must be an object', ['status' => 400]);
+            }
+
+            $gameEntry['tournament_id'] = $params['tournament_id'];
+            $gameResponse = self::create_single_game($wpdb, $gameEntry);
+
+            if (is_wp_error($gameResponse)) {
+                return $gameResponse;
+            }
+
+            $responses[] = $gameResponse;
+        }
+
+        return rest_ensure_response([
+            'success' => true,
+            'count'   => count($responses),
+            'items'   => $responses,
+        ]);
+    }
+
+    private static function create_single_game($wpdb, array $params) {
         $tournament_id = intval($params['tournament_id'] ?? 0);
         $player1_id    = intval($params['player1_id'] ?? 0);
         $player2_id    = intval($params['player2_id'] ?? 0);
@@ -544,10 +663,52 @@ class MB_API {
 
         $params = $request->get_json_params();
 
-        $tournament_id = intval($params['tournament_id']);
-        $player_id     = intval($params['player_id']);
-        $points        = floatval($params['points']);
-        $rank          = intval($params['rank']);
+        if (isset($params['results'])) {
+            return self::create_results_batch($params);
+        }
+
+        return self::create_single_result($wpdb, $params);
+    }
+
+    private static function create_results_batch(array $params) {
+        global $wpdb;
+
+        if (!isset($params['tournament_id'])) {
+            return new \WP_Error('invalid_data', 'Turnier-ID erforderlich', ['status' => 400]);
+        }
+
+        if (!is_array($params['results'])) {
+            return new \WP_Error('invalid_data', 'results must be an array', ['status' => 400]);
+        }
+
+        $responses = [];
+        foreach ($params['results'] as $resultEntry) {
+            if (!is_array($resultEntry)) {
+                return new \WP_Error('invalid_data', 'Each result must be an object', ['status' => 400]);
+            }
+
+            $resultEntry['tournament_id'] = $params['tournament_id'];
+            $resultResponse = self::create_single_result($wpdb, $resultEntry);
+
+            if (is_wp_error($resultResponse)) {
+                return $resultResponse;
+            }
+
+            $responses[] = $resultResponse;
+        }
+
+        return rest_ensure_response([
+            'success' => true,
+            'count'   => count($responses),
+            'items'   => $responses,
+        ]);
+    }
+
+    private static function create_single_result($wpdb, array $params) {
+        $tournament_id = intval($params['tournament_id'] ?? 0);
+        $player_id     = intval($params['player_id'] ?? 0);
+        $points        = floatval($params['points'] ?? 0);
+        $rank          = intval($params['rank'] ?? 0);
 
         // 🔒 Validierung
         if (!$tournament_id || !$player_id) {
@@ -746,6 +907,34 @@ class MB_API {
         }
 
         return esc_html($result);
+    }
+
+    private static function normalize_string_list($input) {
+        if ($input === null) {
+            return new \WP_Error('invalid_data', 'Input must be a string or an array of strings', ['status' => 400]);
+        }
+
+        if (is_string($input)) {
+            $input = [$input];
+        }
+
+        if (!is_array($input)) {
+            return new \WP_Error('invalid_data', 'Input must be a string or an array of strings', ['status' => 400]);
+        }
+
+        $normalized = [];
+        foreach ($input as $item) {
+            if (!is_string($item)) {
+                return new \WP_Error('invalid_data', 'Input must be a string or an array of strings', ['status' => 400]);
+            }
+
+            $item = trim($item);
+            if ($item !== '') {
+                $normalized[] = $item;
+            }
+        }
+
+        return $normalized;
     }
 
 }

@@ -70,9 +70,41 @@ Basis: `/wp-json/monatsblitz/v1`
 
 - `POST /player`
   - Legt einen neuen Spieler an oder gibt bei vorhandenem Spieler die ID zurück.
+  - Alternativ kann ein Batch-Payload mit `players` oder ein Top-Level-Array übergeben werden.
   - Body (JSON):
     - `forename`: Vorname
     - `surname`: Nachname
+  - Oder als Batch:
+    - `players`: Array von Objekten mit `forename`, `surname`
+    - alternativ ein Top-Level-Array derselben Objekte
+  - Verhalten:
+    - Einzel-JSON wird weiterhin unterstützt.
+    - Batch-Requests werden je Spieler validiert und gespeichert.
+    - Ungültige Batch-Daten liefern `WP_Error` mit HTTP 400.
+  - Batch-Antwort:
+    - `success`: `true`
+    - `count`: Anzahl verarbeiteter Spieler
+    - `items`: Liste der Rückgaben pro Spieler
+
+  - Beispiel (anonymisiert):
+
+```json
+[
+  { "forename": "Alex", "surname": "Meyer" },
+  { "forename": "Chris", "surname": "Schulz" }
+]
+```
+
+```json
+{
+  "success": true,
+  "count": 2,
+  "items": [
+    { "success": true, "player_id": 301 },
+    { "success": true, "player_id": 302 }
+  ]
+}
+```
 
 - `GET /players`
   - Gibt alle Spieler zurück.
@@ -83,6 +115,8 @@ Basis: `/wp-json/monatsblitz/v1`
   - Legt ein neues Turnier an.
   - Body (JSON):
     - `date`: Datum im Format `YYYY-MM-DD`
+    - `mode`: Turniermodus (z. B. `3+5`, `5+0`)
+    - `round_count` (optional): Anzahl der Runden, Standard `1`
 
 - `GET /tournaments`
   - Gibt alle Turniere zurück.
@@ -94,11 +128,47 @@ Basis: `/wp-json/monatsblitz/v1`
 
 - `POST /game`
   - Legt ein Spiel an.
+  - Alternativ kann ein Batch-Payload mit `games` übergeben werden.
   - Body (JSON):
     - `tournament_id`
     - `player1_id`
     - `player2_id`
+    - `leg_type` (optional): Runde/Durchgang der Partie, Standard `1`
     - `result` (`1-0`, `0-1`, `0.5-0.5`)
+  - Oder als Batch:
+    - `tournament_id`
+    - `games`: Array von Objekten mit `player1_id`, `player2_id`, `result`, `leg_type`
+  - Verhalten:
+    - Einzel-JSON wird weiterhin unterstützt.
+    - Batch-Requests werden je Spiel validiert und gespeichert.
+    - Ungültige Batch-Daten liefern `WP_Error` mit HTTP 400.
+  - Batch-Antwort:
+    - `success`: `true`
+    - `count`: Anzahl verarbeiteter Spiele
+    - `items`: Liste der Rückgaben pro Spiel
+
+  - Beispiel (anonymisiert):
+
+```json
+{
+  "tournament_id": 3,
+  "games": [
+    { "player1_id": 1, "player2_id": 8, "result": "1-0", "leg_type": 1 },
+    { "player1_id": 1, "player2_id": 8, "result": "0-1", "leg_type": 2 }
+  ]
+}
+```
+
+```json
+{
+  "success": true,
+  "count": 2,
+  "items": [
+    { "success": true, "game_id": 201 },
+    { "success": true, "game_id": 202 }
+  ]
+}
+```
 
 - `GET /games/{tournament_id}`
   - Gibt alle Spiele eines Turniers zurück.
@@ -107,11 +177,48 @@ Basis: `/wp-json/monatsblitz/v1`
 
 - `POST /result`
   - Legt ein Ergebnis für einen Spieler im Turnier an oder aktualisiert es.
+  - Alternativ kann ein Batch-Payload mit `results` übergeben werden.
   - Body (JSON):
     - `tournament_id`
     - `player_id`
     - `points`
     - `rank`
+  - Oder als Batch:
+    - `tournament_id`
+    - `results`: Array von Objekten mit `player_id`, `points`, `rank`
+  - Verhalten:
+    - Einzel-JSON wird weiterhin unterstützt.
+    - Batch-Requests werden je Ergebnis validiert und gespeichert.
+    - Ungültige Batch-Daten liefern `WP_Error` mit HTTP 400.
+  - Batch-Antwort:
+    - `success`: `true`
+    - `count`: Anzahl verarbeiteter Ergebnisse
+    - `items`: Liste der Rückgaben pro Ergebnis
+
+  - Beispiel (anonymisiert):
+
+```json
+{
+  "tournament_id": 3,
+  "results": [
+    { "player_id": 5, "points": 8, "rank": 1 },
+    { "player_id": 3, "points": 6, "rank": 2 },
+    { "player_id": 1, "points": 3, "rank": 3 }
+  ]
+}
+```
+
+```json
+{
+  "success": true,
+  "count": 3,
+  "items": [
+    { "success": true, "result_id": 101 },
+    { "success": true, "result_id": 102 },
+    { "success": true, "result_id": 103 }
+  ]
+}
+```
 
 - `GET /results/{tournament_id}`
   - Gibt alle Ergebnisse eines Turniers zurück.
@@ -119,14 +226,16 @@ Basis: `/wp-json/monatsblitz/v1`
 ### Finalisierung
 
 - `POST /finalize`
-  - Erzeugt aus dem Beitrag `Template_Monatsblitz` einen neuen veröffentlichten Beitrag.
+  - Erzeugt aus dem konfigurierten Template-Beitrag einen neuen veröffentlichten Beitrag.
   - Body (JSON):
     - `tournament_id`
 
 - Wichtig:
   - Der Beitrag wird direkt veröffentlicht.
-  - Der Titel wird im Format `0Monatsblitz YYYY-MM-DD` angelegt.
+  - Der Titel wird im Format `Monatsblitz YYYY-MM-DD` angelegt.
   - Die Platzhalter im Template werden ersetzt.
+  - Bei `round_count = 1` enthält `{{table}}` die klassische Kreuztabelle inklusive Punkte und Platz.
+  - Bei `round_count > 1` enthält `{{table}}` pro Runde eine eigene Kreuztabelle ohne Punkte/Platz sowie danach eine Gesamttabelle mit Spielername, Gesamtpunkte und Platz.
 
 ## Datenbankschema
 
@@ -175,6 +284,8 @@ Im Beitrag `Template_Monatsblitz` können folgende Platzhalter genutzt werden:
 - `{{ranking_rows}}` — HTML-Zeilen für die Rangliste
 - `{{games_list}}` — einfache Liste der Spiele
 - `{{table}}` — komplette Kreuztabelle im HTML-Format
+- `{{mode}}` — Turniermodus
+- `{{round_count}}` — Anzahl der Runden
 
 ## Sicherheit
 
