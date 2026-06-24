@@ -30,13 +30,9 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      # ✅ Tests + Coverage + Gate
-      - name: Run Pest tests with coverage gate
-        run: vendor/bin/pest --coverage --min=80
-
-      # 📊 Coverage XML erzeugen (für Reports)
-      - name: Generate coverage report
-        run: vendor/bin/pest --coverage-clover coverage.xml
+      # ✅ Tests + Coverage + Gate & 📊 Coverage XML erzeugen (für Reports)
+      - name: Run Pest tests with coverage
+        run: vendor/bin/pest --coverage --coverage-clover=coverage.xml --min=80
 
       # 📦 Artifact speichern
       - name: Upload coverage report
@@ -47,7 +43,9 @@ jobs:
 
       # 🚀 OPTIONAL: Codecov
       - name: Upload to Codecov
+        if: matrix.php == '8.4'
         uses: codecov/codecov-action@v4
         with:
           files: coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
