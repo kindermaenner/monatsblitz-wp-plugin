@@ -2,7 +2,7 @@
 
 use Tests\TestCase;
 
-require __DIR__ . '\Bootstrap.php';
+require __DIR__ . '/Bootstrap.php';
 
 /*
 |--------------------------------------------------------------------------
