@@ -1,5 +1,7 @@
 <?php
 
+namespace monatsblitz;
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -79,7 +81,7 @@ class MB_API {
         $header_key = $_SERVER['HTTP_X_MB_KEY'] ?? '';
 
         if (!$api_key || $header_key !== $api_key) {
-            return new WP_Error(
+            return new \WP_Error(
                 'rest_forbidden',
                 'Unauthorized',
                 ['status' => 401]
@@ -95,17 +97,17 @@ class MB_API {
         $tournament_id = intval($params['tournament_id'] ?? 0);
 
         if (!$tournament_id) {
-            return new WP_Error('invalid_data', 'Turnier-ID erforderlich', ['status' => 400]);
+            return new \WP_Error('invalid_data', 'Turnier-ID erforderlich', ['status' => 400]);
         }
 
         // Turnier laden
         $t = $wpdb->get_row(
-            $wpdb->prepare("SELECT id, year, month, day FROM {$wpdb->prefix}monatsblitz_tournaments WHERE id = %d", $tournament_id),
+            $wpdb->prepare("SELECT id, year, month, day, mode, round_count FROM {$wpdb->prefix}monatsblitz_tournaments WHERE id = %d", $tournament_id),
             ARRAY_A
         );
 
         if (!$t) {
-            return new WP_Error('not_found', 'Turnier nicht gefunden', ['status' => 404]);
+            return new \WP_Error('not_found', 'Turnier nicht gefunden', ['status' => 404]);
         }
 
         // Einstellungen laden
@@ -128,7 +130,7 @@ class MB_API {
         );
 
         $games = $wpdb->get_results(
-            $wpdb->prepare("SELECT g.player1_id, g.player2_id, g.result,
+            $wpdb->prepare("SELECT g.player1_id, g.player2_id, g.leg_type, g.result,
                 p1.forename as p1_forename, p1.surname as p1_surname,
                 p2.forename as p2_forename, p2.surname as p2_surname
                 FROM {$wpdb->prefix}monatsblitz_games g
@@ -206,67 +208,24 @@ class MB_API {
             ];
         }
 
-        // Spiele in Map für schnellen Zugriff
-        $game_map = [];
-        foreach ($games as $g) {
-            $p1 = intval($g['player1_id']);
-            $p2 = intval($g['player2_id']);
-            $game_map[$p1][$p2] = $g['result'];
-        }
+        $mode = esc_html((string)($t['mode'] ?? ''));
+        $round_count = max(1, intval($t['round_count'] ?? 1));
 
-        $n = count($players);
-        $table_html = '<table class="monatsblitz">';
-        // Header
-        $table_html .= '<thead><tr><th>Nr.</th><th>Spieler</th>';
-        for ($c = 1; $c <= $n; $c++) {
-            $table_html .= '<th>' . $c . '</th>';
-        }
-        $table_html .= '<th>Punkte</th><th>Platz</th></tr></thead>';
-
-        // Body
-        $table_html .= '<tbody>';
-        for ($i = 0; $i < $n; $i++) {
-            $rowPlayer = $players[$i];
-            $table_html .= '<tr>';
-            $table_html .= '<td>' . ($i + 1) . '</td>';
-            $table_html .= '<td>' . $rowPlayer['name'] . '</td>';
-
-            for ($j = 0; $j < $n; $j++) {
-                if ($i === $j) {
-                    $cell = '&ndash;';
-                } else {
-                    $p_i = $rowPlayer['id'];
-                    $p_j = $players[$j]['id'];
-                    $cell = '';
-                    if (isset($game_map[$p_i][$p_j])) {
-                        $res = $game_map[$p_i][$p_j];
-                        if ($res === '1-0') $cell = '1';
-                        elseif ($res === '0-1') $cell = '0';
-                        elseif ($res === '0.5-0.5' || $res === '½') $cell = '½';
-                        else $cell = esc_html($res);
-                    } elseif (isset($game_map[$p_j][$p_i])) {
-                        $res = $game_map[$p_j][$p_i];
-                        if ($res === '1-0') $cell = '0';
-                        elseif ($res === '0-1') $cell = '1';
-                        elseif ($res === '0.5-0.5' || $res === '½') $cell = '½';
-                        else $cell = esc_html($res);
-                    } else {
-                        $cell = '';
-                    }
-                }
-                $table_html .= '<td>' . $cell . '</td>';
+        if ($round_count === 1) {
+            $table_html = self::build_cross_table($players, $games, true);
+        } else {
+            $table_html = '';
+            for ($round = 1; $round <= $round_count; $round++) {
+                $table_html .= '<h3>Runde ' . $round . '</h3>';
+                $table_html .= self::build_cross_table($players, $games, false, $round);
             }
-
-            $table_html .= '<td>' . $rowPlayer['points'] . '</td>';
-            $table_html .= '<td>' . $rowPlayer['rank'] . '</td>';
-            $table_html .= '</tr>';
+            $table_html .= self::build_summary_table($players);
         }
-        $table_html .= '</tbody></table>';
 
         // Platzhalter ersetzen (inkl. {{table}})
         $content = str_replace(
-            ['{{month_name}}','{{year}}','{{date}}','{{winner_name}}','{{winner_games}}','{{winner_points}}','{{ranking_rows}}','{{games_list}}','{{table}}'],
-            [esc_html($monthName), esc_html($t['year']), esc_html($date_str), $winner_name, esc_html($winner_games), $winner_points, $ranking_rows, $games_list, $table_html],
+            ['{{month_name}}','{{year}}','{{date}}','{{winner_name}}','{{winner_games}}','{{winner_points}}','{{ranking_rows}}','{{games_list}}','{{table}}','{{mode}}','{{round_count}}'],
+            [esc_html($monthName), esc_html($t['year']), esc_html($date_str), $winner_name, esc_html($winner_games), $winner_points, $ranking_rows, $games_list, $table_html, $mode, esc_html((string)$round_count)],
             $template_content
         );
 
@@ -290,7 +249,7 @@ class MB_API {
         $post_id = wp_insert_post($postarr);
 
         if (is_wp_error($post_id)) {
-            return new WP_Error('post_error', 'Fehler beim Anlegen des Beitrags', ['status' => 500]);
+            return new \WP_Error('post_error', 'Fehler beim Anlegen des Beitrags', ['status' => 500]);
         }
 
         if ($template_post && !is_wp_error($template_post)) {
@@ -348,7 +307,7 @@ class MB_API {
 
         // 🔒 Validierung
         if (empty($forename) || empty($surname)) {
-            return new WP_Error('invalid_data', 'Vorname und Nachname sind erforderlich', ['status' => 400]);
+            return new \WP_Error('invalid_data', 'Vorname und Nachname sind erforderlich', ['status' => 400]);
         }
 
         // 👉 Optional: prüfen ob Spieler schon existiert
@@ -390,7 +349,7 @@ class MB_API {
         $params = $request->get_json_params();
 
         if (empty($params['date'])) {
-            return new WP_Error('invalid_data', 'Date is required', ['status' => 400]);
+            return new \WP_Error('invalid_data', 'Date is required', ['status' => 400]);
         }
 
         // 📅 Datum zerlegen
@@ -398,10 +357,20 @@ class MB_API {
         $parts = explode('-', $date);
 
         if (count($parts) !== 3) {
-            return new WP_Error('invalid_date', 'Invalid date format', ['status' => 400]);
+            return new \WP_Error('invalid_date', 'Invalid date format', ['status' => 400]);
         }
 
         list($year, $month, $day) = $parts;
+        $mode = sanitize_text_field($params['mode'] ?? '');
+        $round_count = intval($params['round_count'] ?? 1);
+
+        if ($mode === '') {
+            return new \WP_Error('invalid_data', 'Mode is required', ['status' => 400]);
+        }
+
+        if ($round_count < 1) {
+            return new \WP_Error('invalid_data', 'round_count must be >= 1', ['status' => 400]);
+        }
 
         $table = $wpdb->prefix . 'monatsblitz_tournaments';
 
@@ -410,9 +379,11 @@ class MB_API {
             [
                 'year'  => (int)$year,
                 'month' => (int)$month,
-                'day'   => (int)$day
+                'day'   => (int)$day,
+                'mode'  => $mode,
+                'round_count' => $round_count
             ],
-            ['%d', '%d', '%d']
+            ['%d', '%d', '%d', '%s', '%d']
         );
 
         return rest_ensure_response([
@@ -426,14 +397,19 @@ class MB_API {
 
         $params = $request->get_json_params();
 
-        $tournament_id = intval($params['tournament_id']);
-        $player1_id    = intval($params['player1_id']);
-        $player2_id    = intval($params['player2_id']);
-        $result        = sanitize_text_field($params['result']);
+        $tournament_id = intval($params['tournament_id'] ?? 0);
+        $player1_id    = intval($params['player1_id'] ?? 0);
+        $player2_id    = intval($params['player2_id'] ?? 0);
+        $leg_type      = intval($params['leg_type'] ?? 1);
+        $result        = sanitize_text_field($params['result'] ?? '');
 
         // 🔒 einfache Validierung
-        if (!$tournament_id || !$player1_id || !$player2_id) {
-            return new WP_Error('invalid_data', 'Fehlende Daten', ['status' => 400]);
+        if ($tournament_id <= 0 || $player1_id <= 0 || $player2_id <= 0) {
+            return new \WP_Error('invalid_data', 'Fehlende Daten', ['status' => 400]);
+        }
+
+        if ($leg_type <= 0) {
+            return new \WP_Error('invalid_data', 'leg_type muss >= 1 sein', ['status' => 400]);
         }
 
         // 👉 prüfen ob Turnier existiert
@@ -445,7 +421,7 @@ class MB_API {
         );
 
         if (!$exists) {
-            return new WP_Error('invalid_tournament', 'Turnier existiert nicht', ['status' => 404]);
+            return new \WP_Error('invalid_tournament', 'Turnier existiert nicht', ['status' => 404]);
         }
 
         // 👉 speichern
@@ -455,8 +431,10 @@ class MB_API {
                 'tournament_id' => $tournament_id,
                 'player1_id'    => $player1_id,
                 'player2_id'    => $player2_id,
+                'leg_type'      => $leg_type,
                 'result'        => $result
-            ]
+            ],
+            ['%d', '%d', '%d', '%d', '%s']
         );
 
         return [
@@ -484,7 +462,7 @@ class MB_API {
         $table = $wpdb->prefix . 'monatsblitz_tournaments';
 
         $results = $wpdb->get_results(
-            "SELECT id, year, month, day, CONCAT(day, '.', month, '.', year) as date_formatted 
+            "SELECT id, year, month, day, mode, round_count, CONCAT(day, '.', month, '.', year) as date_formatted 
              FROM $table ORDER BY year DESC, month DESC, day DESC",
             ARRAY_A
         );
@@ -500,7 +478,7 @@ class MB_API {
 
         $result = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id, year, month, day, CONCAT(day, '.', month, '.', year) as date_formatted 
+                "SELECT id, year, month, day, mode, round_count, CONCAT(day, '.', month, '.', year) as date_formatted 
                  FROM $table WHERE id = %d",
                 $tournament_id
             ),
@@ -508,7 +486,7 @@ class MB_API {
         );
 
         if (!$result) {
-            return new WP_Error('not_found', 'Turnier nicht gefunden', ['status' => 404]);
+            return new \WP_Error('not_found', 'Turnier nicht gefunden', ['status' => 404]);
         }
 
         return rest_ensure_response($result);
@@ -528,6 +506,7 @@ class MB_API {
                     g.tournament_id,
                     g.player1_id,
                     g.player2_id,
+                    g.leg_type,
                     g.result,
                     p1.forename as player1_forename,
                     p1.surname as player1_surname,
@@ -558,7 +537,7 @@ class MB_API {
 
         // 🔒 Validierung
         if (!$tournament_id || !$player_id) {
-            return new WP_Error('invalid_data', 'Turnier-ID und Spieler-ID erforderlich', ['status' => 400]);
+            return new \WP_Error('invalid_data', 'Turnier-ID und Spieler-ID erforderlich', ['status' => 400]);
         }
 
         // 👉 Prüfe ob Turnier existiert
@@ -570,7 +549,7 @@ class MB_API {
         );
 
         if (!$tournament_exists) {
-            return new WP_Error('invalid_tournament', 'Turnier existiert nicht', ['status' => 404]);
+            return new \WP_Error('invalid_tournament', 'Turnier existiert nicht', ['status' => 404]);
         }
 
         // 👉 Prüfe ob Spieler existiert
@@ -582,7 +561,7 @@ class MB_API {
         );
 
         if (!$player_exists) {
-            return new WP_Error('invalid_player', 'Spieler existiert nicht', ['status' => 404]);
+            return new \WP_Error('invalid_player', 'Spieler existiert nicht', ['status' => 404]);
         }
 
         // 👉 Prüfe ob Ergebnis bereits existiert
@@ -660,6 +639,99 @@ class MB_API {
         );
 
         return rest_ensure_response($results);
+    }
+
+    private static function build_cross_table(array $players, array $games, bool $include_totals, ?int $round = null): string {
+        $game_map = [];
+        foreach ($games as $g) {
+            $leg_type = intval($g['leg_type'] ?? 1);
+            if ($round !== null && $leg_type !== $round) {
+                continue;
+            }
+
+            $p1 = intval($g['player1_id']);
+            $p2 = intval($g['player2_id']);
+            $game_map[$p1][$p2] = $g['result'];
+        }
+
+        $n = count($players);
+        $table_html = '<table class="monatsblitz">';
+        $table_html .= '<thead><tr><th>Nr.</th><th>Spieler</th>';
+        for ($c = 1; $c <= $n; $c++) {
+            $table_html .= '<th>' . $c . '</th>';
+        }
+        if ($include_totals) {
+            $table_html .= '<th>Punkte</th><th>Platz</th>';
+        }
+        $table_html .= '</tr></thead>';
+
+        $table_html .= '<tbody>';
+        for ($i = 0; $i < $n; $i++) {
+            $rowPlayer = $players[$i];
+            $table_html .= '<tr>';
+            $table_html .= '<td>' . ($i + 1) . '</td>';
+            $table_html .= '<td>' . $rowPlayer['name'] . '</td>';
+
+            for ($j = 0; $j < $n; $j++) {
+                if ($i === $j) {
+                    $cell = '&ndash;';
+                } else {
+                    $p_i = $rowPlayer['id'];
+                    $p_j = $players[$j]['id'];
+                    $cell = '';
+                    if (isset($game_map[$p_i][$p_j])) {
+                        $cell = self::normalize_result_cell($game_map[$p_i][$p_j], false);
+                    } elseif (isset($game_map[$p_j][$p_i])) {
+                        $cell = self::normalize_result_cell($game_map[$p_j][$p_i], true);
+                    }
+                }
+                $table_html .= '<td>' . $cell . '</td>';
+            }
+
+            if ($include_totals) {
+                $table_html .= '<td>' . $rowPlayer['points'] . '</td>';
+                $table_html .= '<td>' . $rowPlayer['rank'] . '</td>';
+            }
+            $table_html .= '</tr>';
+        }
+
+        $table_html .= '</tbody></table>';
+
+        return $table_html;
+    }
+
+    private static function build_summary_table(array $players): string {
+        $summary = '<h3>Gesamtergebnis</h3>';
+        $summary .= '<table class="monatsblitz">';
+        $summary .= '<thead><tr><th>Spieler</th><th>Gesamtpunkte</th><th>Platz</th></tr></thead><tbody>';
+
+        foreach ($players as $player) {
+            $summary .= '<tr>';
+            $summary .= '<td>' . $player['name'] . '</td>';
+            $summary .= '<td>' . $player['points'] . '</td>';
+            $summary .= '<td>' . $player['rank'] . '</td>';
+            $summary .= '</tr>';
+        }
+
+        $summary .= '</tbody></table>';
+
+        return $summary;
+    }
+
+    private static function normalize_result_cell(string $result, bool $invert): string {
+        if (!$invert) {
+            if ($result === '1-0') return '1';
+            if ($result === '0-1') return '0';
+        } else {
+            if ($result === '1-0') return '0';
+            if ($result === '0-1') return '1';
+        }
+
+        if ($result === '0.5-0.5' || $result === '½') {
+            return '½';
+        }
+
+        return esc_html($result);
     }
 
 }
