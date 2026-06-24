@@ -117,7 +117,21 @@ class MB_API {
         // Datum formate
         $date_str = sprintf('%02d.%02d.%04d', $t['day'], $t['month'], $t['year']);
         $iso_date = sprintf('%04d-%02d-%02d', $t['year'], $t['month'], $t['day']);
-        $monthName = date('F', mktime(0,0,0,$t['month'],1,$t['year']));
+        $monthNames = [
+            1 => 'Januar',
+            2 => 'Februar',
+            3 => 'März',
+            4 => 'April',
+            5 => 'Mai',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'August',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Dezember',
+        ];
+        $monthName = $monthNames[intval($t['month'] ?? 0)] ?? '';
 
         // Ergebnisse und Spieler laden
         $results = $wpdb->get_results(

@@ -472,7 +472,7 @@ it('finalizes single-round tournament and writes classic table', function () {
     $GLOBALS['mb_test_template_post'] = (object) [
         'ID' => 11,
         'post_title' => 'TemplateSingle',
-        'post_content' => '<article>{{table}}</article>',
+        'post_content' => '<article><h1>{{month_name}} {{year}}</h1>{{table}}</article>',
     ];
     $GLOBALS['mb_test_next_post_id'] = 555;
 
@@ -507,6 +507,7 @@ it('finalizes single-round tournament and writes classic table', function () {
     expect($result['success'])->toBeTrue();
     expect($result['post_id'])->toBe(555);
     expect($GLOBALS['mb_test_last_inserted_post'])->not->toBeNull();
+    expect($GLOBALS['mb_test_last_inserted_post']['post_content'])->toContain('Juni 2026');
     expect($GLOBALS['mb_test_last_inserted_post']['post_content'])->toContain('<th>Punkte</th><th>Platz</th>');
     expect($GLOBALS['mb_test_last_inserted_post']['post_content'])->not->toContain('Runde 1');
 });
