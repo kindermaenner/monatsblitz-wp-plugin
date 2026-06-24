@@ -2,6 +2,44 @@
 
 Ein kleines WordPress-Plugin zur Verwaltung von Blitzturnieren über eine REST-API.
 
+## Motivation
+
+Wir sind beide Vorstandsmitglieder in unterschiedlichen Vereinen. Beruf, Familie und Ehrenamt unter einen Hut zu bringen bedeutet: Zeit ist unser knappstes Gut.
+Gleichzeitig ist eine gepflegte Webseite heute ein entscheidender Faktor für Mitgliedergewinnung und Außenwirkung. Besonders im Schachverein zeigt sich Aktivität vor allem durch regelmäßige Ergebnisse und Turnierberichte.
+
+Genau hier entsteht das Problem:
+- Ergebnisse liegen oft nur auf Zetteln vor
+- Der Zettel ist irgendwo, jemand hat ihn mitgenommen
+- Im Chat wird er zwar geteilt, aber nie wiedergefunden
+- Als Foto in WordPress wirkt es unprofessionell
+- Und das Schreiben der News kostet jedes Mal unnötig Zeit
+
+In unserem Schachverein gibt es im Schnitt zwei Rundenturniere pro Monat. Die Ergebnisse interessieren die Mitglieder, und sie zeigen nach außen: Hier passiert etwas. Aber die manuelle Pflege ist mühsam und fehleranfällig.
+
+Daraus entstand die Idee:
+
+Warum nicht die Ergebnisse direkt digital erfassen und WordPress die Beiträge automatisch erzeugen lassen?
+
+Die Lösung besteht aus zwei Teilen:
+1. WordPress‑Plugin
+Es erzeugt automatisch News‑Beiträge, sobald neue Ergebnisse eintreffen.
+Keine Copy‑Paste‑Arbeit, keine Zettel, keine verlorenen Informationen.
+
+2. Mobile App
+Alle Mitglieder können die Ergebnisse direkt am Handy eintragen.
+Der Zettel entfällt komplett, und die Daten landen sofort dort, wo sie hingehören.
+
+Damit lösen wir gleich mehrere Probleme gleichzeitig:
+- Keine Papierzettel mehr
+- Keine Suche nach Fotos oder Chat‑Nachrichten
+- Ergebnisse sind sofort online
+- Die Webseite bleibt aktuell und professionell
+- Wir sparen Zeit, ohne auf Inhalte zu verzichten
+- Mitglieder sehen sofort, was im Verein passiert
+
+Kurz:
+Wir automatisieren die langweiligen Teile, damit mehr Zeit für das bleibt, was im Verein wirklich zählt.
+
 ## Was das Plugin macht
 
 - Legt beim Aktivieren die benötigten Tabellen an:
@@ -90,6 +128,40 @@ Basis: `/wp-json/monatsblitz/v1`
   - Der Titel wird im Format `0Monatsblitz YYYY-MM-DD` angelegt.
   - Die Platzhalter im Template werden ersetzt.
 
+## Datenbankschema
+
+Das Projekt verwendet ein relationales Datenmodell, das speziell für die Anforderungen des Monatsblitz‑Turniersystems entwickelt wurde.
+
+Die Datenbank besteht aus vier Tabellen:
+- monatsblitz_players: Verwaltung der Spieler
+- monatsblitz_tournaments: Metadaten zu jedem Turnier
+- monatsblitz_games: alle gespielten Partien
+- monatsblitz_results: Endergebnisse pro Spieler und Turnier
+
+Das vollständige Schema ist im folgenden Diagramm dargestellt:
+
+![Datenbankschema](./docs/db_scheme.png)
+
+(Hinweis: Das Diagramm wurde mit drawSQL erstellt.)
+
+### Designprinzipien
+
+#### Eindeutigkeit durch Constraints
+
+- monatsblitz_players: UNIQUE(forename, surname)
+- monatsblitz_tournaments: UNIQUE(year, month, day)
+- monatsblitz_games: UNIQUE(tournament_id, player1_id, player2_id, leg_type)
+- monatsblitz_results: UNIQUE(tournament_id, player_id)
+
+#### Flexible Rundenzahl  
+Das Feld round_count in der Turniertabelle erlaubt beliebig viele Durchgänge (1 = einfache Runde, 2 = Hin/Rückrunde, …).
+
+#### Explizite Rundenkennzeichnung  
+Jede Partie besitzt ein Feld leg_type (1, 2, 3 …), das angibt, zu welchem Durchgang sie gehört.
+
+#### WordPress‑kompatibel  
+Das Schema ist vollständig kompatibel mit dbDelta() und verzichtet bewusst auf Foreign Keys.
+
 ## Platzhalter im Template
 
 Im Beitrag `Template_Monatsblitz` können folgende Platzhalter genutzt werden:
@@ -106,8 +178,7 @@ Im Beitrag `Template_Monatsblitz` können folgende Platzhalter genutzt werden:
 
 ## Sicherheit
 
-Aktuell sind die REST-Endpunkte in der Plugin-Implementierung ungeschützt (`permission_callback => __return_true`).
-Vor dem produktiven Einsatz sollte eine Authentifizierung ergänzt werden, z. B. WordPress Application Passwords oder JWT.
+Die API ist durch einen API-Key geschützt, der im Header übertragen werden muss. Der Key kann in den Plugin-Einstellungen generiert werden und muss in der zugehörigen App in der Konfiguration angegeben werden.
 
 ## Hinweis
 
