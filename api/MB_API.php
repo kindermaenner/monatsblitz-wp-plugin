@@ -852,8 +852,10 @@ class MB_API {
             $table_html .= '<td>' . $rowPlayer['name'] . '</td>';
 
             for ($j = 0; $j < $n; $j++) {
+                $cell_attr = '';
                 if ($i === $j) {
-                    $cell = '&ndash;';
+                    $cell = '&nbsp;';
+                    $cell_attr = ' class="mb-cell-empty mb-cell-diagonal" style="background-color:#eeeeee !important; color:#666666 !important;"';
                 } else {
                     $p_i = $rowPlayer['id'];
                     $p_j = $players[$j]['id'];
@@ -862,9 +864,12 @@ class MB_API {
                         $cell = self::normalize_result_cell($game_map[$p_i][$p_j], false);
                     } elseif (isset($game_map[$p_j][$p_i])) {
                         $cell = self::normalize_result_cell($game_map[$p_j][$p_i], true);
+                    } else {
+                        $cell = '&nbsp;';
+                        $cell_attr = ' class="mb-cell-empty mb-cell-pending" style="background-color:#eeeeee !important; color:#666666 !important;"';
                     }
                 }
-                $table_html .= '<td>' . $cell . '</td>';
+                $table_html .= '<td' . $cell_attr . '>' . $cell . '</td>';
             }
 
             if ($include_totals) {

@@ -813,3 +813,51 @@ it('renders forfeit results as plus and minus cells using the same inversion log
     expect($content)->not->toContain('-:+');
 });
 
+it('renders missing cross-table results as grey cells', function () {
+    global $wpdb;
+
+    $GLOBALS['mb_test_options']['monatsblitz_author'] = 1;
+    $GLOBALS['mb_test_options']['monatsblitz_template'] = 'TemplatePending';
+    $GLOBALS['mb_test_template_post'] = (object) [
+        'ID' => 91,
+        'post_title' => 'TemplatePending',
+        'post_content' => '<div>{{table}}</div>',
+    ];
+
+    $wpdb->get_row_result = [
+        'id' => 31,
+        'year' => 2026,
+        'month' => 6,
+        'day' => 25,
+        'mode' => 'schweizer',
+        'round_count' => 1,
+    ];
+
+    $wpdb->get_results_queue = [
+        [
+            ['player_id' => 1, 'points' => 1.0, 'rank' => 1, 'forename' => 'Max', 'surname' => 'Muster'],
+            ['player_id' => 2, 'points' => 0.0, 'rank' => 2, 'forename' => 'Erika', 'surname' => 'Beispiel'],
+            ['player_id' => 3, 'points' => 0.0, 'rank' => 3, 'forename' => 'Paul', 'surname' => 'Probe'],
+        ],
+        [
+            ['player1_id' => 1, 'player2_id' => 2, 'leg_type' => 1, 'result' => '1:0', 'p1_forename' => 'Max', 'p1_surname' => 'Muster', 'p2_forename' => 'Erika', 'p2_surname' => 'Beispiel'],
+        ],
+    ];
+    $wpdb->get_var_result = 1;
+
+    $request = new class {
+        public function get_json_params() {
+            return ['tournament_id' => 31];
+        }
+    };
+
+    $result = MB_API::finalize_tournament($request);
+    $content = $GLOBALS['mb_test_last_inserted_post']['post_content'];
+
+    expect($result['success'])->toBeTrue();
+    expect($content)->toContain('class="mb-cell-empty mb-cell-pending"');
+    expect($content)->toContain('class="mb-cell-empty mb-cell-diagonal"');
+    expect($content)->toContain('background-color:#eeeeee !important; color:#666666 !important;');
+    expect($content)->toContain('&nbsp;');
+});
+
