@@ -634,6 +634,33 @@ it('fails finalize when tournament is not found', function () {
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
 
+it('fails finalize when tournament has no results', function () {
+    global $wpdb;
+
+    $wpdb->get_row_result = [
+        'id' => 9,
+        'year' => 2026,
+        'month' => 6,
+        'day' => 24,
+        'mode' => 'schweizer',
+        'round_count' => 1,
+    ];
+    $wpdb->get_results_queue = [
+        [],
+    ];
+
+    $request = new class {
+        public function get_json_params() {
+            return ['tournament_id' => 9];
+        }
+    };
+
+    $result = MB_API::finalize_tournament($request);
+
+    expect($result)->toBeInstanceOf(WP_Error::class);
+    expect($result->code)->toBe('no_results');
+});
+
 it('finalizes single-round tournament and writes classic table', function () {
     global $wpdb;
 

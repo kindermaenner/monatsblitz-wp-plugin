@@ -149,6 +149,10 @@ class MB_API {
             ARRAY_A
         );
 
+        if (empty($results)) {
+            return new \WP_Error('no_results', 'Keine Ergebnisse vorhanden', ['status' => 400]);
+        }
+
         $games = $wpdb->get_results(
             $wpdb->prepare("SELECT g.player1_id, g.player2_id, g.leg_type, g.result,
                 p1.forename as p1_forename, p1.surname as p1_surname,
