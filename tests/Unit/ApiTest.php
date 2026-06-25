@@ -168,7 +168,7 @@ it('creates game with default leg_type', function () {
                 'tournament_id' => 9,
                 'player1_id' => 1,
                 'player2_id' => 2,
-                'result' => '1-0'
+                'result' => '1:0'
             ];
         }
     };
@@ -192,7 +192,7 @@ it('creates game with explicit leg_type', function () {
                 'player1_id' => 1,
                 'player2_id' => 2,
                 'leg_type' => 2,
-                'result' => '0-1'
+                'result' => '0:1'
             ];
         }
     };
@@ -214,8 +214,8 @@ it('creates batch games from a games array', function () {
             return [
                 'tournament_id' => 3,
                 'games' => [
-                    ['player1_id' => 1, 'player2_id' => 8, 'result' => '1-0', 'leg_type' => 1],
-                    ['player1_id' => 1, 'player2_id' => 8, 'result' => '0-1', 'leg_type' => 2],
+                    ['player1_id' => 1, 'player2_id' => 8, 'result' => '1:0', 'leg_type' => 1],
+                    ['player1_id' => 1, 'player2_id' => 8, 'result' => '0:1', 'leg_type' => 2],
                 ],
             ];
         }
@@ -330,7 +330,7 @@ it('fails when leg_type is invalid', function () {
                 'player1_id' => 1,
                 'player2_id' => 2,
                 'leg_type' => 0,
-                'result' => '1-0'
+                'result' => '1:0'
             ];
         }
     };
@@ -351,7 +351,7 @@ it('fails when tournament does not exist for game', function () {
                 'tournament_id' => 9,
                 'player1_id' => 1,
                 'player2_id' => 2,
-                'result' => '1-0'
+                'result' => '1:0'
             ];
         }
     };
@@ -386,7 +386,7 @@ it('returns games list', function () {
     global $wpdb;
 
     $wpdb->results = [
-        ['id' => 1, 'tournament_id' => 1, 'player1_id' => 1, 'player2_id' => 2, 'leg_type' => 1, 'result' => '1-0']
+        ['id' => 1, 'tournament_id' => 1, 'player1_id' => 1, 'player2_id' => 2, 'leg_type' => 1, 'result' => '1:0']
     ];
 
     $result = MB_API::get_games(['tournament_id' => 1]);
@@ -688,7 +688,7 @@ it('finalizes single-round tournament and writes classic table', function () {
             ['player_id' => 2, 'points' => 4.0, 'rank' => 2, 'forename' => 'Erika', 'surname' => 'Beispiel'],
         ],
         [
-            ['player1_id' => 1, 'player2_id' => 2, 'leg_type' => 1, 'result' => '1-0', 'p1_forename' => 'Max', 'p1_surname' => 'Muster', 'p2_forename' => 'Erika', 'p2_surname' => 'Beispiel'],
+            ['player1_id' => 1, 'player2_id' => 2, 'leg_type' => 1, 'result' => '1:0', 'p1_forename' => 'Max', 'p1_surname' => 'Muster', 'p2_forename' => 'Erika', 'p2_surname' => 'Beispiel'],
         ],
     ];
     $wpdb->get_var_result = 1;
@@ -735,8 +735,8 @@ it('finalizes multi-round tournament with per-round tables and summary', functio
             ['player_id' => 2, 'points' => 2.0, 'rank' => 2, 'forename' => 'Erika', 'surname' => 'Beispiel'],
         ],
         [
-            ['player1_id' => 1, 'player2_id' => 2, 'leg_type' => 1, 'result' => '1-0', 'p1_forename' => 'Max', 'p1_surname' => 'Muster', 'p2_forename' => 'Erika', 'p2_surname' => 'Beispiel'],
-            ['player1_id' => 1, 'player2_id' => 2, 'leg_type' => 2, 'result' => '0-1', 'p1_forename' => 'Max', 'p1_surname' => 'Muster', 'p2_forename' => 'Erika', 'p2_surname' => 'Beispiel'],
+            ['player1_id' => 1, 'player2_id' => 2, 'leg_type' => 1, 'result' => '1:0', 'p1_forename' => 'Max', 'p1_surname' => 'Muster', 'p2_forename' => 'Erika', 'p2_surname' => 'Beispiel'],
+            ['player1_id' => 1, 'player2_id' => 2, 'leg_type' => 2, 'result' => '0:1', 'p1_forename' => 'Max', 'p1_surname' => 'Muster', 'p2_forename' => 'Erika', 'p2_surname' => 'Beispiel'],
         ],
     ];
     $wpdb->get_var_result = 2;
@@ -764,3 +764,52 @@ it('finalizes multi-round tournament with per-round tables and summary', functio
     expect($round2Section)->not->toContain('<th>Punkte</th><th>Platz</th>');
     expect($content)->toContain('<th>Gesamtpunkte</th><th>Platz</th>');
 });
+
+it('renders forfeit results as plus and minus cells using the same inversion logic as wins and losses', function () {
+    global $wpdb;
+
+    $GLOBALS['mb_test_options']['monatsblitz_author'] = 1;
+    $GLOBALS['mb_test_options']['monatsblitz_template'] = 'TemplateForfeit';
+    $GLOBALS['mb_test_template_post'] = (object) [
+        'ID' => 77,
+        'post_title' => 'TemplateForfeit',
+        'post_content' => '<div>{{table}}</div>',
+    ];
+    $GLOBALS['mb_test_next_post_id'] = 777;
+
+    $wpdb->get_row_result = [
+        'id' => 21,
+        'year' => 2026,
+        'month' => 6,
+        'day' => 25,
+        'mode' => 'schweizer',
+        'round_count' => 1,
+    ];
+
+    $wpdb->get_results_queue = [
+        [
+            ['player_id' => 1, 'points' => 1.0, 'rank' => 1, 'forename' => 'Max', 'surname' => 'Muster'],
+            ['player_id' => 2, 'points' => 0.0, 'rank' => 2, 'forename' => 'Erika', 'surname' => 'Beispiel'],
+        ],
+        [
+            ['player1_id' => 1, 'player2_id' => 2, 'leg_type' => 1, 'result' => '+:-', 'p1_forename' => 'Max', 'p1_surname' => 'Muster', 'p2_forename' => 'Erika', 'p2_surname' => 'Beispiel'],
+        ],
+    ];
+    $wpdb->get_var_result = 1;
+
+    $request = new class {
+        public function get_json_params() {
+            return ['tournament_id' => 21];
+        }
+    };
+
+    $result = MB_API::finalize_tournament($request);
+    $content = $GLOBALS['mb_test_last_inserted_post']['post_content'];
+
+    expect($result['success'])->toBeTrue();
+    expect($content)->toContain('>+<');
+    expect($content)->toContain('>-<');
+    expect($content)->not->toContain('+:-');
+    expect($content)->not->toContain('-:+');
+});
+

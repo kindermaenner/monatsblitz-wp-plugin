@@ -899,14 +899,18 @@ class MB_API {
 
     private static function normalize_result_cell(string $result, bool $invert): string {
         if (!$invert) {
-            if ($result === '1-0') return '1';
-            if ($result === '0-1') return '0';
+            if ($result === '1:0' || $result === '1-0') return '1';
+            if ($result === '0:1' || $result === '0-1') return '0';
+            if ($result === '+:-') return '+';
+            if ($result === '-:+') return '-';
         } else {
-            if ($result === '1-0') return '0';
-            if ($result === '0-1') return '1';
+            if ($result === '1:0' || $result === '1-0') return '0';
+            if ($result === '0:1' || $result === '0-1') return '1';
+            if ($result === '+:-') return '-';
+            if ($result === '-:+') return '+';
         }
 
-        if ($result === '0.5-0.5' || $result === '½') {
+        if ($result === '0.5:0.5' || $result === '0.5-0.5' || $result === '½') {
             return '½';
         }
 
