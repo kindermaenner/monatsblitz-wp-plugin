@@ -1,92 +1,92 @@
 # Monatsblitz Plugin
 
-Ein kleines WordPress-Plugin zur Verwaltung von Blitzturnieren über eine REST-API.
+A lightweight WordPress plugin to manage blitz chess tournaments through a REST API.
 
 ## Motivation
 
-Wir sind beide Vorstandsmitglieder in unterschiedlichen Vereinen. Beruf, Familie und Ehrenamt unter einen Hut zu bringen bedeutet: Zeit ist unser knappstes Gut.
-Gleichzeitig ist eine gepflegte Webseite heute ein entscheidender Faktor für Mitgliedergewinnung und Außenwirkung. Besonders im Schachverein zeigt sich Aktivität vor allem durch regelmäßige Ergebnisse und Turnierberichte.
+We are both board members in different clubs. Balancing work, family, and volunteering means one thing: time is our most limited resource.
+At the same time, a well-maintained website is a key factor for attracting members and creating a strong public presence. In a chess club, activity is most visible through regular results and tournament reports.
 
-Genau hier entsteht das Problem:
-- Ergebnisse liegen oft nur auf Zetteln vor
-- Der Zettel ist irgendwo, jemand hat ihn mitgenommen
-- Im Chat wird er zwar geteilt, aber nie wiedergefunden
-- Als Foto in WordPress wirkt es unprofessionell
-- Und das Schreiben der News kostet jedes Mal unnötig Zeit
+This is exactly where the problem starts:
+- Results are often only written on paper
+- The sheet is somewhere, and someone took it home
+- It gets shared in chat but is never found again
+- Posting a photo in WordPress looks unprofessional
+- Writing news posts manually takes unnecessary time every time
 
-In unserem Schachverein gibt es im Schnitt zwei Rundenturniere pro Monat. Die Ergebnisse interessieren die Mitglieder, und sie zeigen nach außen: Hier passiert etwas. Aber die manuelle Pflege ist mühsam und fehleranfällig.
+In our chess club, we have around two round-robin tournaments per month. Members care about the results, and they also show outsiders that the club is active. But maintaining everything manually is tedious and error-prone.
 
-Daraus entstand die Idee:
+That led to a simple idea:
 
-Warum nicht die Ergebnisse direkt digital erfassen und WordPress die Beiträge automatisch erzeugen lassen?
+Why not capture results digitally right away and let WordPress generate the posts automatically?
 
-Die Lösung besteht aus zwei Teilen:
-1. WordPress‑Plugin
-Es erzeugt automatisch News‑Beiträge, sobald neue Ergebnisse eintreffen.
-Keine Copy‑Paste‑Arbeit, keine Zettel, keine verlorenen Informationen.
+The solution has two parts:
+1. WordPress plugin
+It automatically creates news posts as soon as new results are available.
+No copy-paste work, no paper sheets, no lost information.
 
-2. Mobile App
-Alle Mitglieder können die Ergebnisse direkt am Handy eintragen.
-Der Zettel entfällt komplett, und die Daten landen sofort dort, wo sie hingehören.
+2. Mobile app
+All members can enter results directly on their phones.
+Paper is no longer needed, and the data goes straight where it belongs.
 
-Damit lösen wir gleich mehrere Probleme gleichzeitig:
-- Keine Papierzettel mehr
-- Keine Suche nach Fotos oder Chat‑Nachrichten
-- Ergebnisse sind sofort online
-- Die Webseite bleibt aktuell und professionell
-- Wir sparen Zeit, ohne auf Inhalte zu verzichten
-- Mitglieder sehen sofort, was im Verein passiert
+This solves several problems at once:
+- No more paper sheets
+- No searching for photos or chat messages
+- Results are published immediately
+- The website stays up to date and professional
+- We save time without sacrificing content
+- Members instantly see what is happening in the club
 
-Kurz:
-Wir automatisieren die langweiligen Teile, damit mehr Zeit für das bleibt, was im Verein wirklich zählt.
+In short:
+We automate the boring parts so there is more time for what really matters in club life.
 
-## Was das Plugin macht
+## What the Plugin Does
 
-- Legt beim Aktivieren die benötigten Tabellen an:
+- Creates the required tables on activation:
   - `wp_monatsblitz_players`
   - `wp_monatsblitz_tournaments`
   - `wp_monatsblitz_games`
   - `wp_monatsblitz_results`
-- Stellt REST-API-Endpunkte bereit zur Verwaltung von Spielern, Turnieren, Spielen und Ergebnissen.
-- Erzeugt aus einem vorhandenen Beitrag `Template_Monatsblitz` einen neuen veröffentlichten Beitrag, sobald ein Turnier finalisiert wird.
-- Füllt dabei Platzhalter im Template wie `{{month_name}}`, `{{year}}`, `{{date}}`, `{{winner_name}}`, `{{winner_games}}`, `{{winner_points}}`, `{{table}}` und mehr.
+- Provides REST API endpoints for managing players, tournaments, games, and results.
+- Creates a new published post from an existing `Template_Monatsblitz` post once a tournament is finalized.
+- Replaces template placeholders such as `{{month_name}}`, `{{year}}`, `{{date}}`, `{{winner_name}}`, `{{winner_games}}`, `{{winner_points}}`, `{{table}}`, and more.
 
-## Einsatz
+## Usage
 
-1. Plugin in `wp-content/plugins/monatsblitz` ablegen.
-2. Im WordPress-Admin aktivieren.
-3. Einen Beitrag mit dem Titel `Template_Monatsblitz` anlegen und als Vorlage nutzen.
-   - Das Template kann HTML, Kadence-Blöcke und CSS enthalten.
-   - Die Platzhalter werden beim Finalize-Call ersetzt.
-4. App oder externes System nutzt die API, um den Blitzabend zu speichern.
-5. Nach Abschluss der Ergebnisse wird `POST /wp-json/monatsblitz/v1/finalize` aufgerufen.
-6. Das Plugin erzeugt einen neuen veröffentlichten Beitrag mit dem formatierten Ergebnis.
+1. Place the plugin in `wp-content/plugins/monatsblitz`.
+2. Activate it in the WordPress admin.
+3. Create a post titled `Template_Monatsblitz` and use it as a template.
+   - The template can include HTML, Kadence blocks, and CSS.
+   - Placeholders are replaced during the finalize call.
+4. Your app or an external system uses the API to store tournament data.
+5. After all results are complete, call `POST /wp-json/monatsblitz/v1/finalize`.
+6. The plugin creates a new published post with the formatted results.
 
-## REST-API
+## REST API
 
-Basis: `/wp-json/monatsblitz/v1`
+Base path: `/wp-json/monatsblitz/v1`
 
-### Spieler
+### Players
 
 - `POST /player`
-  - Legt einen neuen Spieler an oder gibt bei vorhandenem Spieler die ID zurück.
-  - Alternativ kann ein Batch-Payload mit `players` oder ein Top-Level-Array übergeben werden.
+  - Creates a new player or returns the ID if the player already exists.
+  - Alternatively accepts a batch payload via `players` or a top-level array.
   - Body (JSON):
-    - `forename`: Vorname
-    - `surname`: Nachname
-  - Oder als Batch:
-    - `players`: Array von Objekten mit `forename`, `surname`
-    - alternativ ein Top-Level-Array derselben Objekte
-  - Verhalten:
-    - Einzel-JSON wird weiterhin unterstützt.
-    - Batch-Requests werden je Spieler validiert und gespeichert.
-    - Ungültige Batch-Daten liefern `WP_Error` mit HTTP 400.
-  - Batch-Antwort:
+    - `forename`: first name
+    - `surname`: last name
+  - Batch format:
+    - `players`: array of objects with `forename`, `surname`
+    - or a top-level array with the same objects
+  - Behavior:
+    - Single JSON requests are still supported.
+    - Batch requests are validated and stored per player.
+    - Invalid batch data returns `WP_Error` with HTTP 400.
+  - Batch response:
     - `success`: `true`
-    - `count`: Anzahl verarbeiteter Spieler
-    - `items`: Liste der Rückgaben pro Spieler
+    - `count`: number of processed players
+    - `items`: list of per-player responses
 
-  - Beispiel (anonymisiert):
+  - Example (anonymized):
 
 ```json
 [
@@ -107,47 +107,47 @@ Basis: `/wp-json/monatsblitz/v1`
 ```
 
 - `GET /players`
-  - Gibt alle Spieler zurück.
+  - Returns all players.
 
-### Turniere
+### Tournaments
 
 - `POST /tournament`
-  - Legt ein neues Turnier an.
+  - Creates a new tournament.
   - Body (JSON):
-    - `date`: Datum im Format `YYYY-MM-DD`
-    - `mode`: Turniermodus (z. B. `3+5`, `5+0`)
-    - `round_count` (optional): Anzahl der Runden, Standard `1`
+    - `date`: date in format `YYYY-MM-DD`
+    - `mode`: tournament mode (for example `3+5`, `5+0`)
+    - `round_count` (optional): number of rounds, default `1`
 
 - `GET /tournaments`
-  - Gibt alle Turniere zurück.
+  - Returns all tournaments.
 
 - `GET /tournament/{id}`
-  - Gibt die Turnierdetails zu einer ID zurück.
+  - Returns tournament details for a given ID.
 
-### Spiele
+### Games
 
 - `POST /game`
-  - Legt ein Spiel an.
-  - Alternativ kann ein Batch-Payload mit `games` übergeben werden.
+  - Creates a game.
+  - Alternatively accepts a batch payload via `games`.
   - Body (JSON):
     - `tournament_id`
     - `player1_id`
     - `player2_id`
-    - `leg_type` (optional): Runde/Durchgang der Partie, Standard `1`
+    - `leg_type` (optional): round/leg number, default `1`
     - `result` (`1-0`, `0-1`, `0.5-0.5`)
-  - Oder als Batch:
+  - Batch format:
     - `tournament_id`
-    - `games`: Array von Objekten mit `player1_id`, `player2_id`, `result`, `leg_type`
-  - Verhalten:
-    - Einzel-JSON wird weiterhin unterstützt.
-    - Batch-Requests werden je Spiel validiert und gespeichert.
-    - Ungültige Batch-Daten liefern `WP_Error` mit HTTP 400.
-  - Batch-Antwort:
+    - `games`: array of objects with `player1_id`, `player2_id`, `result`, `leg_type`
+  - Behavior:
+    - Single JSON requests are still supported.
+    - Batch requests are validated and stored per game.
+    - Invalid batch data returns `WP_Error` with HTTP 400.
+  - Batch response:
     - `success`: `true`
-    - `count`: Anzahl verarbeiteter Spiele
-    - `items`: Liste der Rückgaben pro Spiel
+    - `count`: number of processed games
+    - `items`: list of per-game responses
 
-  - Beispiel (anonymisiert):
+  - Example (anonymized):
 
 ```json
 {
@@ -171,31 +171,31 @@ Basis: `/wp-json/monatsblitz/v1`
 ```
 
 - `GET /games/{tournament_id}`
-  - Gibt alle Spiele eines Turniers zurück.
+  - Returns all games for a tournament.
 
-### Ergebnisse
+### Results
 
 - `POST /result`
-  - Legt ein Ergebnis für einen Spieler im Turnier an oder aktualisiert es.
-  - Alternativ kann ein Batch-Payload mit `results` übergeben werden.
+  - Creates or updates a player's result in a tournament.
+  - Alternatively accepts a batch payload via `results`.
   - Body (JSON):
     - `tournament_id`
     - `player_id`
     - `points`
     - `rank`
-  - Oder als Batch:
+  - Batch format:
     - `tournament_id`
-    - `results`: Array von Objekten mit `player_id`, `points`, `rank`
-  - Verhalten:
-    - Einzel-JSON wird weiterhin unterstützt.
-    - Batch-Requests werden je Ergebnis validiert und gespeichert.
-    - Ungültige Batch-Daten liefern `WP_Error` mit HTTP 400.
-  - Batch-Antwort:
+    - `results`: array of objects with `player_id`, `points`, `rank`
+  - Behavior:
+    - Single JSON requests are still supported.
+    - Batch requests are validated and stored per result.
+    - Invalid batch data returns `WP_Error` with HTTP 400.
+  - Batch response:
     - `success`: `true`
-    - `count`: Anzahl verarbeiteter Ergebnisse
-    - `items`: Liste der Rückgaben pro Ergebnis
+    - `count`: number of processed results
+    - `items`: list of per-result responses
 
-  - Beispiel (anonymisiert):
+  - Example (anonymized):
 
 ```json
 {
@@ -221,76 +221,76 @@ Basis: `/wp-json/monatsblitz/v1`
 ```
 
 - `GET /results/{tournament_id}`
-  - Gibt alle Ergebnisse eines Turniers zurück.
+  - Returns all results for a tournament.
 
-### Finalisierung
+### Finalization
 
 - `POST /finalize`
-  - Erzeugt aus dem konfigurierten Template-Beitrag einen neuen veröffentlichten Beitrag.
+  - Creates a new published post from the configured template post.
   - Body (JSON):
     - `tournament_id`
 
-- Wichtig:
-  - Der Beitrag wird direkt veröffentlicht.
-  - Der Titel wird im Format `Monatsblitz YYYY-MM-DD` angelegt.
-  - Die Platzhalter im Template werden ersetzt.
-  - Bei `round_count = 1` enthält `{{table}}` die klassische Kreuztabelle inklusive Punkte und Platz.
-  - Bei `round_count > 1` enthält `{{table}}` pro Runde eine eigene Kreuztabelle ohne Punkte/Platz sowie danach eine Gesamttabelle mit Spielername, Gesamtpunkte und Platz.
+- Important:
+  - The post is published immediately.
+  - The title is created in the format `Monatsblitz YYYY-MM-DD`.
+  - Template placeholders are replaced.
+  - If `round_count = 1`, `{{table}}` contains the classic cross table including points and rank.
+  - If `round_count > 1`, `{{table}}` contains one cross table per round (without points/rank), followed by an overall table with player name, total points, and rank.
 
-## Datenbankschema
+## Database Schema
 
-Das Projekt verwendet ein relationales Datenmodell, das speziell für die Anforderungen des Monatsblitz‑Turniersystems entwickelt wurde.
+The project uses a relational data model specifically designed for Monatsblitz tournament requirements.
 
-Die Datenbank besteht aus vier Tabellen:
-- monatsblitz_players: Verwaltung der Spieler
-- monatsblitz_tournaments: Metadaten zu jedem Turnier
-- monatsblitz_games: alle gespielten Partien
-- monatsblitz_results: Endergebnisse pro Spieler und Turnier
+The database consists of four tables:
+- monatsblitz_players: player management
+- monatsblitz_tournaments: tournament metadata
+- monatsblitz_games: all played games
+- monatsblitz_results: final results per player and tournament
 
-Das vollständige Schema ist im folgenden Diagramm dargestellt:
+The full schema is shown in the following diagram:
 
-![Datenbankschema](./docs/db_scheme.png)
+![Database Schema](./docs/db_scheme.png)
 
-(Hinweis: Das Diagramm wurde mit drawSQL erstellt.)
+(Note: The diagram was created with drawSQL.)
 
-### Designprinzipien
+### Design Principles
 
-#### Eindeutigkeit durch Constraints
+#### Uniqueness via constraints
 
 - monatsblitz_players: UNIQUE(forename, surname)
 - monatsblitz_tournaments: UNIQUE(year, month, day)
 - monatsblitz_games: UNIQUE(tournament_id, player1_id, player2_id, leg_type)
 - monatsblitz_results: UNIQUE(tournament_id, player_id)
 
-#### Flexible Rundenzahl  
-Das Feld round_count in der Turniertabelle erlaubt beliebig viele Durchgänge (1 = einfache Runde, 2 = Hin/Rückrunde, …).
+#### Flexible number of rounds
+The `round_count` field in the tournament table supports any number of legs (1 = single round, 2 = home/away style double round, and so on).
 
-#### Explizite Rundenkennzeichnung  
-Jede Partie besitzt ein Feld leg_type (1, 2, 3 …), das angibt, zu welchem Durchgang sie gehört.
+#### Explicit round indicator
+Each game has a `leg_type` field (1, 2, 3, ...) indicating which round/leg it belongs to.
 
-#### WordPress‑kompatibel  
-Das Schema ist vollständig kompatibel mit dbDelta() und verzichtet bewusst auf Foreign Keys.
+#### WordPress compatibility
+The schema is fully compatible with `dbDelta()` and intentionally avoids foreign keys.
 
-## Platzhalter im Template
+## Template Placeholders
 
-Im Beitrag `Template_Monatsblitz` können folgende Platzhalter genutzt werden:
+In the `Template_Monatsblitz` post, you can use these placeholders:
 
-- `{{month_name}}` — ausgeschriebener Monat
-- `{{year}}` — Jahr
-- `{{date}}` — Datum im Format `DD.MM.YYYY`
-- `{{winner_name}}` — Name des Siegers
-- `{{winner_games}}` — Anzahl seiner Spiele im Turnier
-- `{{winner_points}}` — Punkte des Siegers
-- `{{ranking_rows}}` — HTML-Zeilen für die Rangliste
-- `{{games_list}}` — einfache Liste der Spiele
-- `{{table}}` — komplette Kreuztabelle im HTML-Format
-- `{{mode}}` — Turniermodus
-- `{{round_count}}` — Anzahl der Runden
+- `{{month_name}}` - full month name
+- `{{year}}` - year
+- `{{date}}` - date in format `DD.MM.YYYY`
+- `{{winner_name}}` - winner name
+- `{{winner_games}}` - number of games played by the winner
+- `{{winner_points}}` - winner points
+- `{{ranking_rows}}` - HTML rows for the ranking table
+- `{{games_list}}` - simple list of games
+- `{{table}}` - full cross table in HTML format
+- `{{mode}}` - tournament mode
+- `{{round_count}}` - number of rounds
 
-## Sicherheit
+## Security
 
-Die API ist durch einen API-Key geschützt, der im Header übertragen werden muss. Der Key kann in den Plugin-Einstellungen generiert werden und muss in der zugehörigen App in der Konfiguration angegeben werden.
+The API is protected by an API key that must be sent in the request header. The key can be generated in the plugin settings and must be configured in the related app.
 
-## Hinweis
+## Note
 
-Die Domain `https://kindermaenner.de` wird vom Plugin nicht hardcodiert. Es arbeitet unabhängig von der Site-Adresse und nutzt WordPress-interne Pfade/URLs.
+The domain `https://kindermaenner.de` is not hardcoded in the plugin. It works independently of the site address and uses WordPress internal paths and URLs.
