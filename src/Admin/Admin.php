@@ -1,12 +1,14 @@
 <?php
 
-namespace monatsblitz;
+namespace Monatsblitz\Admin;
+
+use Monatsblitz\Database\Database;
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class MB_Admin {
+class Admin {
 
     public static function init() {
         add_action('admin_menu', [self::class, 'register_menu']);
@@ -236,7 +238,7 @@ class MB_Admin {
         $wpdb->query('SET FOREIGN_KEY_CHECKS=1');
 
         // Tabellen neu erstellen
-        MB_Database::reset_tables();
+        Database::reset_tables();
     }
 
     private static function render_table_detail($table, $key) {
@@ -276,5 +278,3 @@ class MB_Admin {
         echo '</tbody></table>';
     }
 }
-
-\class_alias(__NAMESPACE__ . '\\MB_Admin', 'MB_Admin');

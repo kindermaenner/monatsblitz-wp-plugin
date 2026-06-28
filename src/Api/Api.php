@@ -1,12 +1,12 @@
 <?php
 
-namespace monatsblitz;
+namespace Monatsblitz\Api;
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class MB_API {
+class Api {
 
     public static function init() {
         add_action('rest_api_init', [self::class, 'register_routes']);

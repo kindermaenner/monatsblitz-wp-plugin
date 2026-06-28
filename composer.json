@@ -1,5 +1,5 @@
 {
-    "name": "nina/monatsblitz-wp-plugin",
+    "name": "kindermaenner/monatsblitz-wp-plugin",
     "description": "WordPress plugin for managing monthly blitz chess tournaments",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
@@ -14,7 +14,8 @@
         "php": ">=8.1"
     },
     "require-dev": {
-        "pestphp/pest": "^4.7"
+        "pestphp/pest": "^4.7",
+        "phpstan/phpstan-strict-rules": "^2.0"
     },
     "config": {
         "allow-plugins": {
@@ -23,16 +24,18 @@
     }, 
     "autoload": {
         "psr-4": {
-            "monatsblitz\\": [
-                "api/",
-                "admin/",
-                "includes/"
-            ]
+            "Monatsblitz\\": "src/"
         }
     },
-"autoload-dev": {
-    "psr-4": {
-        "Tests\\": "tests/"
+	"autoload-dev": {
+	    "psr-4": {
+	        "Tests\\": "tests/"
+	    }
+	},
+    "scripts": {
+        "test": "pest",
+        "test:u": "pest --group=unit",
+        "test:i": "pest --group=integration",
+        "autoload": "composer dump-autoload -o"
     }
-}
 }

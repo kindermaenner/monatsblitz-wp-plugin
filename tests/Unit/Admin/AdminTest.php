@@ -1,22 +1,19 @@
 <?php
 
-use monatsblitz\MB_Admin;
-require_once __DIR__ . '/../../includes/MB_Database.php';
-
-require_once __DIR__ . '/../../admin/MB_Admin.php';
+use Monatsblitz\Admin\Admin;
 
 it('registers admin hooks on init', function () {
-    MB_Admin::init();
+    Admin::init();
 
     expect($GLOBALS['mb_test_actions'])->toHaveCount(2);
     expect($GLOBALS['mb_test_actions'][0]['hook'])->toBe('admin_menu');
     expect($GLOBALS['mb_test_actions'][1]['hook'])->toBe('admin_init');
-    expect($GLOBALS['mb_test_actions'][0]['callback'][0])->toBe(MB_Admin::class);
+    expect($GLOBALS['mb_test_actions'][0]['callback'][0])->toBe(Admin::class);
     expect($GLOBALS['mb_test_actions'][0]['callback'][1])->toBe('register_menu');
 });
 
 it('registers settings inside admin_init callback', function () {
-    MB_Admin::init();
+    Admin::init();
 
     $adminInit = $GLOBALS['mb_test_actions'][1]['callback'];
     $adminInit();
@@ -28,7 +25,7 @@ it('registers settings inside admin_init callback', function () {
 });
 
 it('registers main menu and settings submenu', function () {
-    MB_Admin::register_menu();
+    Admin::register_menu();
 
     expect($GLOBALS['mb_test_menu_pages'])->toHaveCount(1);
     expect($GLOBALS['mb_test_submenu_pages'])->toHaveCount(1);
@@ -44,7 +41,7 @@ it('renders settings page with stored values', function () {
     $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'key-123';
 
     ob_start();
-    MB_Admin::render_settings_page();
+    Admin::render_settings_page();
     $html = ob_get_clean();
 
     expect($html)->toContain('Monatsblitz');
@@ -58,7 +55,7 @@ it('generates and stores a new api key from settings page', function () {
     $_POST['monatsblitz_generate_key'] = '1';
 
     ob_start();
-    MB_Admin::render_settings_page();
+    Admin::render_settings_page();
     ob_end_clean();
 
     expect($GLOBALS['mb_test_updated_options'])->toHaveKey('monatsblitz_api_key');
@@ -71,7 +68,7 @@ it('renders dashboard overview table', function () {
     $wpdb->get_var_queue = ['yes', 4, 'yes', 2, null, 'yes', 7];
 
     ob_start();
-    MB_Admin::render_page();
+    Admin::render_page();
     $html = ob_get_clean();
 
     expect($html)->toContain('Monatsblitz Übersicht');
@@ -89,7 +86,7 @@ it('renders table detail when table is requested', function () {
     ];
 
     ob_start();
-    MB_Admin::render_page();
+    Admin::render_page();
     $html = ob_get_clean();
 
     expect($html)->toContain('Detailansicht');
@@ -104,7 +101,7 @@ it('shows empty message when detail table has no rows', function () {
     $wpdb->results = [];
 
     ob_start();
-    MB_Admin::render_page();
+    Admin::render_page();
     $html = ob_get_clean();
 
     expect($html)->toContain('Keine Einträge vorhanden.');
@@ -118,7 +115,7 @@ it('does not reset tables when user lacks capability', function () {
     $GLOBALS['mb_test_current_user_can'] = false;
 
     ob_start();
-    MB_Admin::render_page();
+    Admin::render_page();
     ob_end_clean();
 
     expect($wpdb->queries)->toHaveCount(0);
@@ -132,7 +129,7 @@ it('shows security error when nonce is invalid', function () {
     $GLOBALS['mb_test_nonce_valid'] = false;
 
     ob_start();
-    MB_Admin::render_page();
+    Admin::render_page();
     $html = ob_get_clean();
 
     expect($html)->toContain('Security check failed');
@@ -148,7 +145,7 @@ it('resets tables when action is valid', function () {
     $GLOBALS['mb_test_nonce_valid'] = true;
 
     ob_start();
-    MB_Admin::render_page();
+    Admin::render_page();
     $html = ob_get_clean();
 
     expect($html)->toContain('Tabellen wurden neu erstellt');

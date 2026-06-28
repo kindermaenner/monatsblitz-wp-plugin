@@ -1,12 +1,12 @@
 <?php
 
-use monatsblitz\MB_API;
-use monatsblitz\MB_Admin;
-use monatsblitz\MB_Database;
+use Monatsblitz\Api\Api;
+use Monatsblitz\Admin\Admin;
+use Monatsblitz\Database\Database;
 
 it('can instantiate the API class', function () {
-    $api = new MB_API();
-    expect($api)->toBeInstanceOf(MB_API::class);
+    $api = new Api();
+    expect($api)->toBeInstanceOf(Api::class);
 });
 
 it('fails when player data is missing', function () {
@@ -16,7 +16,7 @@ it('fails when player data is missing', function () {
         }
     };
 
-    $result = MB_API::create_player($request);
+    $result = Api::create_player($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -35,7 +35,7 @@ it('returns existing player if already exists', function () {
         }
     };
 
-    $result = MB_API::create_player($request);
+    $result = Api::create_player($request);
 
     expect($result['success'])->toBeTrue();
     expect($result['player_id'])->toBe(123);
@@ -55,7 +55,7 @@ it('creates a new player if not exists', function () {
         }
     };
 
-    $result = MB_API::create_player($request);
+    $result = Api::create_player($request);
 
     expect($result['success'])->toBeTrue();
     expect($result['player_id'])->toBe(999);
@@ -76,7 +76,7 @@ it('creates batch players from a top-level array', function () {
         }
     };
 
-    $result = MB_API::create_player($request);
+    $result = Api::create_player($request);
 
     expect($result['success'])->toBeTrue();
     expect($result['count'])->toBe(2);
@@ -93,7 +93,7 @@ it('rejects invalid players batch payloads', function () {
         }
     };
 
-    $result = MB_API::create_player($request);
+    $result = Api::create_player($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -105,7 +105,7 @@ it('fails on invalid date', function () {
         }
     };
 
-    $result = MB_API::create_tournament($request);
+    $result = Api::create_tournament($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -124,7 +124,7 @@ it('creates tournament with mode and default round_count', function () {
         }
     };
 
-    $result = MB_API::create_tournament($request);
+    $result = Api::create_tournament($request);
 
     expect($result['success'])->toBeTrue();
     expect($result['tournament_id'])->toBe(77);
@@ -139,7 +139,7 @@ it('fails when tournament mode is missing', function () {
         }
     };
 
-    $result = MB_API::create_tournament($request);
+    $result = Api::create_tournament($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -151,7 +151,7 @@ it('fails when game data is missing', function () {
         }
     };
 
-    $result = MB_API::create_game($request);
+    $result = Api::create_game($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -173,7 +173,7 @@ it('creates game with default leg_type', function () {
         }
     };
 
-    $result = MB_API::create_game($request);
+    $result = Api::create_game($request);
 
     expect($result['success'])->toBeTrue();
     expect($wpdb->last_insert_data['leg_type'])->toBe(1);
@@ -197,7 +197,7 @@ it('creates game with explicit leg_type', function () {
         }
     };
 
-    $result = MB_API::create_game($request);
+    $result = Api::create_game($request);
 
     expect($result['success'])->toBeTrue();
     expect($wpdb->last_insert_data['leg_type'])->toBe(2);
@@ -221,7 +221,7 @@ it('creates batch games from a games array', function () {
         }
     };
 
-    $result = MB_API::create_game($request);
+    $result = Api::create_game($request);
 
     expect($result['success'])->toBeTrue();
     expect($result['count'])->toBe(2);
@@ -239,7 +239,7 @@ it('rejects invalid games batch payloads', function () {
         }
     };
 
-    $result = MB_API::create_game($request);
+    $result = Api::create_game($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -251,7 +251,7 @@ it('returns player list', function () {
         ['id' => 1, 'forename' => 'Max', 'surname' => 'Mustermann']
     ];
 
-    $result = MB_API::get_players();
+    $result = Api::get_players();
 
     expect($result)->toBeArray();
     expect($result[0]['id'])->toBe(1);
@@ -264,7 +264,7 @@ it('returns tournament list', function () {
         ['id' => 1, 'year' => 2024, 'month' => 10, 'day' => 5]
     ];
 
-    $result = MB_API::get_tournaments();
+    $result = Api::get_tournaments();
 
     expect($result)->toBeArray();
     expect($result[0]['id'])->toBe(1);
@@ -274,7 +274,7 @@ it('verifies api key successfully', function () {
     $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'secret';
     $_SERVER['HTTP_X_MB_KEY'] = 'secret';
 
-    $result = MB_API::verify_api_key();
+    $result = Api::verify_api_key();
 
     expect($result)->toBeTrue();
 });
@@ -283,7 +283,7 @@ it('fails api key verification on mismatch', function () {
     $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'secret';
     $_SERVER['HTTP_X_MB_KEY'] = 'wrong';
 
-    $result = MB_API::verify_api_key();
+    $result = Api::verify_api_key();
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -299,7 +299,7 @@ it('fails when round_count is below one', function () {
         }
     };
 
-    $result = MB_API::create_tournament($request);
+    $result = Api::create_tournament($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -317,7 +317,7 @@ it('creates tournament with explicit round_count', function () {
         }
     };
 
-    MB_API::create_tournament($request);
+    Api::create_tournament($request);
 
     expect($wpdb->last_insert_data['round_count'])->toBe(3);
 });
@@ -335,7 +335,7 @@ it('fails when leg_type is invalid', function () {
         }
     };
 
-    $result = MB_API::create_game($request);
+    $result = Api::create_game($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -356,7 +356,7 @@ it('fails when tournament does not exist for game', function () {
         }
     };
 
-    $result = MB_API::create_game($request);
+    $result = Api::create_game($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -366,7 +366,7 @@ it('returns tournament by id', function () {
 
     $wpdb->get_row_result = ['id' => 7, 'year' => 2026, 'month' => 6, 'day' => 24, 'mode' => 'schweizer', 'round_count' => 2];
 
-    $result = MB_API::get_tournament(['id' => 7]);
+    $result = Api::get_tournament(['id' => 7]);
 
     expect($result)->toBeArray();
     expect($result['id'])->toBe(7);
@@ -377,7 +377,7 @@ it('fails when tournament id is unknown', function () {
 
     $wpdb->get_row_result = null;
 
-    $result = MB_API::get_tournament(['id' => 999]);
+    $result = Api::get_tournament(['id' => 999]);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -389,7 +389,7 @@ it('returns games list', function () {
         ['id' => 1, 'tournament_id' => 1, 'player1_id' => 1, 'player2_id' => 2, 'leg_type' => 1, 'result' => '1:0']
     ];
 
-    $result = MB_API::get_games(['tournament_id' => 1]);
+    $result = Api::get_games(['tournament_id' => 1]);
 
     expect($result)->toBeArray();
     expect($result[0]['leg_type'])->toBe(1);
@@ -407,7 +407,7 @@ it('fails create_result when ids are missing', function () {
         }
     };
 
-    $result = MB_API::create_result($request);
+    $result = Api::create_result($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -428,7 +428,7 @@ it('fails create_result when tournament does not exist', function () {
         }
     };
 
-    $result = MB_API::create_result($request);
+    $result = Api::create_result($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -449,7 +449,7 @@ it('fails create_result when player does not exist', function () {
         }
     };
 
-    $result = MB_API::create_result($request);
+    $result = Api::create_result($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -470,7 +470,7 @@ it('updates existing result', function () {
         }
     };
 
-    $result = MB_API::create_result($request);
+    $result = Api::create_result($request);
 
     expect($result['success'])->toBeTrue();
     expect($result['result_id'])->toBe(55);
@@ -494,7 +494,7 @@ it('creates new result when none exists', function () {
         }
     };
 
-    $result = MB_API::create_result($request);
+    $result = Api::create_result($request);
 
     expect($result['success'])->toBeTrue();
     expect($result['result_id'])->toBe(88);
@@ -520,7 +520,7 @@ it('creates batch results from a results array', function () {
         }
     };
 
-    $result = MB_API::create_result($request);
+    $result = Api::create_result($request);
 
     expect($result['success'])->toBeTrue();
     expect($result['count'])->toBe(3);
@@ -538,7 +538,7 @@ it('rejects invalid batch result payloads', function () {
         }
     };
 
-    $result = MB_API::create_result($request);
+    $result = Api::create_result($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -550,7 +550,7 @@ it('returns results list', function () {
         ['id' => 1, 'tournament_id' => 1, 'player_id' => 1, 'points' => 5.0, 'rank' => 1, 'forename' => 'Max', 'surname' => 'Muster']
     ];
 
-    $result = MB_API::get_results(['tournament_id' => 1]);
+    $result = Api::get_results(['tournament_id' => 1]);
 
     expect($result)->toBeArray();
     expect($result[0]['rank'])->toBe(1);
@@ -563,7 +563,7 @@ it('normalizes a single string to an array', function () {
         }
     };
 
-    $result = MB_API::normalize_items($request);
+    $result = Api::normalize_items($request);
 
     expect($result['count'])->toBe(1);
     expect($result['items'])->toBe(['item1']);
@@ -576,7 +576,7 @@ it('keeps an array of strings and removes empty values', function () {
         }
     };
 
-    $result = MB_API::normalize_items($request);
+    $result = Api::normalize_items($request);
 
     expect($result['count'])->toBe(2);
     expect($result['items'])->toBe(['item1', 'item2']);
@@ -589,7 +589,7 @@ it('rejects null input for normalization', function () {
         }
     };
 
-    $result = MB_API::normalize_items($request);
+    $result = Api::normalize_items($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -601,7 +601,7 @@ it('rejects invalid normalization input types', function () {
         }
     };
 
-    $result = MB_API::normalize_items($request);
+    $result = Api::normalize_items($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -613,7 +613,7 @@ it('fails finalize when tournament_id is missing', function () {
         }
     };
 
-    $result = MB_API::finalize_tournament($request);
+    $result = Api::finalize_tournament($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -629,7 +629,7 @@ it('fails finalize when tournament is not found', function () {
         }
     };
 
-    $result = MB_API::finalize_tournament($request);
+    $result = Api::finalize_tournament($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
@@ -655,7 +655,7 @@ it('fails finalize when tournament has no results', function () {
         }
     };
 
-    $result = MB_API::finalize_tournament($request);
+    $result = Api::finalize_tournament($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
     expect($result->code)->toBe('no_results');
@@ -699,7 +699,7 @@ it('finalizes single-round tournament and writes classic table', function () {
         }
     };
 
-    $result = MB_API::finalize_tournament($request);
+    $result = Api::finalize_tournament($request);
 
     expect($result['success'])->toBeTrue();
     expect($result['post_id'])->toBe(555);
@@ -747,7 +747,7 @@ it('finalizes multi-round tournament with per-round tables and summary', functio
         }
     };
 
-    $result = MB_API::finalize_tournament($request);
+    $result = Api::finalize_tournament($request);
     $content = $GLOBALS['mb_test_last_inserted_post']['post_content'];
 
     expect($result['success'])->toBeTrue();
@@ -803,7 +803,7 @@ it('renders forfeit results as plus and minus cells using the same inversion log
         }
     };
 
-    $result = MB_API::finalize_tournament($request);
+    $result = Api::finalize_tournament($request);
     $content = $GLOBALS['mb_test_last_inserted_post']['post_content'];
 
     expect($result['success'])->toBeTrue();
@@ -851,7 +851,7 @@ it('renders missing cross-table results as grey cells', function () {
         }
     };
 
-    $result = MB_API::finalize_tournament($request);
+    $result = Api::finalize_tournament($request);
     $content = $GLOBALS['mb_test_last_inserted_post']['post_content'];
 
     expect($result['success'])->toBeTrue();

@@ -1,12 +1,12 @@
 <?php
 
-namespace monatsblitz;
+namespace Monatsblitz\Database;
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class MB_Database {
+class Database {
 
     public static function init() {
         self::create_tables();
@@ -89,5 +89,3 @@ class MB_Database {
         dbDelta($sql);
     }
 }
-
-\class_alias(__NAMESPACE__ . '\\MB_Database', 'MB_Database');
