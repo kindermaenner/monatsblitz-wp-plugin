@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Monatsblitz\Database;
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class Database {
+class DatabaseSchema {
 
     public static function init() {
         self::create_tables();

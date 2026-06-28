@@ -1,8 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Monatsblitz\Admin;
 
-use Monatsblitz\Database\Database;
+use Monatsblitz\Database\DatabaseSchema;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -238,7 +240,7 @@ class Admin {
         $wpdb->query('SET FOREIGN_KEY_CHECKS=1');
 
         // Tabellen neu erstellen
-        Database::reset_tables();
+        DatabaseSchema::reset_tables();
     }
 
     private static function render_table_detail($table, $key) {

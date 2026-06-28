@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 if (!defined('ABSPATH')) {
     define('ABSPATH', dirname(__DIR__) . DIRECTORY_SEPARATOR);
 }
@@ -55,6 +57,10 @@ if (!isset($GLOBALS['mb_test_actions'])) {
     $GLOBALS['mb_test_actions'] = [];
 }
 
+if (!isset($GLOBALS['mb_test_routes'])) {
+    $GLOBALS['mb_test_routes'] = [];
+}
+
 if (!isset($GLOBALS['mb_test_settings'])) {
     $GLOBALS['mb_test_settings'] = [];
 }
@@ -94,6 +100,18 @@ if (!isset($GLOBALS['mb_test_next_post_id'])) {
 if (!function_exists('add_action')) {
     function add_action($hook, $callback) {
         $GLOBALS['mb_test_actions'][] = ['hook' => $hook, 'callback' => $callback];
+        return true;
+    }
+}
+
+if (!function_exists('register_rest_route')) {
+    function register_rest_route($namespace, $route, $args) {
+        $GLOBALS['mb_test_routes'][] = [
+            'namespace' => $namespace,
+            'route' => $route,
+            'args' => $args,
+        ];
+
         return true;
     }
 }
@@ -297,5 +315,19 @@ if (!class_exists('WP_Error')) {
             public string $message = '',
             public array $data = []
         ) {}
+    }
+}
+
+if (!class_exists('WP_REST_Response')) {
+    class WP_REST_Response {
+        private $data;
+
+        public function __construct($data = null) {
+            $this->data = $data;
+        }
+
+        public function get_data() {
+            return $this->data;
+        }
     }
 }

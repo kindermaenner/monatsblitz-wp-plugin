@@ -26,6 +26,7 @@ pest()->beforeEach(function () {
     $_GET = [];
     $GLOBALS['mb_test_options'] = [];
     $GLOBALS['mb_test_actions'] = [];
+    $GLOBALS['mb_test_routes'] = [];
     $GLOBALS['mb_test_settings'] = [];
     $GLOBALS['mb_test_menu_pages'] = [];
     $GLOBALS['mb_test_submenu_pages'] = [];

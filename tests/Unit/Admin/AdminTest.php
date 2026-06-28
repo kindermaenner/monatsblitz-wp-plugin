@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Monatsblitz\Admin\Admin;
 
 it('registers admin hooks on init', function () {
