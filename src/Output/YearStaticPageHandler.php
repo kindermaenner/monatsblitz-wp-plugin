@@ -185,7 +185,8 @@ class YearStaticPageHandler
     {
         $startMonth = $hideJanuary ? 2 : 1;
 
-        $html = '<table class="monatsblitz-year-overview">';
+        $html = '<div class="mb-year-scroll">';
+        $html .= '<table class="monatsblitz-year-overview">';
         $html .= '<thead><tr><th>Spieler</th>';
         for ($month = $startMonth; $month <= 12; $month++) {
             $html .= '<th>' . $month . '</th>';
@@ -214,7 +215,7 @@ class YearStaticPageHandler
             $html .= '</tr>';
         }
 
-        $html .= '</tbody></table>';
+        $html .= '</tbody></table></div>';
         return $html;
     }
 
@@ -243,7 +244,12 @@ class YearStaticPageHandler
         });
 
         $html = '<table class="monatsblitz-year-ranking">';
-        $html .= '<thead><tr><th>Platz</th><th>Spieler</th><th>Wertungspunkte</th><th>Gewertete Teilnahmen</th></tr></thead><tbody>';
+        $html .= '<thead><tr>';
+        $html .= '<th><span class="full">Platz</span><span class="short">Pl.</span></th>';
+        $html .= '<th>Spieler</th>';
+        $html .= '<th><span class="full">Wertungspunkte</span><span class="short">Punkte</span></th>';
+        $html .= '<th><span class="full">Gewertete Teilnahmen</span><span class="short">Teiln.</span></th>';
+        $html .= '</tr></thead><tbody>';
 
         $pos = 1;
         foreach ($ranking as $row) {
