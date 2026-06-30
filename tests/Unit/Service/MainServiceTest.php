@@ -3,18 +3,7 @@
 declare(strict_types=1);
 
 use Monatsblitz\Service\MainService;
-
-class MainServiceFakeRequest
-{
-	public function __construct(private array $params)
-	{
-	}
-
-	public function get_json_params(): array
-	{
-		return $this->params;
-	}
-}
+use Tests\Unit\Helper\MainServiceFakeRequest;
 
 it('creates a player through the service', function () {
 	global $wpdb;
@@ -216,5 +205,38 @@ it('wraps successful finalize response', function () {
 	expect($result['success'])->toBeTrue()
 		->and($result['published'])->toBeTrue()
 		->and($result['tournament_id'])->toBe(1);
+});
+
+it('rebuilds yearly static page through service wrapper', function () {
+	global $wpdb;
+
+	$GLOBALS['mb_test_options']['monatsblitz_template_static_page'] = 'Template_Jahr';
+	$GLOBALS['mb_test_template_post'] = (object) [
+		'ID' => 88,
+		'post_title' => 'Template_Jahr',
+		'post_content' => '{{blitz_monthly_overview}}{{blitz_ranking_year}}',
+	];
+
+	$wpdb->get_results_queue = [
+		[
+			[
+				'tournament_id' => 1,
+				'month' => 1,
+				'mode' => '5+0',
+				'player_id' => 10,
+				'rank' => 1,
+				'forename' => 'Max',
+				'surname' => 'Mustermann',
+			],
+		],
+	];
+
+	$result = MainService::buildYearStaticPage(new MainServiceFakeRequest([
+		'year' => 2026,
+	]));
+
+	expect($result['success'])->toBeTrue()
+		->and($result['year'])->toBe(2026)
+		->and($result['page_id'])->toBe(123);
 });
 

@@ -17,7 +17,10 @@ class Admin {
         add_action('admin_init', function() {
             register_setting('monatsblitz_settings', 'monatsblitz_author');
             register_setting('monatsblitz_settings', 'monatsblitz_template');
+            register_setting('monatsblitz_settings', 'monatsblitz_template_static_page');
+            register_setting('monatsblitz_settings', 'monatsblitz_blitz_modes');
             register_setting('monatsblitz_settings', 'monatsblitz_api_key');
+            register_setting('monatsblitz_settings', 'monatsblitz_hide_january_overview');
         });
     }
 
@@ -48,7 +51,10 @@ class Admin {
         // Aktuelle Werte laden
         $author    = get_option('monatsblitz_author', '');
         $template  = get_option('monatsblitz_template', '');
+        $template_static_page = get_option('monatsblitz_template_static_page', '');
+        $blitz_modes = get_option('monatsblitz_blitz_modes', '');
         $api_key   = get_option('monatsblitz_api_key', '');
+        $hide_january_overview = (bool)get_option('monatsblitz_hide_january_overview', false);
 
         // Wenn "Neuen Key generieren" gedrückt wurde (eigenes Formular!)
         if (isset($_POST['monatsblitz_generate_key'])) {
@@ -116,6 +122,26 @@ class Admin {
         // Template-Name
         echo '<tr><th scope="row">Template‑Name</th><td>';
         echo '<input type="text" name="monatsblitz_template" value="' . esc_attr($template) . '" class="regular-text">';
+        echo '</td></tr>';
+
+        // Template für statische Jahresseite
+        echo '<tr><th scope="row">Template: Statische Jahresseite</th><td>';
+        echo '<input type="text" name="monatsblitz_template_static_page" value="' . esc_attr($template_static_page) . '" class="regular-text">';
+        echo '<p class="description">Enthalt Platzhalter {{blitz_monthly_overview}} und {{blitz_ranking_year}}.</p>';
+        echo '</td></tr>';
+
+        echo '<tr><th scope="row">Teilnehmer-Ubersicht: Januar ausblenden</th><td>';
+        echo '<label>';
+        echo '<input type="checkbox" name="monatsblitz_hide_january_overview" value="1" ' . ($hide_january_overview ? 'checked="checked"' : '') . '>';
+        echo ' Januar-Spalte in {{blitz_monthly_overview}} ausblenden';
+        echo '</label>';
+        echo '<p class="description">Empfohlen, wenn im Januar grundsatzlich kein Monatsblitz stattfindet.</p>';
+        echo '</td></tr>';
+
+        // Zusätzliche Blitz-Modi
+        echo '<tr><th scope="row">Zusatzliche Blitz-Modi</th><td>';
+        echo '<input type="text" name="monatsblitz_blitz_modes" value="' . esc_attr($blitz_modes) . '" class="regular-text">';
+        echo '<p class="description">Komma-Liste, z. B. Handicap, Armageddon. Standardregel bleibt aktiv: alle Modi <= 5+X zahlen als Blitz.</p>';
         echo '</td></tr>';
 
         echo '</table>';

@@ -35,6 +35,17 @@ pest()->beforeEach(function () {
     $GLOBALS['mb_test_current_user_can'] = true;
     $GLOBALS['mb_test_template_post'] = null;
     $GLOBALS['mb_test_last_inserted_post'] = null;
+    $GLOBALS['mb_test_last_updated_post'] = null;
+    $GLOBALS['mb_test_get_posts_result'] = [];
+    $GLOBALS['mb_test_get_posts_queue'] = [];
+    $GLOBALS['mb_test_post_meta_updates'] = [];
+    $GLOBALS['mb_test_thumbnail_id'] = 0;
+    $GLOBALS['mb_test_set_thumbnail_calls'] = [];
+    $GLOBALS['mb_test_post_meta_result'] = [];
+    $GLOBALS['mb_test_add_post_meta_calls'] = [];
+    $GLOBALS['mb_test_object_taxonomies'] = [];
+    $GLOBALS['mb_test_object_terms'] = [];
+    $GLOBALS['mb_test_set_object_terms_calls'] = [];
     $GLOBALS['mb_test_next_post_id'] = 123;
 
     $wpdb = new class {
@@ -68,7 +79,7 @@ pest()->beforeEach(function () {
             return $query;
         }
 
-        public function get_results($query = null) {
+        public function get_results($query = null, ...$args) {
             if (!empty($this->get_results_queue)) {
                 return array_shift($this->get_results_queue);
             }

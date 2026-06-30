@@ -49,6 +49,7 @@ We automate the boring parts so there is more time for what really matters in cl
   - `wp_monatsblitz_results`
 - Provides REST API endpoints for managing players, tournaments, games, and results.
 - Creates a new published post from an existing `Template_Monatsblitz` post once a tournament is finalized.
+- Creates or updates a yearly static page (slug `blitz-YYYY`) from a configured page template.
 - Replaces template placeholders such as `{{month_name}}`, `{{year}}`, `{{date}}`, `{{winner_name}}`, `{{winner_games}}`, `{{winner_points}}`, `{{table}}`, and more.
 
 ## Usage
@@ -226,12 +227,18 @@ Base path: `/wp-json/monatsblitz/v1`
 ### Finalization
 
 - `POST /finalize`
-  - Creates a new published post from the configured template post.
+  - Creates or updates a published post from the configured template post.
   - Body (JSON):
     - `tournament_id`
 
+- `POST /buildYearPage`
+  - Creates or updates the yearly static page for a given year.
+  - Body (JSON):
+    - `year`
+
 - Important:
   - The post is published immediately.
+  - Existing monthly posts are updated if a post with meta key `blitz-YYYY-MM-DD` already exists.
   - The title is created in the format `Monatsblitz YYYY-MM-DD`.
   - Template placeholders are replaced.
   - If `round_count = 1`, `{{table}}` contains the classic cross table including points and rank.
@@ -286,6 +293,18 @@ In the `Template_Monatsblitz` post, you can use these placeholders:
 - `{{table}}` - full cross table in HTML format
 - `{{mode}}` - tournament mode
 - `{{round_count}}` - number of rounds
+
+For yearly static pages, these placeholders are supported:
+
+- `{{blitz_monthly_overview}}` - HTML table for months 1-12 with participations and points per player
+- `{{blitz_ranking_year}}` - yearly ranking table using the best 7 participations
+- `{{year}}` - the year of the blitz tournament
+
+Yearly overview behavior:
+
+- Option `monatsblitz_hide_january_overview`: if enabled, January (month `1`) is not shown in `{{blitz_monthly_overview}}`.
+- Month cells in `{{blitz_monthly_overview}}` show only points when a player participated.
+- If a player did not participate in a month, the cell is empty (instead of `0/0`).
 
 ## Security
 

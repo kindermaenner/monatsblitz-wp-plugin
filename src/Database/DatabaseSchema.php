@@ -48,7 +48,7 @@ class DatabaseSchema {
                 year SMALLINT NOT NULL,
                 month TINYINT NOT NULL,
                 day TINYINT NOT NULL,
-                mode VARCHAR(10) NOT NULL,
+                mode VARCHAR(30) NOT NULL,
                 round_count TINYINT(1) NOT NULL DEFAULT 1,
 
                 PRIMARY KEY (id),

@@ -97,6 +97,46 @@ if (!isset($GLOBALS['mb_test_next_post_id'])) {
     $GLOBALS['mb_test_next_post_id'] = 123;
 }
 
+if (!isset($GLOBALS['mb_test_get_posts_result'])) {
+    $GLOBALS['mb_test_get_posts_result'] = [];
+}
+
+if (!isset($GLOBALS['mb_test_last_updated_post'])) {
+    $GLOBALS['mb_test_last_updated_post'] = null;
+}
+
+if (!isset($GLOBALS['mb_test_post_meta_updates'])) {
+    $GLOBALS['mb_test_post_meta_updates'] = [];
+}
+
+if (!isset($GLOBALS['mb_test_thumbnail_id'])) {
+    $GLOBALS['mb_test_thumbnail_id'] = 0;
+}
+
+if (!isset($GLOBALS['mb_test_set_thumbnail_calls'])) {
+    $GLOBALS['mb_test_set_thumbnail_calls'] = [];
+}
+
+if (!isset($GLOBALS['mb_test_post_meta_result'])) {
+    $GLOBALS['mb_test_post_meta_result'] = [];
+}
+
+if (!isset($GLOBALS['mb_test_add_post_meta_calls'])) {
+    $GLOBALS['mb_test_add_post_meta_calls'] = [];
+}
+
+if (!isset($GLOBALS['mb_test_object_taxonomies'])) {
+    $GLOBALS['mb_test_object_taxonomies'] = [];
+}
+
+if (!isset($GLOBALS['mb_test_object_terms'])) {
+    $GLOBALS['mb_test_object_terms'] = [];
+}
+
+if (!isset($GLOBALS['mb_test_set_object_terms_calls'])) {
+    $GLOBALS['mb_test_set_object_terms_calls'] = [];
+}
+
 if (!function_exists('add_action')) {
     function add_action($hook, $callback) {
         $GLOBALS['mb_test_actions'][] = ['hook' => $hook, 'callback' => $callback];
@@ -260,26 +300,67 @@ if (!function_exists('wp_insert_post')) {
     }
 }
 
+if (!function_exists('wp_update_post')) {
+    function wp_update_post($postarr) {
+        $GLOBALS['mb_test_last_updated_post'] = $postarr;
+        return $postarr['ID'] ?? 0;
+    }
+}
+
+if (!function_exists('get_posts')) {
+    function get_posts($args = []) {
+        if (!empty($GLOBALS['mb_test_get_posts_queue']) && is_array($GLOBALS['mb_test_get_posts_queue'])) {
+            return array_shift($GLOBALS['mb_test_get_posts_queue']);
+        }
+
+        return $GLOBALS['mb_test_get_posts_result'] ?? [];
+    }
+}
+
+if (!function_exists('update_post_meta')) {
+    function update_post_meta($post_id, $meta_key, $meta_value) {
+        $GLOBALS['mb_test_post_meta_updates'][] = [
+            'post_id' => $post_id,
+            'meta_key' => $meta_key,
+            'meta_value' => $meta_value,
+        ];
+
+        return true;
+    }
+}
+
 if (!function_exists('get_post_thumbnail_id')) {
     function get_post_thumbnail_id($post_id) {
-        return 0;
+        return (int)($GLOBALS['mb_test_thumbnail_id'] ?? 0);
     }
 }
 
 if (!function_exists('set_post_thumbnail')) {
     function set_post_thumbnail($post_id, $thumbnail_id) {
+        $GLOBALS['mb_test_set_thumbnail_calls'][] = [
+            'post_id' => $post_id,
+            'thumbnail_id' => $thumbnail_id,
+        ];
+
         return true;
     }
 }
 
 if (!function_exists('get_post_meta')) {
     function get_post_meta($post_id, $key = '', $single = false) {
-        return [];
+        return $GLOBALS['mb_test_post_meta_result'] ?? [];
     }
 }
 
 if (!function_exists('add_post_meta')) {
     function add_post_meta($post_id, $meta_key, $meta_value, $unique = false) {
+        $GLOBALS['mb_test_add_post_meta_calls'][] = [
+            'post_id' => $post_id,
+            'meta_key' => $meta_key,
+            'meta_value' => $meta_value,
+            'unique' => $unique,
+        ];
+
         return true;
     }
 }
@@ -292,18 +373,25 @@ if (!function_exists('maybe_unserialize')) {
 
 if (!function_exists('get_object_taxonomies')) {
     function get_object_taxonomies($object_type, $output = 'names') {
-        return [];
+        return $GLOBALS['mb_test_object_taxonomies'] ?? [];
     }
 }
 
 if (!function_exists('wp_get_object_terms')) {
     function wp_get_object_terms($object_id, $taxonomy, $args = []) {
-        return [];
+        return $GLOBALS['mb_test_object_terms'][$taxonomy] ?? [];
     }
 }
 
 if (!function_exists('wp_set_object_terms')) {
     function wp_set_object_terms($object_id, $terms, $taxonomy, $append = false) {
+        $GLOBALS['mb_test_set_object_terms_calls'][] = [
+            'object_id' => $object_id,
+            'terms' => $terms,
+            'taxonomy' => $taxonomy,
+            'append' => $append,
+        ];
+
         return true;
     }
 }

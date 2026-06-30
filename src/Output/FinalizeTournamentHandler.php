@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Monatsblitz\Output;
 
+use Monatsblitz\Service\BlitzModeService;
+
 class FinalizeTournamentHandler
 {
     public function handle($request)
@@ -79,6 +81,10 @@ class FinalizeTournamentHandler
             ),
             ARRAY_A
         );
+
+        if (!is_array($games)) {
+            $games = [];
+        }
 
         // Template laden
         $template_post = get_page_by_title($template_name, OBJECT, 'post');
@@ -168,19 +174,29 @@ class FinalizeTournamentHandler
         $mode        = esc_html((string)($t['mode'] ?? ''));
         $round_count = max(1, intval($t['round_count'] ?? 1));
 
-        // Kreuztabelle
-        if ($round_count === 1) {
-            $table_html = self::build_cross_table($players, $games, true);
-        } else {
-            $table_html = '';
-            for ($round = 1; $round <= $round_count; $round++) {
-                $table_html .= '<h3>Runde ' . $round . '</h3>';
-                $table_html .= self::build_cross_table($players, $games, false, $round);
+        // Kreuztabelle optional: finalize must still work when games are missing.
+        $table_html = '';
+        if (!empty($games)) {
+            if ($round_count === 1) {
+                $table_html = self::build_cross_table($players, $games, true);
+            } else {
+                for ($round = 1; $round <= $round_count; $round++) {
+                    $table_html .= '<h3>Runde ' . $round . '</h3>';
+                    $table_html .= self::build_cross_table($players, $games, false, $round);
+                }
+                $table_html .= self::build_summary_table($players);
             }
-            $table_html .= self::build_summary_table($players);
+        }
+
+        if ($table_html === '') {
+            $table_html = self::build_results_table($results);
         }
 
         // Platzhalter ersetzen
+        $winner_games_placeholder = ((int)$winner_games > 0)
+            ? ('aus ' . esc_html((string)$winner_games))
+            : '';
+
         $content = str_replace(
             [
                 '{{month_name}}','{{year}}','{{date}}','{{winner_name}}',
@@ -189,21 +205,31 @@ class FinalizeTournamentHandler
             ],
             [
                 esc_html($monthName), esc_html($t['year']), esc_html($date_str),
-                $winner_name, esc_html($winner_games), $winner_points,
+                $winner_name, $winner_games_placeholder, $winner_points,
                 $ranking_rows, $games_list, $table_html, $mode,
                 esc_html((string)$round_count)
             ],
             $template_content
         );
 
-        // Post erzeugen
-        $post_title = 'Monatsblitz ' . $iso_date;
+        if (BlitzModeService::isBlitzMode((string)($t['mode'] ?? ''))) {
+            $post_title = 'Monatsblitz ' . $iso_date;
+            $slug = 'blitz-' . $iso_date;
+        } else {
+            $post_title = 'Turnier ' . $iso_date;
+            $slug = 'turnier-' . $iso_date;
+        }
+
+        // Post erzeugen oder aktualisieren
+        $meta_key = $slug;
+        $tournament_meta_key = '_monatsblitz_tournament_id';
         $post_time = '23:30:00';
         $post_date_local = $iso_date . ' ' . $post_time;
         $post_date_gmt   = get_gmt_from_date($post_date_local);
 
         $postarr = [
             'post_title'    => $post_title,
+            'post_name'     => $slug,
             'post_content'  => $content,
             'post_status'   => 'publish',
             'post_type'     => 'post',
@@ -212,11 +238,57 @@ class FinalizeTournamentHandler
             'post_author'   => $post_author_id
         ];
 
-        $post_id = wp_insert_post($postarr);
+        // Prefer stable lookup by tournament id so repeated finalize always updates the same post.
+        $existing_posts = get_posts([
+            'post_type'   => 'post',
+            'meta_key'    => $tournament_meta_key,
+            'meta_value'  => (string)$tournament_id,
+            'numberposts' => 1,
+        ]);
+
+        // Fallback: search by current post_name/slug.
+        if (empty($existing_posts)) {
+            $existing_posts = get_posts([
+                'post_type'   => 'post',
+                'name'        => $slug,
+                'numberposts' => 1,
+            ]);
+        }
+
+        // Legacy fallback: older monthly posts can use "monatsblitz-YYYY-MM-DD" as slug.
+        if (empty($existing_posts) && BlitzModeService::isBlitzMode((string)($t['mode'] ?? ''))) {
+            $existing_posts = get_posts([
+                'post_type'   => 'post',
+                'name'        => 'monatsblitz-' . $iso_date,
+                'numberposts' => 1,
+            ]);
+        }
+
+        // Backward compatibility for already published posts identified only by date slug marker meta.
+        if (empty($existing_posts)) {
+            $existing_posts = get_posts([
+                'post_type'   => 'post',
+                'meta_key'    => $meta_key,
+                'meta_value'  => '1',
+                'numberposts' => 1,
+            ]);
+        }
+
+        $updated = false;
+        if (!empty($existing_posts)) {
+            $postarr['ID'] = (int)$existing_posts[0]->ID;
+            $post_id = wp_update_post($postarr);
+            $updated = true;
+        } else {
+            $post_id = wp_insert_post($postarr);
+        }
 
         if (is_wp_error($post_id)) {
             return new \WP_Error('post_error', 'Fehler beim Anlegen des Beitrags', ['status' => 500]);
         }
+
+        update_post_meta((int)$post_id, $meta_key, '1');
+        update_post_meta((int)$post_id, $tournament_meta_key, (string)$tournament_id);
 
         // Template-Meta übernehmen
         if ($template_post && !is_wp_error($template_post)) {
@@ -254,10 +326,17 @@ class FinalizeTournamentHandler
             }
         }
 
+        $year_page = null;
+        if (BlitzModeService::isBlitzMode((string)($t['mode'] ?? ''))) {
+            $year_page = (new YearStaticPageHandler())->createOrUpdate((int)$t['year']);
+        }
+
         return [
             'success'       => true,
             'tournament_id' => $tournament_id,
             'post_id'       => $post_id,
+            'post_updated'  => $updated,
+            'year_page'     => is_wp_error($year_page) ? null : $year_page,
             'published'     => true
         ];
     }
@@ -342,6 +421,30 @@ class FinalizeTournamentHandler
         $summary .= '</tbody></table>';
 
         return $summary;
+    }
+
+    public static function build_results_table(array $results): string {
+        $html = '<table class="monatsblitz">';
+        $html .= '<thead><tr><th>Nr.</th><th>Spieler</th><th>Punkte</th><th>Platz</th></tr></thead><tbody>';
+
+        $i = 1;
+        foreach ($results as $r) {
+            $name   = esc_html(trim(((string)($r['forename'] ?? '')) . ' ' . ((string)($r['surname'] ?? ''))));
+            $points = esc_html((string)($r['points'] ?? ''));
+            $rank   = esc_html((string)($r['rank'] ?? ''));
+
+            $html .= '<tr>';
+            $html .= '<td>' . $i . '</td>';
+            $html .= '<td>' . $name . '</td>';
+            $html .= '<td>' . $points . '</td>';
+            $html .= '<td>' . $rank . '</td>';
+            $html .= '</tr>';
+
+            $i++;
+        }
+
+        $html .= '</tbody></table>';
+        return $html;
     }
 
     public static function normalize_result_cell(string $result, bool $invert): string {

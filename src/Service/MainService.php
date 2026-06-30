@@ -18,6 +18,7 @@ use Monatsblitz\Queries\GetTournamentHandler;
 use Monatsblitz\Queries\GetGamesHandler;
 use Monatsblitz\Queries\GetResultsHandler;
 use Monatsblitz\Output\FinalizeTournamentHandler;
+use Monatsblitz\Output\YearStaticPageHandler;
 
 class MainService
 {
@@ -87,6 +88,20 @@ class MainService
     public static function finalizeTournament($request)
     {
         $result = (new FinalizeTournamentHandler())->handle($request);
+
+        if ($result instanceof \WP_Error) {
+            return $result;
+        }
+
+        return rest_ensure_response($result);
+    }
+
+    public static function buildYearStaticPage($request)
+    {
+        $params = $request->get_json_params();
+        $year = intval($params['year'] ?? 0);
+
+        $result = (new YearStaticPageHandler())->createOrUpdate($year, true);
 
         if ($result instanceof \WP_Error) {
             return $result;

@@ -20,10 +20,13 @@ it('registers settings inside admin_init callback', function () {
     $adminInit = $GLOBALS['mb_test_actions'][1]['callback'];
     $adminInit();
 
-    expect($GLOBALS['mb_test_settings'])->toHaveCount(3);
+    expect($GLOBALS['mb_test_settings'])->toHaveCount(6);
     expect($GLOBALS['mb_test_settings'][0])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_author']);
     expect($GLOBALS['mb_test_settings'][1])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_template']);
-    expect($GLOBALS['mb_test_settings'][2])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_api_key']);
+    expect($GLOBALS['mb_test_settings'][2])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_template_static_page']);
+    expect($GLOBALS['mb_test_settings'][3])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_blitz_modes']);
+    expect($GLOBALS['mb_test_settings'][4])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_api_key']);
+    expect($GLOBALS['mb_test_settings'][5])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_hide_january_overview']);
 });
 
 it('registers main menu and settings submenu', function () {
@@ -51,6 +54,9 @@ it('renders settings page with stored values', function () {
     expect($html)->toContain('key-123');
     expect($html)->toContain('name="monatsblitz_author"');
     expect($html)->toContain('name="monatsblitz_template"');
+    expect($html)->toContain('name="monatsblitz_template_static_page"');
+    expect($html)->toContain('name="monatsblitz_blitz_modes"');
+    expect($html)->toContain('name="monatsblitz_hide_january_overview"');
 });
 
 it('generates and stores a new api key from settings page', function () {
