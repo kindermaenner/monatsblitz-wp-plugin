@@ -17,6 +17,8 @@ define('MB_PLUGIN_URL', plugin_dir_url(__FILE__));
 // 📦 Includes
 require_once __DIR__ . '/vendor/autoload.php';
 
+define('MONATSBLITZ_PLUGIN_PATH', plugin_dir_path(__FILE__));
+
 // 🔌 Aktivierung (Tabellen anlegen)
 register_activation_hook(__FILE__, [\Monatsblitz\Database\DatabaseSchema::class, 'init']);
 

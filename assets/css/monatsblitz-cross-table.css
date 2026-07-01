@@ -1,0 +1,45 @@
+@media (max-width: 600px) {
+
+  /* Scroll-Container */
+  .mb-crosstable-scroll {
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mb-crosstable-scroll table {
+    width: max-content;
+    border-collapse: collapse;
+  }
+
+  /* Anti-Ruck + identisches Padding */
+  .monatsblitz-crosstable th:nth-child(1),
+  .monatsblitz-crosstable td:nth-child(1),
+  .monatsblitz-crosstable th:nth-child(2),
+  .monatsblitz-crosstable td:nth-child(2) {
+    transform: translateZ(0);
+    white-space: nowrap;
+    padding: 6px 8px; /* identisch halten */
+    box-sizing: border-box;
+  }
+
+  /* Spalte 1 sticky */
+  .monatsblitz-crosstable th:nth-child(1),
+  .monatsblitz-crosstable td:nth-child(1) {
+    position: sticky;
+    left: 0; /* Border wird durch collapse korrekt eingerechnet */
+    background: #fff;
+    z-index: 3;
+  }
+
+  /* Spalte 2 sticky */
+  .monatsblitz-crosstable th:nth-child(2),
+  .monatsblitz-crosstable td:nth-child(2) {
+    position: sticky;
+    left: 37px; /* realistische Breite der ersten Spalte */
+    background: #fff;
+    z-index: 3;
+  }
+}

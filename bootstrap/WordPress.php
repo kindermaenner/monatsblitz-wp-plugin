@@ -419,3 +419,12 @@ if (!class_exists('WP_REST_Response')) {
         }
     }
 }
+
+if (!function_exists('plugin_dir_path')) {
+    function plugin_dir_path($file) {
+        // Plugin-Root: eine Ebene über /tests/
+        return dirname(__DIR__) . '/';
+    }
+}
+
+define('MONATSBLITZ_PLUGIN_PATH', plugin_dir_path(__FILE__));

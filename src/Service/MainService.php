@@ -18,6 +18,7 @@ use Monatsblitz\Queries\GetTournamentHandler;
 use Monatsblitz\Queries\GetGamesHandler;
 use Monatsblitz\Queries\GetResultsHandler;
 use Monatsblitz\Output\FinalizeTournamentHandler;
+use Monatsblitz\Output\RecreatePostsHandler;
 use Monatsblitz\Output\YearStaticPageHandler;
 
 class MainService
@@ -102,6 +103,17 @@ class MainService
         $year = intval($params['year'] ?? 0);
 
         $result = (new YearStaticPageHandler())->createOrUpdate($year, true);
+
+        if ($result instanceof \WP_Error) {
+            return $result;
+        }
+
+        return rest_ensure_response($result);
+    }
+
+    public static function recreatePosts($request)
+    {
+        $result = (new RecreatePostsHandler())->handle();
 
         if ($result instanceof \WP_Error) {
             return $result;

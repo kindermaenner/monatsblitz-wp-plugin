@@ -83,6 +83,12 @@ class Api {
             'callback' => [MainService::class, 'buildYearStaticPage'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
+
+        register_rest_route('monatsblitz/v1', '/recreatePosts', [
+            'methods'  => 'POST',
+            'callback' => [MainService::class, 'recreatePosts'],
+            'permission_callback' => [self::class, 'verify_api_key'],
+        ]);
     }
 
     public static function verify_api_key() {

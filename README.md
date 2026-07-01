@@ -236,6 +236,16 @@ Base path: `/wp-json/monatsblitz/v1`
   - Body (JSON):
     - `year`
 
+- `POST /recreatePosts`
+  - Recreates all tournament posts by iterating over all stored tournaments.
+  - For each tournament, it triggers the same finalize logic as `POST /finalize`.
+  - Body (JSON): none
+  - Response (JSON):
+    - `processed`: number of tournaments found
+    - `succeeded`: number of successfully recreated posts
+    - `failed`: number of tournaments that failed during finalize
+    - `errors`: per-tournament error details
+
 - Important:
   - The post is published immediately.
   - Existing monthly posts are updated if a post with meta key `blitz-YYYY-MM-DD` already exists.

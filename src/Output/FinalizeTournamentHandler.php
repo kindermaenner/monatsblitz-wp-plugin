@@ -355,7 +355,13 @@ class FinalizeTournamentHandler
         }
 
         $n = count($players);
-        $table_html = '<table class="monatsblitz">';
+
+        $css_file = MONATSBLITZ_PLUGIN_PATH . 'assets/css/monatsblitz-cross-table.css';
+        $css = file_get_contents($css_file);
+
+        $table_html  = "<style>\n" . $css . "\n</style>\n";
+        $table_html .= '<div class="mb-crosstable-scroll">';
+        $table_html .= '<table class="monatsblitz-crosstable">';
         $table_html .= '<thead><tr><th>Nr.</th><th>Spieler</th>';
         for ($c = 1; $c <= $n; $c++) {
             $table_html .= '<th>' . $c . '</th>';
@@ -400,7 +406,7 @@ class FinalizeTournamentHandler
             $table_html .= '</tr>';
         }
 
-        $table_html .= '</tbody></table>';
+        $table_html .= '</tbody></table></div>';
 
         return $table_html;
     }

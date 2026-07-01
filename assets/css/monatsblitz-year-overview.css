@@ -1,0 +1,22 @@
+@media (max-width: 600px) {
+  /* Scroll-Container */
+  .mb-year-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mb-year-scroll table {
+    width: max-content;
+  }
+
+  /* Erste Spalte fixieren */
+  .monatsblitz-year-overview th:first-child,
+  .monatsblitz-year-overview td:first-child {
+    position: sticky;
+    left: 0;
+    background: #fff;
+    z-index: 3;
+  }
+}

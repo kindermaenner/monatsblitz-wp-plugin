@@ -1,0 +1,24 @@
+/* Standard: Desktop zeigt Langnamen */
+table.monatsblitz-year-ranking th .full {
+  display: inline;
+}
+table.monatsblitz-year-ranking th .short {
+  display: none;
+}
+
+/* Handy: nur Kurzformen */
+@media (max-width: 600px) {
+  table.monatsblitz-year-ranking th .full {
+    display: none;
+  }
+  table.monatsblitz-year-ranking th .short {
+    display: inline;
+    white-space: nowrap;
+  }
+
+  /* Handy: Spalte Teilnahmen ausblenden */
+  table.monatsblitz-year-ranking th:nth-child(4),
+  table.monatsblitz-year-ranking td:nth-child(4)  {
+    display: none;
+  }
+}

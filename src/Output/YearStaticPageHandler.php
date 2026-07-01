@@ -185,7 +185,11 @@ class YearStaticPageHandler
     {
         $startMonth = $hideJanuary ? 2 : 1;
 
-        $html = '<div class="mb-year-scroll">';
+        $css_file = MONATSBLITZ_PLUGIN_PATH . 'assets/css/monatsblitz-year-overview.css';
+        $css = file_get_contents($css_file);
+
+        $html  = "<style>\n" . $css . "\n</style>\n";
+        $html .= '<div class="mb-year-scroll">';
         $html .= '<table class="monatsblitz-year-overview">';
         $html .= '<thead><tr><th>Spieler</th>';
         for ($month = $startMonth; $month <= 12; $month++) {
@@ -243,7 +247,11 @@ class YearStaticPageHandler
             return (int)$b['points'] <=> (int)$a['points'];
         });
 
-        $html = '<table class="monatsblitz-year-ranking">';
+        $css_file = MONATSBLITZ_PLUGIN_PATH . 'assets/css/monatsblitz-year-ranking.css';
+        $css = file_get_contents($css_file);
+
+        $html  = "<style>\n" . $css . "\n</style>\n";
+        $html .= '<table class="monatsblitz-year-ranking">';
         $html .= '<thead><tr>';
         $html .= '<th><span class="full">Platz</span><span class="short">Pl.</span></th>';
         $html .= '<th>Spieler</th>';
