@@ -66,6 +66,32 @@ it('creates game with explicit leg_type', function () {
     expect($wpdb->last_insert_data['leg_type'])->toBe(2);
 });
 
+it('normalizes player order and inverts result when player ids are swapped', function () {
+    global $wpdb;
+
+    $wpdb->get_var_result = 1;
+    $wpdb->insert_id = 14;
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'tournament_id' => 9,
+                'player1_id' => 8,
+                'player2_id' => 1,
+                'result' => '1:0'
+            ];
+        }
+    };
+
+    $handler = new CreateGameHandler();
+    $result  = $handler->handle($request);
+
+    expect($result['success'])->toBeTrue();
+    expect($wpdb->last_insert_data['player1_id'])->toBe(1);
+    expect($wpdb->last_insert_data['player2_id'])->toBe(8);
+    expect($wpdb->last_insert_data['result'])->toBe('0:1');
+});
+
 it('creates batch games from a games array', function () {
     global $wpdb;
 
@@ -148,4 +174,34 @@ it('fails when tournament does not exist for game', function () {
     $result  = $handler->handle($request);
 
     expect($result)->toBeInstanceOf(WP_Error::class);
+});
+
+it('updates existing game when game_id is provided', function () {
+    global $wpdb;
+
+    $wpdb->get_var_queue = [99, 1, null];
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'game_id' => 99,
+                'tournament_id' => 9,
+                'player1_id' => 8,
+                'player2_id' => 1,
+                'leg_type' => 2,
+                'result' => '1:0'
+            ];
+        }
+    };
+
+    $handler = new CreateGameHandler();
+    $result  = $handler->handle($request);
+
+    expect($result['success'])->toBeTrue();
+    expect($result['game_id'])->toBe(99);
+    expect($result['message'])->toBe('Spiel aktualisiert');
+    expect($wpdb->last_update_where['id'])->toBe(99);
+    expect($wpdb->last_update_data['player1_id'])->toBe(1);
+    expect($wpdb->last_update_data['player2_id'])->toBe(8);
+    expect($wpdb->last_update_data['result'])->toBe('0:1');
 });

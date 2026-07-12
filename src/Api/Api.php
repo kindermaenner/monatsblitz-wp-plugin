@@ -31,7 +31,7 @@ class Api {
         ]);
 
         register_rest_route('monatsblitz/v1', '/game', [
-            'methods'  => 'POST',
+            'methods'  => 'POST, PUT',
             'callback' => [MainService::class, 'createGame'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);

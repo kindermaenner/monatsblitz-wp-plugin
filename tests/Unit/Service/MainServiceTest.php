@@ -71,6 +71,25 @@ it('returns WP_Error for invalid game input', function () {
 		->and($result->code)->toBe('invalid_data');
 });
 
+it('wraps successful game update response', function () {
+	global $wpdb;
+
+	$wpdb->get_var_queue = [202, 1, null];
+
+	$result = MainService::createGame(new MainServiceFakeRequest([
+		'game_id' => 202,
+		'tournament_id' => 1,
+		'player1_id' => 8,
+		'player2_id' => 2,
+		'leg_type' => 1,
+		'result' => '0:1',
+	]));
+
+	expect($result['success'])->toBeTrue()
+		->and($result['game_id'])->toBe(202)
+		->and($result['message'])->toBe('Spiel aktualisiert');
+});
+
 it('wraps successful result creation response', function () {
 	global $wpdb;
 

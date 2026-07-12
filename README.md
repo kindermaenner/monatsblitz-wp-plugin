@@ -129,13 +129,19 @@ Base path: `/wp-json/monatsblitz/v1`
 
 - `POST /game`
   - Creates a game.
+  - If `game_id` is provided, updates an existing game.
+  - `PUT /game` is also supported for updates.
   - Alternatively accepts a batch payload via `games`.
   - Body (JSON):
+    - `game_id` (optional): existing game ID for updates
     - `tournament_id`
     - `player1_id`
     - `player2_id`
     - `leg_type` (optional): round/leg number, default `1`
     - `result` (`1-0`, `0-1`, `0.5-0.5`)
+  - Behavior:
+    - Player IDs are normalized before storing: `player1_id <= player2_id`.
+    - If IDs are swapped during normalization, the result is mirrored (for example `1-0` becomes `0-1`).
   - Batch format:
     - `tournament_id`
     - `games`: array of objects with `player1_id`, `player2_id`, `result`, `leg_type`
