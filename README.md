@@ -138,10 +138,10 @@ Base path: `/wp-json/monatsblitz/v1`
     - `player1_id`
     - `player2_id`
     - `leg_type` (optional): round/leg number, default `1`
-    - `result` (`1-0`, `0-1`, `0.5-0.5`)
+    - `result` (`1:0`, `0:1`, `0.5:0.5`, `+:-`, `-:+`, `offen`)
   - Behavior:
     - Player IDs are normalized before storing: `player1_id <= player2_id`.
-    - If IDs are swapped during normalization, the result is mirrored (for example `1-0` becomes `0-1`).
+    - If IDs are swapped during normalization, the result is mirrored (for example `1:0` becomes `0:1`).
   - Batch format:
     - `tournament_id`
     - `games`: array of objects with `player1_id`, `player2_id`, `result`, `leg_type`
@@ -160,8 +160,8 @@ Base path: `/wp-json/monatsblitz/v1`
 {
   "tournament_id": 3,
   "games": [
-    { "player1_id": 1, "player2_id": 8, "result": "1-0", "leg_type": 1 },
-    { "player1_id": 1, "player2_id": 8, "result": "0-1", "leg_type": 2 }
+    { "player1_id": 1, "player2_id": 8, "result": "1:0", "leg_type": 1 },
+    { "player1_id": 1, "player2_id": 8, "result": "0:1", "leg_type": 2 }
   ]
 }
 ```
