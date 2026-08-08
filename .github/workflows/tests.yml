@@ -30,22 +30,25 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      # ✅ Tests + Coverage + Gate & 📊 Coverage XML erzeugen (für Reports)
       - name: Run Pest tests with coverage
         run: vendor/bin/pest --coverage --coverage-clover=coverage.xml --min=80
 
-      # 📦 Artifact speichern
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report-php-${{ matrix.php }}
-          path: coverage.xml
+      - name: Install SonarScanner CLI
+        run: |
+          wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+          unzip sonar-scanner-cli-5.0.1.3006-linux.zip
+          sudo mv sonar-scanner-5.0.1.3006-linux /opt/sonar-scanner
+          echo "/opt/sonar-scanner/bin" >> $GITHUB_PATH
 
-      # 🚀 OPTIONAL: Codecov
-      - name: Upload to Codecov
-        if: matrix.php == '8.4'
-        uses: codecov/codecov-action@v4
-        with:
-          files: coverage.xml
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+      - name: SonarQube Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          sonar-scanner \
+            -Dsonar.projectKey=monatsblitz-wp-plugin \
+            -Dsonar.sources=src \
+            -Dsonar.php.coverage.reportPaths=coverage.xml \
+            -Dsonar.tests=tests \
+            -Dsonar.exclusions=vendor/** \
+            -Dsonar.php.file.suffixes=php
