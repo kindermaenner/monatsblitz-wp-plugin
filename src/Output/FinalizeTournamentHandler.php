@@ -185,18 +185,18 @@ class FinalizeTournamentHandler
         $table_html = '';
         if (!empty($games)) {
             if ($round_count === 1) {
-                $table_html = self::build_cross_table($players, $games, true);
+                $table_html = static::build_cross_table($players, $games, true);
             } else {
                 for ($round = 1; $round <= $round_count; $round++) {
                     $table_html .= '<h3>Runde ' . $round . '</h3>';
-                    $table_html .= self::build_cross_table($players, $games, false, $round);
+                    $table_html .= static::build_cross_table($players, $games, false, $round);
                 }
-                $table_html .= self::build_summary_table($players);
+                $table_html .= static::build_summary_table($players);
             }
         }
 
         if ($table_html === '') {
-            $table_html = self::build_results_table($results);
+            $table_html = static::build_results_table($results);
         }
 
         // Platzhalter ersetzen
@@ -336,9 +336,9 @@ class FinalizeTournamentHandler
                     $p_j = $players[$j]['id'];
                     $cell = '';
                     if (isset($game_map[$p_i][$p_j])) {
-                        $cell = self::normalize_result_cell($game_map[$p_i][$p_j], false);
+                        $cell = static::normalize_result_cell($game_map[$p_i][$p_j], false);
                     } elseif (isset($game_map[$p_j][$p_i])) {
-                        $cell = self::normalize_result_cell($game_map[$p_j][$p_i], true);
+                        $cell = static::normalize_result_cell($game_map[$p_j][$p_i], true);
                     } else {
                         $cell = '&nbsp;';
                         $cell_attr = ' class="mb-cell-empty mb-cell-pending" style="background-color:#eeeeee !important; color:#666666 !important;"';
@@ -457,7 +457,7 @@ class FinalizeTournamentHandler
             $input = $params['items'];
         }
 
-        $items = self::normalize_string_list($input);
+        $items = static::normalize_string_list($input);
 
         if (is_wp_error($items)) {
             return $items;

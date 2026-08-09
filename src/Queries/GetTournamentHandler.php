@@ -15,7 +15,7 @@ class GetTournamentHandler
 
         $result = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT 
+                "SELECT
                     id,
                     year,
                     month,
