@@ -45,8 +45,60 @@ class YearStaticPageHandler
             ARRAY_A
         );
 
+        [$monthly, $pointsPerTournament] = $this->aggregateMonthlyStats($rows);
+
+        $hideJanuary = (bool)get_option('monatsblitz_hide_january_overview', false);
+
+        $overviewHtml = $this->buildOverviewTable($monthly, $hideJanuary);
+        $rankingHtml = $this->buildYearRankingTable($monthly, $pointsPerTournament);
+
+        $content = str_replace(
+            ['{{year}}', '{{blitz_monthly_overview}}', '{{blitz_ranking_year}}'],
+            [(string)$year, $overviewHtml, $rankingHtml],
+            (string)$templatePage->post_content
+        );
+
+        $result = $this->upsertYearPage($templatePage, $slug, $metaKey, $content, $year);
+        return $result;
+    }
+
+    private function copyAllMeta(int $templatePageId, int $targetPageId): void
+    {
+        $blacklistMeta = [
+            '_thumbnail_id',
+            '_edit_last',
+            '_edit_lock',
+            '_wp_old_slug',
+            '_wp_trash_meta_status',
+            '_wp_trash_meta_time',
+        ];
+
+        $templateMeta = get_post_meta($templatePageId);
+        foreach ($templateMeta as $metaKey => $metaValues) {
+            if (in_array($metaKey, $blacklistMeta, true)) {
+                continue;
+            }
+
+            foreach ($metaValues as $metaValue) {
+                add_post_meta($targetPageId, $metaKey, maybe_unserialize($metaValue));
+            }
+        }
+    }
+
+    /**
+     * Aggregate monthly stats and points per tournament from DB rows.
+     *
+     * @param array|null $rows
+     * @return array [monthly, pointsPerTournament]
+     */
+    private function aggregateMonthlyStats(?array $rows): array
+    {
         $monthly = [];
         $pointsPerTournament = [];
+
+        if (empty($rows) || !is_array($rows)) {
+            return [$monthly, $pointsPerTournament];
+        }
 
         foreach ($rows as $row) {
             $mode = (string)($row['mode'] ?? '');
@@ -82,17 +134,14 @@ class YearStaticPageHandler
             static fn(array $a, array $b): int => strcmp((string)$a['name'], (string)$b['name'])
         );
 
-        $hideJanuary = (bool)get_option('monatsblitz_hide_january_overview', false);
+        return [$monthly, $pointsPerTournament];
+    }
 
-        $overviewHtml = $this->buildOverviewTable($monthly, $hideJanuary);
-        $rankingHtml = $this->buildYearRankingTable($monthly, $pointsPerTournament);
-
-        $content = str_replace(
-            ['{{year}}', '{{blitz_monthly_overview}}', '{{blitz_ranking_year}}'],
-            [(string)$year, $overviewHtml, $rankingHtml],
-            (string)$templatePage->post_content
-        );
-
+    /**
+     * Create or update the yearly page and return result array.
+     */
+    private function upsertYearPage($templatePage, string $slug, string $metaKey, string $content, int $year): array|\WP_Error
+    {
         $existing = get_posts([
             'post_type' => 'page',
             'meta_key' => $metaKey,
@@ -144,29 +193,6 @@ class YearStaticPageHandler
             'page_id' => $pageId,
             'updated' => $updated,
         ];
-    }
-
-    private function copyAllMeta(int $templatePageId, int $targetPageId): void
-    {
-        $blacklistMeta = [
-            '_thumbnail_id',
-            '_edit_last',
-            '_edit_lock',
-            '_wp_old_slug',
-            '_wp_trash_meta_status',
-            '_wp_trash_meta_time',
-        ];
-
-        $templateMeta = get_post_meta($templatePageId);
-        foreach ($templateMeta as $metaKey => $metaValues) {
-            if (in_array($metaKey, $blacklistMeta, true)) {
-                continue;
-            }
-
-            foreach ($metaValues as $metaValue) {
-                add_post_meta($targetPageId, $metaKey, maybe_unserialize($metaValue));
-            }
-        }
     }
 
     private function pointsFromRank(int $rank): int

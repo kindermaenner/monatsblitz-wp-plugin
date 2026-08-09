@@ -52,3 +52,17 @@ jobs:
             -Dsonar.tests=tests \
             -Dsonar.exclusions=vendor/** \
             -Dsonar.php.file.suffixes=php
+
+  update-badges:
+    needs: pest
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger badge generation
+        env:
+          GH_TOKEN: ${{ secrets.BADGE_REPO_TOKEN }}
+        run: |
+          curl -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            https://api.github.com/repos/<org>/sonar-badges/actions/workflows/update.yml/dispatches \
+            -d '{"ref":"main","inputs":{"project":"monatsblitz-wp-plugin"}}'

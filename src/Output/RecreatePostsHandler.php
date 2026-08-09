@@ -51,16 +51,7 @@ class RecreatePostsHandler
             $result = $finalizeHandler->handle($request);
 
             if (is_wp_error($result)) {
-                $errorCode = method_exists($result, 'get_error_code') ? $result->get_error_code() : ($result->code ?? 'error');
-                $errorMessage = method_exists($result, 'get_error_message') ? $result->get_error_message() : ($result->message ?? 'Unknown error');
-                $errorStatus = method_exists($result, 'get_error_data') ? $result->get_error_data('status') : ($result->data['status'] ?? null);
-
-                $errors[] = [
-                    'tournament_id' => $tournamentId,
-                    'code' => (string)$errorCode,
-                    'message' => (string)$errorMessage,
-                    'status' => (int)($errorStatus ?: 500),
-                ];
+                $errors[] = $this->formatWpError($result, $tournamentId);
                 continue;
             }
 
@@ -79,5 +70,26 @@ class RecreatePostsHandler
     protected function createFinalizeHandler(): object
     {
         return new FinalizeTournamentHandler();
+    }
+
+    /**
+     * Normalize a WP_Error into structured array used by the handler.
+     *
+     * @param \WP_Error $error
+     * @param int $tournamentId
+     * @return array
+     */
+    private function formatWpError($error, int $tournamentId): array
+    {
+        $errorCode = method_exists($error, 'get_error_code') ? $error->get_error_code() : ($error->code ?? 'error');
+        $errorMessage = method_exists($error, 'get_error_message') ? $error->get_error_message() : ($error->message ?? 'Unknown error');
+        $errorStatus = method_exists($error, 'get_error_data') ? $error->get_error_data('status') : ($error->data['status'] ?? null);
+
+        return [
+            'tournament_id' => $tournamentId,
+            'code' => (string)$errorCode,
+            'message' => (string)$errorMessage,
+            'status' => (int)($errorStatus ?: 500),
+        ];
     }
 }
