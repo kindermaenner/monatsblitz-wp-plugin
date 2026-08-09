@@ -64,5 +64,5 @@ jobs:
         run: |
           curl -X POST \
             -H "Authorization: token $GH_TOKEN" \
-            https://api.github.com/repos/<org>/sonar-badges/actions/workflows/update.yml/dispatches \
+            https://api.github.com/repos/kindermaenner/sonar-badges/actions/workflows/update.yml/dispatches \
             -d '{"ref":"main","inputs":{"project":"monatsblitz-wp-plugin"}}'

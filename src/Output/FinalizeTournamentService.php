@@ -102,8 +102,6 @@ class FinalizeTournamentService
         $slug = $post_data['slug'];
         $meta_key = $post_data['meta_key'];
         $tournament_meta_key = $post_data['tournament_meta_key'];
-        $post_date_local = $post_data['post_date_local'];
-        $post_date_gmt = $post_data['post_date_gmt'];
 
         $post_result = $this->postManager->createOrUpdatePost(
             $postarr,

@@ -58,8 +58,7 @@ class YearStaticPageHandler
             (string)$templatePage->post_content
         );
 
-        $result = $this->upsertYearPage($templatePage, $slug, $metaKey, $content, $year);
-        return $result;
+        return $this->upsertYearPage($templatePage, $slug, $metaKey, $content, $year);
     }
 
     private function copyAllMeta(int $templatePageId, int $targetPageId): void
