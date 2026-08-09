@@ -8,7 +8,23 @@ class TournamentContentBuilder
 {
     public static function buildCrossTable(array $players, array $games, bool $include_totals, ?int $round = null): string
     {
+        $game_map = self::buildGameMap($games, $round);
+        $table_html = self::buildCrossTableStyle();
+        $table_html .= self::buildCrossTableHeader(count($players), $include_totals);
+        $table_html .= '<tbody>';
+
+        foreach ($players as $index => $row_player) {
+            $table_html .= self::buildCrossTableRow($index, $row_player, $players, $game_map, $include_totals);
+        }
+
+        $table_html .= '</tbody></table></div>';
+        return $table_html;
+    }
+
+    private static function buildGameMap(array $games, ?int $round): array
+    {
         $game_map = [];
+
         foreach ($games as $game) {
             $leg_type = intval($game['leg_type'] ?? 1);
             if ($round !== null && $leg_type !== $round) {
@@ -20,62 +36,67 @@ class TournamentContentBuilder
             $game_map[$p1][$p2] = $game['result'];
         }
 
-        $n = count($players);
+        return $game_map;
+    }
+
+    private static function buildCrossTableStyle(): string
+    {
         $css_file = MONATSBLITZ_PLUGIN_PATH . 'assets/css/monatsblitz-cross-table.css';
         $css = file_get_contents($css_file);
 
-        $table_html = "<style>\n" . $css . "\n</style>\n";
-        $table_html .= '<div class="mb-crosstable-scroll">';
-        $table_html .= '<table class="monatsblitz-crosstable">';
-        $table_html .= '<thead><tr><th>Nr.</th><th>Spieler</th>';
+        return "<style>\n" . $css . "\n</style>\n" . '<div class="mb-crosstable-scroll">' . '<table class="monatsblitz-crosstable">';
+    }
 
-        for ($c = 1; $c <= $n; $c++) {
-            $table_html .= '<th>' . $c . '</th>';
+    private static function buildCrossTableHeader(int $player_count, bool $include_totals): string
+    {
+        $header = '<thead><tr><th>Nr.</th><th>Spieler</th>';
+        for ($c = 1; $c <= $player_count; $c++) {
+            $header .= '<th>' . $c . '</th>';
         }
 
         if ($include_totals) {
-            $table_html .= '<th>Punkte</th><th>Platz</th>';
+            $header .= '<th>Punkte</th><th>Platz</th>';
         }
 
-        $table_html .= '</tr></thead>';
-        $table_html .= '<tbody>';
+        return $header . '</tr></thead>';
+    }
 
-        for ($i = 0; $i < $n; $i++) {
-            $row_player = $players[$i];
-            $table_html .= '<tr>';
-            $table_html .= '<td>' . ($i + 1) . '</td>';
-            $table_html .= '<td>' . $row_player['name'] . '</td>';
+    private static function buildCrossTableRow(int $row_index, array $row_player, array $players, array $game_map, bool $include_totals): string
+    {
+        $row = '<tr>';
+        $row .= '<td>' . ($row_index + 1) . '</td>';
+        $row .= '<td>' . $row_player['name'] . '</td>';
 
-            for ($j = 0; $j < $n; $j++) {
-                $cell_attr = '';
-                if ($i === $j) {
-                    $cell = '&nbsp;';
-                    $cell_attr = ' class="mb-cell-empty mb-cell-diagonal" style="background-color:#eeeeee !important; color:#666666 !important;"';
-                } else {
-                    $p_i = $row_player['id'];
-                    $p_j = $players[$j]['id'];
-                    if (isset($game_map[$p_i][$p_j])) {
-                        $cell = self::normalizeResultCell($game_map[$p_i][$p_j], false);
-                    } elseif (isset($game_map[$p_j][$p_i])) {
-                        $cell = self::normalizeResultCell($game_map[$p_j][$p_i], true);
-                    } else {
-                        $cell = '&nbsp;';
-                        $cell_attr = ' class="mb-cell-empty mb-cell-pending" style="background-color:#eeeeee !important; color:#666666 !important;"';
-                    }
-                }
-                $table_html .= '<td' . $cell_attr . '>' . $cell . '</td>';
-            }
-
-            if ($include_totals) {
-                $table_html .= '<td>' . $row_player['points'] . '</td>';
-                $table_html .= '<td>' . $row_player['rank'] . '</td>';
-            }
-
-            $table_html .= '</tr>';
+        foreach ($players as $column_index => $column_player) {
+            $row .= self::buildCrossTableCell($row_index, $column_index, $row_player, $column_player, $game_map);
         }
 
-        $table_html .= '</tbody></table></div>';
-        return $table_html;
+        if ($include_totals) {
+            $row .= '<td>' . $row_player['points'] . '</td>';
+            $row .= '<td>' . $row_player['rank'] . '</td>';
+        }
+
+        return $row . '</tr>';
+    }
+
+    private static function buildCrossTableCell(int $row_index, int $column_index, array $row_player, array $column_player, array $game_map): string
+    {
+        if ($row_index === $column_index) {
+            return '<td class="mb-cell-empty mb-cell-diagonal" style="background-color:#eeeeee !important; color:#666666 !important;">&nbsp;</td>';
+        }
+
+        $p_i = $row_player['id'];
+        $p_j = $column_player['id'];
+
+        if (isset($game_map[$p_i][$p_j])) {
+            $cell = self::normalizeResultCell($game_map[$p_i][$p_j], false);
+        } elseif (isset($game_map[$p_j][$p_i])) {
+            $cell = self::normalizeResultCell($game_map[$p_j][$p_i], true);
+        } else {
+            return '<td class="mb-cell-empty mb-cell-pending" style="background-color:#eeeeee !important; color:#666666 !important;">&nbsp;</td>';
+        }
+
+        return '<td>' . $cell . '</td>';
     }
 
     public static function buildSummaryTable(array $players): string
@@ -122,22 +143,44 @@ class TournamentContentBuilder
 
     public static function normalizeResultCell(string $result, bool $invert): string
     {
-        if (!$invert) {
-            if ($result === '1:0' || $result === '1-0') { return '1'; }
-            if ($result === '0:1' || $result === '0-1') { return '0'; }
-            if ($result === '+:-') { return '+'; }
-            if ($result === '-:+') { return '-'; }
-        } else {
-            if ($result === '1:0' || $result === '1-0') { return '0'; }
-            if ($result === '0:1' || $result === '0-1') { return '1'; }
-            if ($result === '+:-') { return '-'; }
-            if ($result === '-:+') { return '+'; }
+        $map = $invert ? self::getInverseResultMap() : self::getResultMap();
+        if (isset($map[$result])) {
+            return $map[$result];
         }
 
-        if ($result === '0.5:0.5' || $result === '0.5-0.5' || $result === '½') {
+        if (self::isDrawResult($result)) {
             return '½';
         }
 
         return esc_html($result);
+    }
+
+    private static function getResultMap(): array
+    {
+        return [
+            '1:0' => '1',
+            '1-0' => '1',
+            '0:1' => '0',
+            '0-1' => '0',
+            '+:-' => '+',
+            '-:+' => '-',
+        ];
+    }
+
+    private static function getInverseResultMap(): array
+    {
+        return [
+            '1:0' => '0',
+            '1-0' => '0',
+            '0:1' => '1',
+            '0-1' => '1',
+            '+:-' => '-',
+            '-:+' => '+',
+        ];
+    }
+
+    private static function isDrawResult(string $result): bool
+    {
+        return in_array($result, ['0.5:0.5', '0.5-0.5', '½'], true);
     }
 }
