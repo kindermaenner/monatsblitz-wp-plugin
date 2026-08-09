@@ -19,15 +19,115 @@ class FinalizeTournamentHandler
     {
         global $wpdb;
 
-        $params = $request->get_json_params();
-        $tournament_id = intval($params['tournament_id'] ?? 0);
-
+        $tournament_id = $this->getTournamentId($request);
         if (!$tournament_id) {
             return new \WP_Error('invalid_data', 'Turnier-ID erforderlich', ['status' => 400]);
         }
 
-        // Turnier laden
-        $t = $wpdb->get_row(
+        $tournament = $this->loadTournament($wpdb, $tournament_id);
+        if (!$tournament) {
+            return new \WP_Error('not_found', 'Turnier nicht gefunden', ['status' => 404]);
+        }
+
+        $post_author_id = intval(get_option('monatsblitz_author'));
+        $template_name = (string) sanitize_text_field(get_option('monatsblitz_template'));
+        $date_str = sprintf('%02d.%02d.%04d', $tournament['day'], $tournament['month'], $tournament['year']);
+        $iso_date = sprintf('%04d-%02d-%02d', $tournament['year'], $tournament['month'], $tournament['day']);
+        $month_name = $this->resolveMonthName(intval($tournament['month'] ?? 0));
+
+        [$template_post, $template_content] = $this->loadTemplate($template_name);
+        $results = $this->loadResults($wpdb, $tournament_id);
+        if (empty($results)) {
+            return new \WP_Error('no_results', 'Keine Ergebnisse vorhanden', ['status' => 400]);
+        }
+
+        $games = $this->loadGames($wpdb, $tournament_id);
+        $winner_data = $this->resolveWinner($wpdb, $results, $tournament_id);
+        $ranking_rows = $this->buildRankingRows($results);
+        $games_list = $this->buildGamesList($games);
+        $players = $this->buildPlayers($results);
+        $mode = esc_html((string)($tournament['mode'] ?? ''));
+        $round_count = max(1, intval($tournament['round_count'] ?? 1));
+        $table_html = $this->buildTableHtml($players, $games, $round_count, $results);
+
+        $content = str_replace(
+            [
+                '{{month_name}}','{{year}}','{{date}}','{{winner_name}}',
+                '{{winner_games}}','{{winner_points}}','{{ranking_rows}}',
+                '{{games_list}}','{{table}}','{{mode}}','{{round_count}}'
+            ],
+            [
+                esc_html($month_name), esc_html($tournament['year']), esc_html($date_str),
+                esc_html($winner_data['name']), $winner_data['games'], esc_html($winner_data['points']),
+                $ranking_rows, $games_list, $table_html, $mode,
+                esc_html((string)$round_count)
+            ],
+            $template_content
+        );
+
+        [$post_title, $slug] = $this->resolvePostTitleAndSlug($mode, $iso_date);
+        $meta_key = $slug;
+        $tournament_meta_key = '_monatsblitz_tournament_id';
+        $post_time = '23:30:00';
+        $post_date_local = $iso_date . ' ' . $post_time;
+        $post_date_gmt = get_gmt_from_date($post_date_local);
+
+        $postarr = [
+            'post_title'    => $post_title,
+            'post_name'     => $slug,
+            'post_content'  => $content,
+            'post_status'   => 'publish',
+            'post_type'     => 'post',
+            'post_date'     => $post_date_local,
+            'post_date_gmt' => $post_date_gmt,
+            'post_author'   => $post_author_id,
+        ];
+
+        $post_result = $this->postManager->createOrUpdatePost(
+            $postarr,
+            $slug,
+            $meta_key,
+            $tournament_meta_key,
+            $tournament_id,
+            (string)($tournament['mode'] ?? ''),
+            $iso_date
+        );
+
+        if (is_wp_error($post_result)) {
+            return $post_result;
+        }
+
+        $post_id = (int)$post_result['post_id'];
+        $updated = (bool)$post_result['updated'];
+
+        update_post_meta($post_id, $meta_key, '1');
+        update_post_meta($post_id, $tournament_meta_key, (string)$tournament_id);
+        $this->copyTemplateAssets($template_post, $post_id);
+
+        $year_page = null;
+        if (BlitzModeService::isBlitzMode($mode)) {
+            $year_page = (new YearStaticPageHandler())->createOrUpdate((int)$tournament['year']);
+        }
+
+        return [
+            'success'       => true,
+            'tournament_id' => $tournament_id,
+            'post_id'       => $post_id,
+            'post_updated'  => $updated,
+            'year_page'     => is_wp_error($year_page) ? null : $year_page,
+            'published'     => true,
+        ];
+    }
+
+    private function getTournamentId($request): int
+    {
+        $params = $request->get_json_params();
+        return intval($params['tournament_id'] ?? 0);
+    }
+
+    private function loadTournament($wpdb, int $tournament_id): ?array
+    {
+        return $wpdb->get_row(
             $wpdb->prepare(
                 "SELECT id, year, month, day, mode, round_count
                  FROM {$wpdb->prefix}monatsblitz_tournaments
@@ -36,28 +136,11 @@ class FinalizeTournamentHandler
             ),
             ARRAY_A
         );
+    }
 
-        if (!$t) {
-            return new \WP_Error('not_found', 'Turnier nicht gefunden', ['status' => 404]);
-        }
-
-        // Einstellungen laden
-        $post_author_id = intval(get_option('monatsblitz_author'));
-        $template_name  = sanitize_text_field(get_option('monatsblitz_template'));
-
-        // Datum formate
-        $date_str = sprintf('%02d.%02d.%04d', $t['day'], $t['month'], $t['year']);
-        $iso_date = sprintf('%04d-%02d-%02d', $t['year'], $t['month'], $t['day']);
-
-        $monthNames = [
-            1 => 'Januar', 2 => 'Februar', 3 => 'März', 4 => 'April',
-            5 => 'Mai', 6 => 'Juni', 7 => 'Juli', 8 => 'August',
-            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Dezember',
-        ];
-        $monthName = $monthNames[intval($t['month'] ?? 0)] ?? '';
-
-        // Ergebnisse laden
-        $results = $wpdb->get_results(
+    private function loadResults($wpdb, int $tournament_id): array
+    {
+        return $wpdb->get_results(
             $wpdb->prepare(
                 "SELECT r.player_id, r.points, r.rank, p.forename, p.surname
                  FROM {$wpdb->prefix}monatsblitz_results r
@@ -67,13 +150,11 @@ class FinalizeTournamentHandler
                 $tournament_id
             ),
             ARRAY_A
-        );
+        ) ?: [];
+    }
 
-        if (empty($results)) {
-            return new \WP_Error('no_results', 'Keine Ergebnisse vorhanden', ['status' => 400]);
-        }
-
-        // Spiele laden
+    private function loadGames($wpdb, int $tournament_id): array
+    {
         $games = $wpdb->get_results(
             $wpdb->prepare(
                 "SELECT g.player1_id, g.player2_id, g.leg_type, g.result,
@@ -89,384 +170,187 @@ class FinalizeTournamentHandler
             ARRAY_A
         );
 
-        if (!is_array($games)) {
-            $games = [];
-        }
+        return is_array($games) ? $games : [];
+    }
 
-        // Template laden
+    private function loadTemplate(string $template_name): array
+    {
         $template_post = get_page_by_title($template_name, OBJECT, 'post');
         $template_content = '';
 
         if ($template_post && !is_wp_error($template_post)) {
             $template_content = $template_post->post_content;
-            $template_title   = $template_post->post_title;
-        } else {
+        }
+
+        if ($template_content === '') {
             $template_path = MB_PLUGIN_PATH . 'templates/post-template.html';
             if (file_exists($template_path)) {
                 $template_content = file_get_contents($template_path);
             }
         }
 
-        if (empty($template_content)) {
+        if ($template_content === '') {
             $template_content = "<h1>{{month_name}} {{year}}</h1>
                                  <p>Die Ergebnisse unseres Blitz-Abends vom {{date}}.</p>
                                  {{ranking_rows}}{{games_list}}";
         }
 
-        // Gewinner bestimmen
-        $winner_name = '';
-        $winner_points = '';
-        $winner_games = 0;
-        $winner_player_id = 0;
+        return [$template_post, $template_content];
+    }
+
+    private function resolveMonthName(int $month): string
+    {
+        $monthNames = [
+            1 => 'Januar', 2 => 'Februar', 3 => 'März', 4 => 'April',
+            5 => 'Mai', 6 => 'Juni', 7 => 'Juli', 8 => 'August',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Dezember',
+        ];
+
+        return $monthNames[$month] ?? '';
+    }
+
+    private function resolveWinner($wpdb, array $results, int $tournament_id): array
+    {
+        $name = '';
+        $points = '';
+        $games = 0;
 
         if (!empty($results)) {
             $winner = $results[0];
-            $winner_name = esc_html(trim($winner['forename'] . ' ' . $winner['surname']));
-            $winner_points = esc_html($winner['points']);
+            $name = esc_html(trim($winner['forename'] . ' ' . $winner['surname']));
+            $points = esc_html($winner['points']);
             $winner_player_id = intval($winner['player_id']);
+
+            if ($winner_player_id) {
+                $games = intval($wpdb->get_var(
+                    $wpdb->prepare(
+                        "SELECT COUNT(*)
+                         FROM {$wpdb->prefix}monatsblitz_games
+                         WHERE tournament_id = %d
+                           AND (player1_id = %d OR player2_id = %d)",
+                        $tournament_id,
+                        $winner_player_id,
+                        $winner_player_id
+                    )
+                ));
+            }
         }
 
-        if ($winner_player_id) {
-            $winner_games = $wpdb->get_var(
-                $wpdb->prepare(
-                    "SELECT COUNT(*)
-                     FROM {$wpdb->prefix}monatsblitz_games
-                     WHERE tournament_id = %d
-                       AND (player1_id = %d OR player2_id = %d)",
-                    $tournament_id,
-                    $winner_player_id,
-                    $winner_player_id
-                )
-            );
-        }
+        return [
+            'name' => $name,
+            'points' => $points,
+            'games' => $games ? 'aus ' . esc_html((string)$games) : '',
+        ];
+    }
 
-        // Ranking rows
-        $ranking_rows = '';
-        $i = 1;
-        foreach ($results as $r) {
-            $name   = esc_html(trim($r['forename'] . ' ' . $r['surname']));
-            $points = esc_html($r['points']);
-            $rank   = esc_html($r['rank']);
+    private function buildRankingRows(array $results): string
+    {
+        $rows = '';
+        $index = 1;
 
-            $ranking_rows .= "<tr>
-                <td style=\"border:1px solid #ccc; padding:6px;\">{$i}</td>
+        foreach ($results as $result) {
+            $name = esc_html(trim($result['forename'] . ' ' . $result['surname']));
+            $points = esc_html($result['points']);
+            $rank = esc_html($result['rank']);
+
+            $rows .= "<tr>
+                <td style=\"border:1px solid #ccc; padding:6px;\">{$index}</td>
                 <td style=\"border:1px solid #ccc; padding:6px;\">{$name}</td>
                 <td style=\"border:1px solid #ccc; padding:6px;\">{$points}</td>
                 <td style=\"border:1px solid #ccc; padding:6px;\">{$rank}</td>
             </tr>";
 
-            $i++;
+            $index++;
         }
 
-        // Games list
-        $games_list = '';
-        foreach ($games as $g) {
-            $p1 = esc_html(trim($g['p1_forename'] . ' ' . $g['p1_surname']));
-            $p2 = esc_html(trim($g['p2_forename'] . ' ' . $g['p2_surname']));
-            $res = esc_html($g['result']);
-            $games_list .= "<li>{$p1} vs {$p2}: {$res}</li>";
+        return $rows;
+    }
+
+    private function buildGamesList(array $games): string
+    {
+        $list = '';
+
+        foreach ($games as $game) {
+            $player1 = esc_html(trim($game['p1_forename'] . ' ' . $game['p1_surname']));
+            $player2 = esc_html(trim($game['p2_forename'] . ' ' . $game['p2_surname']));
+            $result = esc_html($game['result']);
+            $list .= "<li>{$player1} vs {$player2}: {$result}</li>";
         }
 
-        // Spieler-Liste für Kreuztabelle
+        return $list;
+    }
+
+    private function buildPlayers(array $results): array
+    {
         $players = [];
-        foreach ($results as $r) {
+
+        foreach ($results as $result) {
             $players[] = [
-                'id'     => intval($r['player_id']),
-                'name'   => esc_html(trim($r['forename'] . ' ' . $r['surname'])),
-                'points' => esc_html($r['points']),
-                'rank'   => esc_html($r['rank'])
+                'id' => intval($result['player_id']),
+                'name' => esc_html(trim($result['forename'] . ' ' . $result['surname'])),
+                'points' => esc_html($result['points']),
+                'rank' => esc_html($result['rank']),
             ];
         }
 
-        $mode        = esc_html((string)($t['mode'] ?? ''));
-        $round_count = max(1, intval($t['round_count'] ?? 1));
-
-        // Kreuztabelle optional: finalize must still work when games are missing.
-        $table_html = '';
-        if (!empty($games)) {
-            if ($round_count === 1) {
-                $table_html = static::build_cross_table($players, $games, true);
-            } else {
-                for ($round = 1; $round <= $round_count; $round++) {
-                    $table_html .= '<h3>Runde ' . $round . '</h3>';
-                    $table_html .= static::build_cross_table($players, $games, false, $round);
-                }
-                $table_html .= static::build_summary_table($players);
-            }
-        }
-
-        if ($table_html === '') {
-            $table_html = static::build_results_table($results);
-        }
-
-        // Platzhalter ersetzen
-        $winner_games_placeholder = ((int)$winner_games > 0)
-            ? ('aus ' . esc_html((string)$winner_games))
-            : '';
-
-        $content = str_replace(
-            [
-                '{{month_name}}','{{year}}','{{date}}','{{winner_name}}',
-                '{{winner_games}}','{{winner_points}}','{{ranking_rows}}',
-                '{{games_list}}','{{table}}','{{mode}}','{{round_count}}'
-            ],
-            [
-                esc_html($monthName), esc_html($t['year']), esc_html($date_str),
-                $winner_name, $winner_games_placeholder, $winner_points,
-                $ranking_rows, $games_list, $table_html, $mode,
-                esc_html((string)$round_count)
-            ],
-            $template_content
-        );
-
-        if (BlitzModeService::isBlitzMode((string)($t['mode'] ?? ''))) {
-            $post_title = 'Monatsblitz ' . $iso_date;
-            $slug = 'blitz-' . $iso_date;
-        } else {
-            $post_title = 'Turnier ' . $iso_date;
-            $slug = 'turnier-' . $iso_date;
-        }
-
-        // Post erzeugen oder aktualisieren
-        $meta_key = $slug;
-        $tournament_meta_key = '_monatsblitz_tournament_id';
-        $post_time = '23:30:00';
-        $post_date_local = $iso_date . ' ' . $post_time;
-        $post_date_gmt   = get_gmt_from_date($post_date_local);
-
-        $postarr = [
-            'post_title'    => $post_title,
-            'post_name'     => $slug,
-            'post_content'  => $content,
-            'post_status'   => 'publish',
-            'post_type'     => 'post',
-            'post_date'     => $post_date_local,
-            'post_date_gmt' => $post_date_gmt,
-            'post_author'   => $post_author_id
-        ];
-
-        $post_result = $this->postManager->createOrUpdatePost(
-            $postarr,
-            $slug,
-            $meta_key,
-            $tournament_meta_key,
-            $tournament_id,
-            (string)($t['mode'] ?? ''),
-            $iso_date
-        );
-
-        if (is_wp_error($post_result)) {
-            return $post_result;
-        }
-
-        $post_id = (int)$post_result['post_id'];
-        $updated = (bool)$post_result['updated'];
-
-        update_post_meta((int)$post_id, $meta_key, '1');
-        update_post_meta((int)$post_id, $tournament_meta_key, (string)$tournament_id);
-
-        if ($template_post && !is_wp_error($template_post)) {
-            $template_thumbnail_id = get_post_thumbnail_id($template_post->ID);
-            if ($template_thumbnail_id) {
-                set_post_thumbnail($post_id, $template_thumbnail_id);
-            }
-
-            $this->postManager->copyTemplateMetaAndTaxonomies((int)$template_post->ID, $post_id);
-        }
-
-        $year_page = null;
-        if (BlitzModeService::isBlitzMode((string)($t['mode'] ?? ''))) {
-            $year_page = (new YearStaticPageHandler())->createOrUpdate((int)$t['year']);
-        }
-
-        return [
-            'success'       => true,
-            'tournament_id' => $tournament_id,
-            'post_id'       => $post_id,
-            'post_updated'  => $updated,
-            'year_page'     => is_wp_error($year_page) ? null : $year_page,
-            'published'     => true
-        ];
+        return $players;
     }
 
-    public static function build_cross_table(array $players, array $games, bool $include_totals, ?int $round = null): string {
-        $game_map = [];
-        foreach ($games as $g) {
-            $leg_type = intval($g['leg_type'] ?? 1);
-            if ($round !== null && $leg_type !== $round) {
-                continue;
-            }
-
-            $p1 = intval($g['player1_id']);
-            $p2 = intval($g['player2_id']);
-            $game_map[$p1][$p2] = $g['result'];
+    private function buildTableHtml(array $players, array $games, int $round_count, array $results): string
+    {
+        if (empty($games)) {
+            return TournamentContentBuilder::buildResultsTable($results);
         }
 
-        $n = count($players);
-
-        $css_file = MONATSBLITZ_PLUGIN_PATH . 'assets/css/monatsblitz-cross-table.css';
-        $css = file_get_contents($css_file);
-
-        $table_html  = "<style>\n" . $css . "\n</style>\n";
-        $table_html .= '<div class="mb-crosstable-scroll">';
-        $table_html .= '<table class="monatsblitz-crosstable">';
-        $table_html .= '<thead><tr><th>Nr.</th><th>Spieler</th>';
-        for ($c = 1; $c <= $n; $c++) {
-            $table_html .= '<th>' . $c . '</th>';
-        }
-        if ($include_totals) {
-            $table_html .= '<th>Punkte</th><th>Platz</th>';
-        }
-        $table_html .= '</tr></thead>';
-
-        $table_html .= '<tbody>';
-        for ($i = 0; $i < $n; $i++) {
-            $rowPlayer = $players[$i];
-            $table_html .= '<tr>';
-            $table_html .= '<td>' . ($i + 1) . '</td>';
-            $table_html .= '<td>' . $rowPlayer['name'] . '</td>';
-
-            for ($j = 0; $j < $n; $j++) {
-                $cell_attr = '';
-                if ($i === $j) {
-                    $cell = '&nbsp;';
-                    $cell_attr = ' class="mb-cell-empty mb-cell-diagonal" style="background-color:#eeeeee !important; color:#666666 !important;"';
-                } else {
-                    $p_i = $rowPlayer['id'];
-                    $p_j = $players[$j]['id'];
-                    $cell = '';
-                    if (isset($game_map[$p_i][$p_j])) {
-                        $cell = static::normalize_result_cell($game_map[$p_i][$p_j], false);
-                    } elseif (isset($game_map[$p_j][$p_i])) {
-                        $cell = static::normalize_result_cell($game_map[$p_j][$p_i], true);
-                    } else {
-                        $cell = '&nbsp;';
-                        $cell_attr = ' class="mb-cell-empty mb-cell-pending" style="background-color:#eeeeee !important; color:#666666 !important;"';
-                    }
-                }
-                $table_html .= '<td' . $cell_attr . '>' . $cell . '</td>';
-            }
-
-            if ($include_totals) {
-                $table_html .= '<td>' . $rowPlayer['points'] . '</td>';
-                $table_html .= '<td>' . $rowPlayer['rank'] . '</td>';
-            }
-            $table_html .= '</tr>';
+        if ($round_count === 1) {
+            return TournamentContentBuilder::buildCrossTable($players, $games, true);
         }
 
-        $table_html .= '</tbody></table></div>';
-
-        return $table_html;
-    }
-
-    public static function build_summary_table(array $players): string {
-        $summary = '<h3>Gesamtergebnis</h3>';
-        $summary .= '<table class="monatsblitz">';
-        $summary .= '<thead><tr><th>Spieler</th><th>Gesamtpunkte</th><th>Platz</th></tr></thead><tbody>';
-
-        foreach ($players as $player) {
-            $summary .= '<tr>';
-            $summary .= '<td>' . $player['name'] . '</td>';
-            $summary .= '<td>' . $player['points'] . '</td>';
-            $summary .= '<td>' . $player['rank'] . '</td>';
-            $summary .= '</tr>';
+        $html = '';
+        for ($round = 1; $round <= $round_count; $round++) {
+            $html .= '<h3>Runde ' . $round . '</h3>';
+            $html .= TournamentContentBuilder::buildCrossTable($players, $games, false, $round);
         }
 
-        $summary .= '</tbody></table>';
-
-        return $summary;
-    }
-
-    public static function build_results_table(array $results): string {
-        $html = '<table class="monatsblitz">';
-        $html .= '<thead><tr><th>Nr.</th><th>Spieler</th><th>Punkte</th><th>Platz</th></tr></thead><tbody>';
-
-        $i = 1;
-        foreach ($results as $r) {
-            $name   = esc_html(trim(((string)($r['forename'] ?? '')) . ' ' . ((string)($r['surname'] ?? ''))));
-            $points = esc_html((string)($r['points'] ?? ''));
-            $rank   = esc_html((string)($r['rank'] ?? ''));
-
-            $html .= '<tr>';
-            $html .= '<td>' . $i . '</td>';
-            $html .= '<td>' . $name . '</td>';
-            $html .= '<td>' . $points . '</td>';
-            $html .= '<td>' . $rank . '</td>';
-            $html .= '</tr>';
-
-            $i++;
-        }
-
-        $html .= '</tbody></table>';
+        $html .= TournamentContentBuilder::buildSummaryTable($players);
         return $html;
     }
 
-    public static function normalize_result_cell(string $result, bool $invert): string {
-        if (!$invert) {
-            if ($result === '1:0' || $result === '1-0') { return '1'; }
-            if ($result === '0:1' || $result === '0-1') { return '0'; }
-            if ($result === '+:-') { return '+'; }
-            if ($result === '-:+') { return '-'; }
-        } else {
-            if ($result === '1:0' || $result === '1-0') { return '0'; }
-            if ($result === '0:1' || $result === '0-1') { return '1'; }
-            if ($result === '+:-') { return '-'; }
-            if ($result === '-:+') { return '+'; }
+    private function resolvePostTitleAndSlug(string $mode, string $iso_date): array
+    {
+        if (BlitzModeService::isBlitzMode($mode)) {
+            return ['Monatsblitz ' . $iso_date, 'blitz-' . $iso_date];
         }
 
-        if ($result === '0.5:0.5' || $result === '0.5-0.5' || $result === '½') {
-            return '½';
-        }
-
-        return esc_html($result);
+        return ['Turnier ' . $iso_date, 'turnier-' . $iso_date];
     }
 
-    public static function normalize_string_list($input) {
-        if ($input === null) {
-            return new \WP_Error('invalid_data', 'Input must be a string or an array of strings', ['status' => 400]);
+    private function copyTemplateAssets($template_post, int $post_id): void
+    {
+        if (!$template_post || is_wp_error($template_post)) {
+            return;
         }
 
-        if (is_string($input)) {
-            $input = [$input];
+        $template_thumbnail_id = get_post_thumbnail_id($template_post->ID);
+        if ($template_thumbnail_id) {
+            set_post_thumbnail($post_id, $template_thumbnail_id);
         }
 
-        if (!is_array($input)) {
-            return new \WP_Error('invalid_data', 'Input must be a string or an array of strings', ['status' => 400]);
-        }
-
-        $normalized = [];
-        foreach ($input as $item) {
-            if (!is_string($item)) {
-                return new \WP_Error('invalid_data', 'Input must be a string or an array of strings', ['status' => 400]);
-            }
-
-            $item = trim($item);
-            if ($item !== '') {
-                $normalized[] = $item;
-            }
-        }
-
-        return $normalized;
+        $this->postManager->copyTemplateMetaAndTaxonomies((int)$template_post->ID, $post_id);
     }
 
-    public static function normalize_items($request) {
-        $params = $request->get_json_params();
-        $input = $params;
-
-        if (is_array($params) && array_key_exists('items', $params) && count($params) === 1) {
-            $input = $params['items'];
-        }
-
-        $items = static::normalize_string_list($input);
-
-        if (is_wp_error($items)) {
-            return $items;
-        }
-
-        return rest_ensure_response([
-            'count' => count($items),
-            'items' => $items,
-        ]);
+    public function normalize_items($request)
+    {
+        return RequestNormalizer::normalizeItems($request);
     }
 
+    public static function normalize_result_cell(string $result, bool $invert): string
+    {
+        return TournamentContentBuilder::normalizeResultCell($result, $invert);
+    }
+
+    public static function normalize_string_list($input)
+    {
+        return RequestNormalizer::normalizeStringList($input);
+    }
 }
