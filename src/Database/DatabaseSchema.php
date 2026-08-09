@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Monatsblitz\Database;
 
+use function dbDelta;
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -21,10 +23,6 @@ class DatabaseSchema {
     private static function create_tables() {
         global $wpdb;
 
-        if (!function_exists('dbDelta')) {
-            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        }
-
         $charset_collate = $wpdb->get_charset_collate();
 
         // Tabellen-Namen
@@ -34,7 +32,7 @@ class DatabaseSchema {
         $results_table     = $wpdb->prefix . 'monatsblitz_results';
 
         $sql = "
-            CREATE TABLE {$wpdb->prefix}monatsblitz_players (
+            CREATE TABLE {$players_table} (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 forename VARCHAR(100) NOT NULL,
                 surname VARCHAR(100) NOT NULL,
@@ -43,7 +41,7 @@ class DatabaseSchema {
                 UNIQUE KEY unique_player_name (forename, surname)
             ) $charset_collate;
 
-            CREATE TABLE {$wpdb->prefix}monatsblitz_tournaments (
+            CREATE TABLE {$tournaments_table} (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 year SMALLINT NOT NULL,
                 month TINYINT NOT NULL,
@@ -55,7 +53,7 @@ class DatabaseSchema {
                 UNIQUE KEY unique_tournament_date (year, month, day)
             ) $charset_collate;
 
-            CREATE TABLE {$wpdb->prefix}monatsblitz_games (
+            CREATE TABLE {$games_table} (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 tournament_id BIGINT UNSIGNED NOT NULL,
                 player1_id BIGINT UNSIGNED NOT NULL,
@@ -72,7 +70,7 @@ class DatabaseSchema {
                 UNIQUE KEY unique_game (tournament_id, player1_id, player2_id, leg_type)
             ) $charset_collate;
 
-            CREATE TABLE {$wpdb->prefix}monatsblitz_results (
+            CREATE TABLE {$results_table} (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 tournament_id BIGINT UNSIGNED NOT NULL,
                 player_id BIGINT UNSIGNED NOT NULL,

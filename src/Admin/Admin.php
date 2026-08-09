@@ -178,7 +178,7 @@ class Admin {
 
         // 👉 Wenn Tabelle ausgewählt → Detailansicht
         if (isset($_GET['table']) && isset($tables[$_GET['table']])) {
-            self::render_table_detail($tables[$_GET['table']], $_GET['table']);
+            self::render_table_detail($tables[$_GET['table']]);
             echo '</div>';
             return;
         }
@@ -269,7 +269,7 @@ class Admin {
         DatabaseSchema::reset_tables();
     }
 
-    private static function render_table_detail($table, $key) {
+    private static function render_table_detail($table) {
         global $wpdb;
 
         echo "<h2>Detailansicht: $table</h2>";

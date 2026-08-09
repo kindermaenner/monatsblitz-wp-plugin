@@ -18,73 +18,75 @@ class Api {
 
     public static function register_routes() {
 
-        register_rest_route('monatsblitz/v1', '/player', [
+        $rest_api_namespace = 'monatsblitz/v1';
+
+        register_rest_route($rest_api_namespace, '/player', [
             'methods'  => 'POST',
             'callback' => [MainService::class, 'createPlayer'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
 
-        register_rest_route('monatsblitz/v1', '/tournament', [
+        register_rest_route($rest_api_namespace, '/tournament', [
             'methods'  => 'POST',
             'callback' => [MainService::class, 'createTournament'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
 
-        register_rest_route('monatsblitz/v1', '/game', [
+        register_rest_route($rest_api_namespace, '/game', [
             'methods'  => 'POST, PUT',
             'callback' => [MainService::class, 'createGame'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
 
-        register_rest_route('monatsblitz/v1', '/players', [
+        register_rest_route($rest_api_namespace, '/players', [
             'methods'  => 'GET',
             'callback' => [MainService::class, 'getPlayers'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
 
-        register_rest_route('monatsblitz/v1', '/tournaments', [
+        register_rest_route($rest_api_namespace, '/tournaments', [
             'methods'  => 'GET',
             'callback' => [MainService::class, 'getTournaments'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
 
-        register_rest_route('monatsblitz/v1', '/tournament/(?P<id>\d+)', [
+        register_rest_route($rest_api_namespace, '/tournament/(?P<id>\d+)', [
             'methods'  => 'GET',
             'callback' => [MainService::class, 'getTournament'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
 
-        register_rest_route('monatsblitz/v1', '/games/(?P<tournament_id>\d+)', [
+        register_rest_route($rest_api_namespace, '/games/(?P<tournament_id>\d+)', [
             'methods'  => 'GET',
             'callback' => [MainService::class, 'getGames'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
 
-        register_rest_route('monatsblitz/v1', '/result', [
+        register_rest_route($rest_api_namespace, '/result', [
             'methods'  => 'POST',
             'callback' => [MainService::class, 'createResult'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
 
-        register_rest_route('monatsblitz/v1', '/results/(?P<tournament_id>\d+)', [
+        register_rest_route($rest_api_namespace, '/results/(?P<tournament_id>\d+)', [
             'methods'  => 'GET',
             'callback' => [MainService::class, 'getResults'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
 
-        register_rest_route('monatsblitz/v1', '/finalize', [
+        register_rest_route($rest_api_namespace, '/finalize', [
             'methods'  => 'POST',
             'callback' => [MainService::class, 'finalizeTournament'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
 
-        register_rest_route('monatsblitz/v1', '/buildYearPage', [
+        register_rest_route($rest_api_namespace, '/buildYearPage', [
             'methods'  => 'POST',
             'callback' => [MainService::class, 'buildYearStaticPage'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
 
-        register_rest_route('monatsblitz/v1', '/recreatePosts', [
+        register_rest_route($rest_api_namespace, '/recreatePosts', [
             'methods'  => 'POST',
             'callback' => [MainService::class, 'recreatePosts'],
             'permission_callback' => [self::class, 'verify_api_key'],
