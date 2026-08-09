@@ -12,7 +12,7 @@ class GetPlayersHandler
 
         $table = $wpdb->prefix . 'monatsblitz_players';
 
-        return = $wpdb->get_results(
+        return $wpdb->get_results(
             "SELECT
                 id,
                 forename,

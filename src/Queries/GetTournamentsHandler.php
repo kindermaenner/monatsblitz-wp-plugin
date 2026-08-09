@@ -12,7 +12,7 @@ class GetTournamentsHandler
 
         $table = $wpdb->prefix . 'monatsblitz_tournaments';
 
-        return = $wpdb->get_results(
+        return $wpdb->get_results(
             "SELECT
                 id,
                 year,
