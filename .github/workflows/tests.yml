@@ -60,9 +60,10 @@ jobs:
     steps:
       - name: Trigger badge generation
         env:
-          GH_TOKEN: ${{ secrets.BADGE_REPO_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
+          ORG: ${{ github.repository_owner }}
         run: |
           curl -X POST \
             -H "Authorization: token $GH_TOKEN" \
-            https://api.github.com/repos/kindermaenner/sonar-badges/actions/workflows/update.yml/dispatches \
+            https://api.github.com/repos/$ORG/sonar-badges/actions/workflows/update.yml/dispatches \
             -d '{"ref":"main","inputs":{"project":"monatsblitz-wp-plugin"}}'
