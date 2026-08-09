@@ -8,6 +8,13 @@ use Monatsblitz\Service\BlitzModeService;
 
 class FinalizeTournamentHandler
 {
+    private TournamentPostManager $postManager;
+
+    public function __construct()
+    {
+        $this->postManager = new TournamentPostManager();
+    }
+
     public function handle($request)
     {
         global $wpdb;
@@ -238,92 +245,33 @@ class FinalizeTournamentHandler
             'post_author'   => $post_author_id
         ];
 
-        // Prefer stable lookup by tournament id so repeated finalize always updates the same post.
-        $existing_posts = get_posts([
-            'post_type'   => 'post',
-            'meta_key'    => $tournament_meta_key,
-            'meta_value'  => (string)$tournament_id,
-            'numberposts' => 1,
-        ]);
+        $post_result = $this->postManager->createOrUpdatePost(
+            $postarr,
+            $slug,
+            $meta_key,
+            $tournament_meta_key,
+            $tournament_id,
+            (string)($t['mode'] ?? ''),
+            $iso_date
+        );
 
-        // Fallback: search by current post_name/slug.
-        if (empty($existing_posts)) {
-            $existing_posts = get_posts([
-                'post_type'   => 'post',
-                'name'        => $slug,
-                'numberposts' => 1,
-            ]);
+        if (is_wp_error($post_result)) {
+            return $post_result;
         }
 
-        // Legacy fallback: older monthly posts can use "monatsblitz-YYYY-MM-DD" as slug.
-        if (empty($existing_posts) && BlitzModeService::isBlitzMode((string)($t['mode'] ?? ''))) {
-            $existing_posts = get_posts([
-                'post_type'   => 'post',
-                'name'        => 'monatsblitz-' . $iso_date,
-                'numberposts' => 1,
-            ]);
-        }
-
-        // Backward compatibility for already published posts identified only by date slug marker meta.
-        if (empty($existing_posts)) {
-            $existing_posts = get_posts([
-                'post_type'   => 'post',
-                'meta_key'    => $meta_key,
-                'meta_value'  => '1',
-                'numberposts' => 1,
-            ]);
-        }
-
-        $updated = false;
-        if (!empty($existing_posts)) {
-            $postarr['ID'] = (int)$existing_posts[0]->ID;
-            $post_id = wp_update_post($postarr);
-            $updated = true;
-        } else {
-            $post_id = wp_insert_post($postarr);
-        }
-
-        if (is_wp_error($post_id)) {
-            return new \WP_Error('post_error', 'Fehler beim Anlegen des Beitrags', ['status' => 500]);
-        }
+        $post_id = (int)$post_result['post_id'];
+        $updated = (bool)$post_result['updated'];
 
         update_post_meta((int)$post_id, $meta_key, '1');
         update_post_meta((int)$post_id, $tournament_meta_key, (string)$tournament_id);
 
-        // Template-Meta übernehmen
         if ($template_post && !is_wp_error($template_post)) {
-
-            // Featured Image
             $template_thumbnail_id = get_post_thumbnail_id($template_post->ID);
             if ($template_thumbnail_id) {
                 set_post_thumbnail($post_id, $template_thumbnail_id);
             }
 
-            // Meta kopieren
-            $blacklist_meta = [
-                '_thumbnail_id','_edit_last','_edit_lock',
-                '_wp_old_slug','_wp_trash_meta_status','_wp_trash_meta_time'
-            ];
-
-            $template_meta = get_post_meta($template_post->ID);
-
-            foreach ($template_meta as $meta_key => $meta_values) {
-                if (in_array($meta_key, $blacklist_meta, true)) {
-                    continue;
-                }
-                foreach ($meta_values as $meta_value) {
-                    add_post_meta($post_id, $meta_key, maybe_unserialize($meta_value));
-                }
-            }
-
-            // Taxonomien übernehmen
-            $taxonomies = get_object_taxonomies('post', 'names');
-            foreach ($taxonomies as $taxonomy) {
-                $terms = wp_get_object_terms($template_post->ID, $taxonomy, ['fields' => 'slugs']);
-                if (!is_wp_error($terms) && !empty($terms)) {
-                    wp_set_object_terms($post_id, $terms, $taxonomy, false);
-                }
-            }
+            $this->postManager->copyTemplateMetaAndTaxonomies((int)$template_post->ID, $post_id);
         }
 
         $year_page = null;

@@ -11,7 +11,7 @@ class RequestNormalizer
     public static function normalizeStringList($input)
     {
         if ($input === null) {
-            return new \WP_Error('invalid_data', self::INVALID_STRING_LIST_MESSAGE, ['status' => 400]);
+            return new \WP_Error('invalid_data', static::INVALID_STRING_LIST_MESSAGE, ['status' => 400]);
         }
 
         if (is_string($input)) {
@@ -19,13 +19,13 @@ class RequestNormalizer
         }
 
         if (!is_array($input)) {
-            return new \WP_Error('invalid_data', self::INVALID_STRING_LIST_MESSAGE, ['status' => 400]);
+            return new \WP_Error('invalid_data', static::INVALID_STRING_LIST_MESSAGE, ['status' => 400]);
         }
 
         $normalized = [];
         foreach ($input as $item) {
             if (!is_string($item)) {
-                return new \WP_Error('invalid_data', self::INVALID_STRING_LIST_MESSAGE, ['status' => 400]);
+                return new \WP_Error('invalid_data', static::INVALID_STRING_LIST_MESSAGE, ['status' => 400]);
             }
 
             $item = trim($item);
@@ -46,7 +46,7 @@ class RequestNormalizer
             $input = $params['items'];
         }
 
-        $items = self::normalizeStringList($input);
+        $items = static::normalizeStringList($input);
         if (is_wp_error($items)) {
             return $items;
         }

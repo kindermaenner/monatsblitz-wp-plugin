@@ -8,13 +8,13 @@ class TournamentContentBuilder
 {
     public static function buildCrossTable(array $players, array $games, bool $include_totals, ?int $round = null): string
     {
-        $game_map = self::buildGameMap($games, $round);
-        $table_html = self::buildCrossTableStyle();
-        $table_html .= self::buildCrossTableHeader(count($players), $include_totals);
+        $game_map = static::buildGameMap($games, $round);
+        $table_html = static::buildCrossTableStyle();
+        $table_html .= static::buildCrossTableHeader(count($players), $include_totals);
         $table_html .= '<tbody>';
 
         foreach ($players as $index => $row_player) {
-            $table_html .= self::buildCrossTableRow($index, $row_player, $players, $game_map, $include_totals);
+            $table_html .= static::buildCrossTableRow($index, $row_player, $players, $game_map, $include_totals);
         }
 
         $table_html .= '</tbody></table></div>';
@@ -68,7 +68,7 @@ class TournamentContentBuilder
         $row .= '<td>' . $row_player['name'] . '</td>';
 
         foreach ($players as $column_index => $column_player) {
-            $row .= self::buildCrossTableCell($row_index, $column_index, $row_player, $column_player, $game_map);
+            $row .= static::buildCrossTableCell($row_index, $column_index, $row_player, $column_player, $game_map);
         }
 
         if ($include_totals) {
@@ -89,9 +89,9 @@ class TournamentContentBuilder
         $p_j = $column_player['id'];
 
         if (isset($game_map[$p_i][$p_j])) {
-            $cell = self::normalizeResultCell($game_map[$p_i][$p_j], false);
+            $cell = static::normalizeResultCell($game_map[$p_i][$p_j], false);
         } elseif (isset($game_map[$p_j][$p_i])) {
-            $cell = self::normalizeResultCell($game_map[$p_j][$p_i], true);
+            $cell = static::normalizeResultCell($game_map[$p_j][$p_i], true);
         } else {
             return '<td class="mb-cell-empty mb-cell-pending" style="background-color:#eeeeee !important; color:#666666 !important;">&nbsp;</td>';
         }
@@ -143,12 +143,12 @@ class TournamentContentBuilder
 
     public static function normalizeResultCell(string $result, bool $invert): string
     {
-        $map = $invert ? self::getInverseResultMap() : self::getResultMap();
+        $map = $invert ? static::getInverseResultMap() : static::getResultMap();
         if (isset($map[$result])) {
             return $map[$result];
         }
 
-        if (self::isDrawResult($result)) {
+        if (static::isDrawResult($result)) {
             return '½';
         }
 
