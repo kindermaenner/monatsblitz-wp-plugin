@@ -42,7 +42,7 @@ class DatabaseSchema {
                 PRIMARY KEY (id),
                 UNIQUE KEY unique_player_name (forename, surname)
             ) $charset_collate;
-            
+
             CREATE TABLE {$wpdb->prefix}monatsblitz_tournaments (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 year SMALLINT NOT NULL,
@@ -54,7 +54,7 @@ class DatabaseSchema {
                 PRIMARY KEY (id),
                 UNIQUE KEY unique_tournament_date (year, month, day)
             ) $charset_collate;
-            
+
             CREATE TABLE {$wpdb->prefix}monatsblitz_games (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 tournament_id BIGINT UNSIGNED NOT NULL,

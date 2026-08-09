@@ -85,7 +85,7 @@ class CreatePlayerHandler
 
         $existing = $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT id FROM {$wpdb->prefix}monatsblitz_players 
+                "SELECT id FROM {$wpdb->prefix}monatsblitz_players
                  WHERE forename = %s AND surname = %s",
                 $forename,
                 $surname

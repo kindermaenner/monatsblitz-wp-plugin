@@ -46,7 +46,7 @@ class Admin {
         );
     }
 
-    public static function render_settings_page() { 
+    public static function render_settings_page() {
 
         // Aktuelle Werte laden
         $author    = get_option('monatsblitz_author', '');
@@ -172,7 +172,7 @@ class Admin {
         echo '<form method="post" style="margin-bottom:20px;">';
         wp_nonce_field('monatsblitz_reset_tables');
         echo '<input type="hidden" name="monatsblitz_action" value="reset_tables">';
-        echo '<input type="submit" class="button button-danger" value="⚠️ Tabellen neu erstellen" 
+        echo '<input type="submit" class="button button-danger" value="⚠️ Tabellen neu erstellen"
               onclick="return confirm(\'Wirklich ALLE Tabellen löschen und neu erstellen?\');">';
         echo '</form>';
 

@@ -12,8 +12,8 @@ class GetTournamentsHandler
 
         $table = $wpdb->prefix . 'monatsblitz_tournaments';
 
-        $results = $wpdb->get_results(
-            "SELECT 
+        return = $wpdb->get_results(
+            "SELECT
                 id,
                 year,
                 month,
@@ -25,7 +25,5 @@ class GetTournamentsHandler
              ORDER BY year DESC, month DESC, day DESC",
             ARRAY_A
         );
-
-        return $results;
     }
 }

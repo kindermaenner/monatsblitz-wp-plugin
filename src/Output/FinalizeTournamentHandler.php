@@ -22,8 +22,8 @@ class FinalizeTournamentHandler
         // Turnier laden
         $t = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id, year, month, day, mode, round_count 
-                 FROM {$wpdb->prefix}monatsblitz_tournaments 
+                "SELECT id, year, month, day, mode, round_count
+                 FROM {$wpdb->prefix}monatsblitz_tournaments
                  WHERE id = %d",
                 $tournament_id
             ),
@@ -122,9 +122,9 @@ class FinalizeTournamentHandler
         if ($winner_player_id) {
             $winner_games = $wpdb->get_var(
                 $wpdb->prepare(
-                    "SELECT COUNT(*) 
-                     FROM {$wpdb->prefix}monatsblitz_games 
-                     WHERE tournament_id = %d 
+                    "SELECT COUNT(*)
+                     FROM {$wpdb->prefix}monatsblitz_games
+                     WHERE tournament_id = %d
                        AND (player1_id = %d OR player2_id = %d)",
                     $tournament_id,
                     $winner_player_id,
@@ -455,15 +455,15 @@ class FinalizeTournamentHandler
 
     public static function normalize_result_cell(string $result, bool $invert): string {
         if (!$invert) {
-            if ($result === '1:0' || $result === '1-0') return '1';
-            if ($result === '0:1' || $result === '0-1') return '0';
-            if ($result === '+:-') return '+';
-            if ($result === '-:+') return '-';
+            if ($result === '1:0' || $result === '1-0') { return '1'; }
+            if ($result === '0:1' || $result === '0-1') { return '0'; }
+            if ($result === '+:-') { return '+'; }
+            if ($result === '-:+') { return '-'; }
         } else {
-            if ($result === '1:0' || $result === '1-0') return '0';
-            if ($result === '0:1' || $result === '0-1') return '1';
-            if ($result === '+:-') return '-';
-            if ($result === '-:+') return '+';
+            if ($result === '1:0' || $result === '1-0') { return '0'; }
+            if ($result === '0:1' || $result === '0-1') { return '1'; }
+            if ($result === '+:-') { return '-'; }
+            if ($result === '-:+') { return '+'; }
         }
 
         if ($result === '0.5:0.5' || $result === '0.5-0.5' || $result === '½') {

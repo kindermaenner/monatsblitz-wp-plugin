@@ -212,8 +212,6 @@ class CreateGameHandler
             'offen' => 'offen',
         ];
 
-        $inverted = $inverseMap[$result] ?? $result;
-
-        return $inverted;
+        return $inverseMap[$result] ?? $result;
     }
 }

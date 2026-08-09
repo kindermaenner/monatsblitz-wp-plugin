@@ -12,8 +12,8 @@ class GetPlayersHandler
 
         $table = $wpdb->prefix . 'monatsblitz_players';
 
-        $results = $wpdb->get_results(
-            "SELECT 
+        return = $wpdb->get_results(
+            "SELECT
                 id,
                 forename,
                 surname
@@ -21,7 +21,5 @@ class GetPlayersHandler
              ORDER BY surname, forename",
             ARRAY_A
         );
-
-        return $results;
     }
 }

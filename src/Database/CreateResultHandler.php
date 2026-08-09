@@ -100,7 +100,7 @@ class CreateResultHandler
         // Ergebnis existiert bereits?
         $existing = $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT id FROM {$wpdb->prefix}monatsblitz_results 
+                "SELECT id FROM {$wpdb->prefix}monatsblitz_results
                  WHERE tournament_id = %d AND player_id = %d",
                 $tournament_id,
                 $player_id

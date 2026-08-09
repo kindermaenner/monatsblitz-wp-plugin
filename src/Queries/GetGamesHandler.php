@@ -14,9 +14,9 @@ class GetGamesHandler
         $games_table   = $wpdb->prefix . 'monatsblitz_games';
         $players_table = $wpdb->prefix . 'monatsblitz_players';
 
-        $results = $wpdb->get_results(
+        return = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT 
+                "SELECT
                     g.id,
                     g.tournament_id,
                     g.player1_id,
@@ -36,7 +36,5 @@ class GetGamesHandler
             ),
             ARRAY_A
         );
-
-        return $results;
     }
 }
