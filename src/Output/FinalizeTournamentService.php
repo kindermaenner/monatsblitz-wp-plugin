@@ -41,7 +41,7 @@ class FinalizeTournamentService
         }
 
         $post_author_id = intval(get_option('monatsblitz_author'));
-        $template_name = sanitize_text_field(get_option('monatsblitz_template'));
+        $template_name = (string) sanitize_text_field(get_option('monatsblitz_template'));
 
         $date_str = sprintf('%02d.%02d.%04d', $tournament['day'], $tournament['month'], $tournament['year']);
         $iso_date = sprintf('%04d-%02d-%02d', $tournament['year'], $tournament['month'], $tournament['day']);
@@ -96,30 +96,14 @@ class FinalizeTournamentService
             )
         );
 
-        if (BlitzModeService::isBlitzMode((string)($tournament['mode'] ?? ''))) {
-            $post_title = 'Monatsblitz ' . $iso_date;
-            $slug = 'blitz-' . $iso_date;
-        } else {
-            $post_title = 'Turnier ' . $iso_date;
-            $slug = 'turnier-' . $iso_date;
-        }
+        $post_data = TournamentPostFactory::buildPostData((string)($tournament['mode'] ?? ''), $iso_date, $post_author_id, $content);
 
-        $meta_key = $slug;
-        $tournament_meta_key = '_monatsblitz_tournament_id';
-        $post_time = '23:30:00';
-        $post_date_local = $iso_date . ' ' . $post_time;
-        $post_date_gmt = get_gmt_from_date($post_date_local);
-
-        $postarr = [
-            'post_title'    => $post_title,
-            'post_name'     => $slug,
-            'post_content'  => $content,
-            'post_status'   => 'publish',
-            'post_type'     => 'post',
-            'post_date'     => $post_date_local,
-            'post_date_gmt' => $post_date_gmt,
-            'post_author'   => $post_author_id,
-        ];
+        $postarr = $post_data['postarr'];
+        $slug = $post_data['slug'];
+        $meta_key = $post_data['meta_key'];
+        $tournament_meta_key = $post_data['tournament_meta_key'];
+        $post_date_local = $post_data['post_date_local'];
+        $post_date_gmt = $post_data['post_date_gmt'];
 
         $post_result = $this->postManager->createOrUpdatePost(
             $postarr,
@@ -142,6 +126,11 @@ class FinalizeTournamentService
         update_post_meta($post_id, $tournament_meta_key, (string)$tournament_id);
 
         if ($template_post && !is_wp_error($template_post)) {
+            $template_thumbnail_id = get_post_thumbnail_id($template_post->ID);
+            if ($template_thumbnail_id) {
+                set_post_thumbnail($post_id, $template_thumbnail_id);
+            }
+
             $this->postManager->copyTemplateMetaAndTaxonomies((int)$template_post->ID, $post_id);
         }
 
