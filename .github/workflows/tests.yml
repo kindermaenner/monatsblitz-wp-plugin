@@ -60,19 +60,27 @@ jobs:
     steps:
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.BADGE_APP_ID }}
           private-key: ${{ secrets.BADGE_APP_PRIVATE_KEY }}
-          installation-id: ${{ secrets.BADGE_APP_INSTALLATION_ID }}
-
-      - name: Export token
-        run: echo "GH_TOKEN=${{ steps.app-token.outputs.token }}" >> $GITHUB_ENV
+          owner: kindermaenner
+          repositories: sonar-badges
+          permission-actions: write
 
       - name: Trigger badge generation
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          curl -X POST \
+          curl --fail-with-body -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -H "Content-Type: application/json" \
             https://api.github.com/repos/kindermaenner/sonar-badges/actions/workflows/update.yml/dispatches \
-            -d '{"ref":"main","inputs":{"project":"monatsblitz-wp-plugin"}}'
+            -d '{
+              "ref": "main",
+              "inputs": {
+                "project": "monatsblitz-wp-plugin"
+              }
+            }'
