@@ -1,5 +1,10 @@
 # Monatsblitz Plugin
 
+![Coverage](https://raw.githubusercontent.com/kindermaenner/sonar-badges/main/badges/monatsblitz-wp-plugin/coverage.svg)
+![Bugs](https://raw.githubusercontent.com/kindermaenner/sonar-badges/main/badges/monatsblitz-wp-plugin/bugs.svg)
+![Code Smells](https://raw.githubusercontent.com/kindermaenner/sonar-badges/main/badges/monatsblitz-wp-plugin/code_smells.svg)
+![Security Hotspots](https://raw.githubusercontent.com/kindermaenner/sonar-badges/main/badges/monatsblitz-wp-plugin/security_hotspots.svg)
+
 A lightweight WordPress plugin to manage blitz chess tournaments through a REST API.
 
 ## Motivation
