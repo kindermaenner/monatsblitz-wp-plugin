@@ -15,7 +15,9 @@
     },
     "require-dev": {
         "pestphp/pest": "^5.0",
-        "phpstan/phpstan-strict-rules": "^2.0"
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "squizlabs/php_codesniffer": "^4.0"
     },
     "config": {
         "allow-plugins": {
