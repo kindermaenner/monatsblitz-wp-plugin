@@ -1,0 +1,43 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+
+jobs:
+  lint:
+    uses: kindermaenner/ci-templates/.github/workflows/php-lint.yml@main
+    with:
+      php-version: "8.4"
+
+  tests:
+    needs: lint
+    uses: kindermaenner/ci-templates/.github/workflows/php-tests.yml@main
+    with:
+      php-version: "8.4"
+      coverage-file: "coverage.xml"
+
+  sonar:
+    needs: tests
+    if: github.ref == 'refs/heads/main'
+    uses: kindermaenner/ci-templates/.github/workflows/common-sonar-cli.yml@main
+    with:
+      sonar-properties: >
+        -Dsonar.projectKey=${{ github.event.repository.name }}
+        -Dsonar.sources=src
+        -Dsonar.tests=tests
+        -Dsonar.php.coverage.reportPaths=coverage.xml
+        -Dsonar.exclusions=vendor/**
+        -Dsonar.php.file.suffixes=php
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  badges:
+    needs: sonar
+    if: github.ref == 'refs/heads/main'
+    uses: kindermaenner/ci-templates/.github/workflows/common-badge-trigger.yml@main
+    secrets:
+      BADGE_APP_ID: ${{ secrets.BADGE_APP_ID }}
+      BADGE_APP_PRIVATE_KEY: ${{ secrets.BADGE_APP_PRIVATE_KEY }}
