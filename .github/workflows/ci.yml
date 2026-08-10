@@ -41,5 +41,4 @@ jobs:
     uses: kindermaenner/ci-templates/.github/workflows/php-lint.yml@main
     with:
       php-version: "8.4"
-    continue-on-error: true
 
