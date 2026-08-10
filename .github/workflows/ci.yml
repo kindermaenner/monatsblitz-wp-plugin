@@ -37,7 +37,6 @@ jobs:
       BADGE_APP_PRIVATE_KEY: ${{ secrets.BADGE_APP_PRIVATE_KEY }}
 
   lint:
-    needs: tests
     uses: kindermaenner/ci-templates/.github/workflows/php-lint.yml@main
     with:
       php-version: "8.4"
