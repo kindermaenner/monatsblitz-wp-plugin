@@ -13,9 +13,11 @@ class YearStaticPageHandler
         global $wpdb;
 
         if ($year < 2000 || $year > 2100) {
-            return new \WP_Error('invalid_data',
-                                 sprintf('Ungultiges Jahr: "%d".', $year),
-                                 ['status' => 400]);
+            return new \WP_Error(
+                'invalid_data',
+                sprintf('Ungultiges Jahr: "%d".', $year),
+                ['status' => 400]
+            );
         }
 
         $templateName = sanitize_text_field((string)get_option('monatsblitz_template_static_page', ''));
@@ -301,9 +303,11 @@ class YearStaticPageHandler
 
     private function removePageFromMenus(int $pageId): void
     {
-        if (!function_exists('wp_get_nav_menus')
+        if (
+            !function_exists('wp_get_nav_menus')
             || !function_exists('wp_get_nav_menu_items')
-            || !function_exists('wp_delete_post')) {
+            || !function_exists('wp_delete_post')
+        ) {
             return;
         }
 
@@ -335,5 +339,4 @@ class YearStaticPageHandler
             }
         }
     }
-
 }

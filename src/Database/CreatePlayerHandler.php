@@ -53,7 +53,6 @@ class CreatePlayerHandler
         $responses = [];
 
         foreach ($entries as $playerEntry) {
-
             if (!is_array($playerEntry)) {
                 return new \WP_Error('invalid_data', 'Each player must be an object', ['status' => 400]);
             }

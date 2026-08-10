@@ -10,13 +10,15 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class Api {
-
-    public static function init() {
+class Api
+{
+    public static function init()
+    {
         add_action('rest_api_init', [self::class, 'register_routes']);
     }
 
-    public static function register_routes() {
+    public static function register_routes()
+    {
 
         $rest_api_namespace = 'monatsblitz/v1';
 
@@ -93,7 +95,8 @@ class Api {
         ]);
     }
 
-    public static function verify_api_key() {
+    public static function verify_api_key()
+    {
         $api_key = get_option('monatsblitz_api_key');
         $header_key = $_SERVER['HTTP_X_MB_KEY'] ?? '';
 
@@ -107,5 +110,4 @@ class Api {
 
         return true;
     }
-
 }

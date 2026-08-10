@@ -38,7 +38,6 @@ class CreateResultHandler
         $responses = [];
 
         foreach ($params['results'] as $resultEntry) {
-
             if (!is_array($resultEntry)) {
                 return new \WP_Error('invalid_data', 'Each result must be an object', ['status' => 400]);
             }

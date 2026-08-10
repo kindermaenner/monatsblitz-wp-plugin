@@ -34,7 +34,7 @@ class RecreatePostsHandler
 
             $processed++;
 
-            $request = new class($tournamentId) {
+            $request = new class ($tournamentId) {
                 private array $params;
 
                 public function __construct(int $tournamentId)

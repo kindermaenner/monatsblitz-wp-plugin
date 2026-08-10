@@ -10,11 +10,12 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class Admin {
-
-    public static function init() {
+class Admin
+{
+    public static function init()
+    {
         add_action('admin_menu', [self::class, 'register_menu']);
-        add_action('admin_init', function() {
+        add_action('admin_init', function () {
             register_setting('monatsblitz_settings', 'monatsblitz_author');
             register_setting('monatsblitz_settings', 'monatsblitz_template');
             register_setting('monatsblitz_settings', 'monatsblitz_template_static_page');
@@ -24,7 +25,8 @@ class Admin {
         });
     }
 
-    public static function register_menu() {
+    public static function register_menu()
+    {
         add_menu_page(
             'Monatsblitz',
             'Monatsblitz',
@@ -46,7 +48,8 @@ class Admin {
         );
     }
 
-    public static function render_settings_page() {
+    public static function render_settings_page()
+    {
 
         // Aktuelle Werte laden
         $author    = get_option('monatsblitz_author', '');
@@ -58,7 +61,6 @@ class Admin {
 
         // Wenn "Neuen Key generieren" gedrückt wurde (eigenes Formular!)
         if (isset($_POST['monatsblitz_generate_key'])) {
-
             check_admin_referer('monatsblitz_generate_key_action');
 
             $new_key = wp_generate_password(32, false, false);
@@ -152,7 +154,8 @@ class Admin {
         echo '</div>';
     }
 
-    public static function render_page() {
+    public static function render_page()
+    {
         global $wpdb;
 
         // 👉 Reset-Action verarbeiten
@@ -189,7 +192,6 @@ class Admin {
         echo '<tbody>';
 
         foreach ($tables as $key => $table) {
-
             $exists = $wpdb->get_var(
                 $wpdb->prepare("SHOW TABLES LIKE %s", $table)
             );
@@ -200,7 +202,6 @@ class Admin {
 
                 $link = admin_url('admin.php?page=monatsblitz&table=' . $key);
                 $label = "<a href='$link'><strong>$table</strong></a>";
-
             } else {
                 $count = '-';
                 $status = '❌ fehlt';
@@ -219,7 +220,8 @@ class Admin {
         echo '</div>';
     }
 
-    private static function handle_actions() {
+    private static function handle_actions()
+    {
 
         if (
             isset($_POST['monatsblitz_action']) &&
@@ -243,7 +245,8 @@ class Admin {
         }
     }
 
-    private static function reset_tables() {
+    private static function reset_tables()
+    {
         global $wpdb;
 
         $prefix = $wpdb->prefix . 'monatsblitz_';
@@ -269,7 +272,8 @@ class Admin {
         DatabaseSchema::reset_tables();
     }
 
-    private static function render_table_detail($table) {
+    private static function render_table_detail($table)
+    {
         global $wpdb;
 
         echo "<h2>Detailansicht: $table</h2>";

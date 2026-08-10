@@ -40,7 +40,6 @@ class CreateGameHandler
         $responses = [];
 
         foreach ($params['games'] as $gameEntry) {
-
             if (!is_array($gameEntry)) {
                 return new \WP_Error('invalid_data', 'Each game must be an object', ['status' => 400]);
             }

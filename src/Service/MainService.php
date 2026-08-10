@@ -38,7 +38,7 @@ class MainService
 
         return rest_ensure_response($result);
     }
-    
+
     public static function createGame($request)
     {
         $result = (new CreateGameHandler())->handle($request);
@@ -121,5 +121,4 @@ class MainService
 
         return rest_ensure_response($result);
     }
-
 }

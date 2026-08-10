@@ -10,17 +10,20 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class DatabaseSchema {
-
-    public static function init() {
+class DatabaseSchema
+{
+    public static function init()
+    {
         self::create_tables();
     }
 
-    public static function reset_tables() {
+    public static function reset_tables()
+    {
         self::create_tables();
     }
 
-    private static function create_tables() {
+    private static function create_tables()
+    {
         global $wpdb;
 
         $charset_collate = $wpdb->get_charset_collate();
