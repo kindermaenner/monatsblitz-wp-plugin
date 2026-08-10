@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 
 on:
   push:
@@ -6,13 +6,7 @@ on:
   pull_request:
 
 jobs:
-  lint:
-    uses: kindermaenner/ci-templates/.github/workflows/php-lint.yml@main
-    with:
-      php-version: "8.4"
-
   tests:
-    needs: lint
     uses: kindermaenner/ci-templates/.github/workflows/php-tests.yml@main
     with:
       php-version: "8.4"
@@ -34,10 +28,16 @@ jobs:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-  badges:
+  sonar-badges:
     needs: sonar
     if: github.ref == 'refs/heads/main'
     uses: kindermaenner/ci-templates/.github/workflows/common-badge-trigger.yml@main
     secrets:
       BADGE_APP_ID: ${{ secrets.BADGE_APP_ID }}
       BADGE_APP_PRIVATE_KEY: ${{ secrets.BADGE_APP_PRIVATE_KEY }}
+
+  lint:
+    needs: tests
+    uses: kindermaenner/ci-templates/.github/workflows/php-lint.yml@main
+    with:
+      php-version: "8.4"
