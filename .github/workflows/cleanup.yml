@@ -1,0 +1,17 @@
+name: Cleanup old workflow data
+
+on:
+  schedule:
+    - cron: "0 3 * * 0"   
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    uses: kindermaenner/ci-templates/.github/workflows/common-github-cleanup.yml@main
+    with:
+      workflow-runs-retention-days: 7
+      artifacts-retention-days: 7
