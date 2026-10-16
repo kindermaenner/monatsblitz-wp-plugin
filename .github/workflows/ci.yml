@@ -11,18 +11,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  tests:
-    uses: kindermaenner/ci-templates/.github/workflows/php-tests.yml@main
+  wordpress-plugin-pipeline:
+    uses: kindermaenner/ci-templates/.github/workflows/wordpress-plugin-pipeline.yml@main
     with:
       php-version: "8.4"
-      coverage-file: "coverage.xml"
-      upload-coverage: true
-
-  sonar:
-    needs: tests
-    if: github.ref == 'refs/heads/main'
-    uses: kindermaenner/ci-templates/.github/workflows/common-sonar-cli.yml@main
-    with:
+      run-sonar: ${{ github.ref == 'refs/heads/main' }}
+      trigger-badges: ${{ github.ref == 'refs/heads/main' }}
       sonar-properties: >
         -Dsonar.projectKey=${{ github.event.repository.name }}
         -Dsonar.sources=src
@@ -33,17 +27,5 @@ jobs:
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-
-  sonar-badges:
-    needs: sonar
-    if: github.ref == 'refs/heads/main'
-    uses: kindermaenner/ci-templates/.github/workflows/common-badge-trigger.yml@main
-    secrets:
       BADGE_APP_ID: ${{ secrets.BADGE_APP_ID }}
       BADGE_APP_PRIVATE_KEY: ${{ secrets.BADGE_APP_PRIVATE_KEY }}
-
-  lint:
-    uses: kindermaenner/ci-templates/.github/workflows/php-lint.yml@main
-    with:
-      php-version: "8.4"
-
