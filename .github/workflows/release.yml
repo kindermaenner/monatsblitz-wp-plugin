@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Run plugin CI
+    uses: kindermaenner/ci-templates/.github/workflows/wordpress-plugin-pipeline.yml@main
+    with:
+      php-version: "8.4"
+      run-sonar: false
+      trigger-badges: false
+
+  release:
+    name: Build and publish release
+    needs: validate
+    uses: kindermaenner/ci-templates/.github/workflows/wordpress-plugin-release.yml@main
+    with:
+      plugin-file: monatsblitz.php
+      plugin-slug: monatsblitz
+      ftp-target-path: kindermaenner.de/plugin-updates/monatsblitz
+      public-url: https://kindermaenner.de/plugin-updates/monatsblitz
+      php-version: "8.4"
+    secrets:
+      FTP_HOST: ${{ secrets.FTP_HOST }}
+      FTP_USER: ${{ secrets.FTP_USER }}
+      FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}

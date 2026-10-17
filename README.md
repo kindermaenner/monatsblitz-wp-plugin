@@ -57,16 +57,28 @@ We automate the boring parts so there is more time for what really matters in cl
 - Creates or updates a yearly static page (slug `blitz-YYYY`) from a configured page template.
 - Replaces template placeholders such as `{{month_name}}`, `{{year}}`, `{{date}}`, `{{winner_name}}`, `{{winner_games}}`, `{{winner_points}}`, `{{table}}`, and more.
 
-## Usage
+## Installation
 
-1. Place the plugin in `wp-content/plugins/monatsblitz`.
-2. Activate it in the WordPress admin.
-3. Create a post titled `Template_Monatsblitz` and use it as a template.
+1. Download the latest Monatsblitz ZIP:
+
+   ```text
+   https://kindermaenner.de/plugin-updates/monatsblitz/latest/monatsblitz.zip
+   ```
+
+2. In WordPress, open **Plugins → Add New Plugin → Upload Plugin**.
+3. Select the downloaded ZIP, choose **Install Now**, and then **Activate Plugin**.
+4. Create a post titled `Template_Monatsblitz` and use it as a template.
    - The template can include HTML, Kadence blocks, and CSS.
    - Placeholders are replaced during the finalize call.
-4. Your app or an external system uses the API to store tournament data.
-5. After all results are complete, call `POST /wp-json/monatsblitz/v1/finalize`.
-6. The plugin creates a new published post with the formatted results.
+5. Your app or an external system uses the API to store tournament data.
+6. After all results are complete, call `POST /wp-json/monatsblitz/v1/finalize`.
+7. The plugin creates a new published post with the formatted results.
+
+### Updates
+
+New releases are offered through the WordPress plugin updater. To check manually, open **Dashboard → Updates** (or **Plugins → Installed Plugins**) and check for updates. When a Monatsblitz update is available, choose **Update now**. Back up the site before updating, as with any plugin.
+
+Versioned releases are also available at `https://kindermaenner.de/plugin-updates/monatsblitz/versions/`. Each release ZIP includes the production dependencies required by the plugin.
 
 ## REST API
 

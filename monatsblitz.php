@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name: Monatsblitz
  * Description: Verwaltung von Monatsblitz-Turnieren.
@@ -18,6 +19,13 @@ define('MB_PLUGIN_URL', plugin_dir_url(__FILE__));
 require_once __DIR__ . '/vendor/autoload.php';
 
 define('MONATSBLITZ_PLUGIN_PATH', plugin_dir_path(__FILE__));
+
+$pluginData = get_file_data(__FILE__, ['Version' => 'Version']);
+new \Monatsblitz\Update\PluginUpdater(
+    __FILE__,
+    $pluginData['Version'],
+    'https://kindermaenner.de/plugin-updates/monatsblitz/manifest.json'
+);
 
 // 🔌 Aktivierung (Tabellen anlegen)
 register_activation_hook(__FILE__, [\Monatsblitz\Database\DatabaseSchema::class, 'init']);
