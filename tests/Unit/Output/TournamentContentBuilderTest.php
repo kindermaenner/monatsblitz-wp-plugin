@@ -33,6 +33,7 @@ it('builds a cross table with totals and pending cell markers', function () {
     expect($html)->toContain('class="mb-cell-empty mb-cell-pending"');
     expect($html)->toContain('<th>Punkte</th><th>Platz</th>');
     expect($html)->toContain('>1<');
+    expect($html)->not->toContain('<style');
 });
 
 it('builds a cross table for a specific round only', function () {

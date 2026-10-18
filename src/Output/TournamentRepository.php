@@ -90,4 +90,17 @@ class TournamentRepository
             )
         );
     }
+
+    public function markFinalized(int $tournament_id): void
+    {
+        global $wpdb;
+
+        $wpdb->update(
+            $wpdb->prefix . 'monatsblitz_tournaments',
+            ['status' => 'finalized'],
+            ['id' => $tournament_id],
+            ['%s'],
+            ['%d']
+        );
+    }
 }

@@ -64,6 +64,7 @@ class CreateTournamentHandler
 
         $mode        = sanitize_text_field($params['mode'] ?? '');
         $round_count = intval($params['round_count'] ?? 1);
+        $status      = 'open';
 
         if ($mode === '') {
             return new \WP_Error('invalid_data', 'Mode is required', ['status' => 400]);
@@ -82,9 +83,10 @@ class CreateTournamentHandler
                 'month'       => $monthInt,
                 'day'         => $dayInt,
                 'mode'        => $mode,
-                'round_count' => $round_count
+                'round_count' => $round_count,
+                'status'      => $status
             ],
-            ['%d', '%d', '%d', '%s', '%d']
+            ['%d', '%d', '%d', '%s', '%d', '%s']
         );
 
         if ($insertResult === false) {
@@ -118,6 +120,7 @@ class CreateTournamentHandler
                         'day' => $dayInt,
                         'mode' => $mode,
                         'round_count' => $round_count,
+                        'status' => $status,
                     ],
                 ]
             );

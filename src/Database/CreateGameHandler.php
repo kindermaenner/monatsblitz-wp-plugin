@@ -84,15 +84,19 @@ class CreateGameHandler
 
         [$player1_id, $player2_id, $result] = $this->normalizePlayers($player1_id, $player2_id, $result);
 
-        $exists = $wpdb->get_var(
+        $status = $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT id FROM {$wpdb->prefix}monatsblitz_tournaments WHERE id = %d",
+                "SELECT status FROM {$wpdb->prefix}monatsblitz_tournaments WHERE id = %d",
                 $tournament_id
             )
         );
 
-        if (!$exists) {
+        if ($status === null) {
             return new \WP_Error('invalid_tournament', 'Turnier existiert nicht', ['status' => 404]);
+        }
+
+        if ($status === 'finalized') {
+            return new \WP_Error('tournament_finalized', 'Turnier ist bereits finalisiert', ['status' => 403]);
         }
 
         $wpdb->insert(
@@ -143,15 +147,19 @@ class CreateGameHandler
             return new \WP_Error('invalid_game', 'Spiel existiert nicht', ['status' => 404]);
         }
 
-        $tournament_exists = $wpdb->get_var(
+        $tournament_status = $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT id FROM {$wpdb->prefix}monatsblitz_tournaments WHERE id = %d",
+                "SELECT status FROM {$wpdb->prefix}monatsblitz_tournaments WHERE id = %d",
                 $tournament_id
             )
         );
 
-        if (!$tournament_exists) {
+        if ($tournament_status === null) {
             return new \WP_Error('invalid_tournament', 'Turnier existiert nicht', ['status' => 404]);
+        }
+
+        if ($tournament_status === 'finalized') {
+            return new \WP_Error('tournament_finalized', 'Turnier ist bereits finalisiert', ['status' => 403]);
         }
 
         $duplicate_game = $wpdb->get_var(

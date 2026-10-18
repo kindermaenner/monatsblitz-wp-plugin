@@ -1,0 +1,28 @@
+table.monatsblitz {
+  border-collapse: collapse;
+  width: 100%;
+  text-align: center;
+  font-size: 0.95rem;
+  margin: 1em 0;
+}
+
+table.monatsblitz th,
+table.monatsblitz td {
+  border: 1px solid #444;
+  padding: 6px 8px;
+}
+
+table.monatsblitz th {
+  background-color: #f0f0f0;
+  font-weight: 600;
+}
+
+table.monatsblitz caption {
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 0.5em;
+}
+
+table.monatsblitz tbody tr:nth-child(even) {
+  background-color: #fafafa;
+}

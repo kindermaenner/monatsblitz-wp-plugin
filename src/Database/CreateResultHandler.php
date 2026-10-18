@@ -72,16 +72,20 @@ class CreateResultHandler
             return new \WP_Error('invalid_data', 'Turnier-ID und Spieler-ID erforderlich', ['status' => 400]);
         }
 
-        // Turnier existiert?
-        $tournament_exists = $wpdb->get_var(
+        // Turnier existiert und ist nicht finalisiert?
+        $tournament_status = $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT id FROM {$wpdb->prefix}monatsblitz_tournaments WHERE id = %d",
+                "SELECT status FROM {$wpdb->prefix}monatsblitz_tournaments WHERE id = %d",
                 $tournament_id
             )
         );
 
-        if (!$tournament_exists) {
+        if ($tournament_status === null) {
             return new \WP_Error('invalid_tournament', 'Turnier existiert nicht', ['status' => 404]);
+        }
+
+        if ($tournament_status === 'finalized') {
+            return new \WP_Error('tournament_finalized', 'Turnier ist bereits finalisiert', ['status' => 403]);
         }
 
         // Spieler existiert?

@@ -44,7 +44,7 @@ it('finalizes a tournament successfully using the service', function () {
     $GLOBALS['mb_test_template_post'] = (object) [
         'ID' => 15,
         'post_title' => 'TemplateSuccess',
-        'post_content' => '<article>{{table}}</article>',
+        'post_content' => '<article>{{table}}</article> table.monatsblitz { border-collapse: collapse; width: 100%; text-align: center; font-size: 0.95rem; margin: 1em 0; } table.monatsblitz th, table.monatsblitz td { border: 1px solid #444; padding: 6px 8px; } table.monatsblitz th { background-color: #f0f0f0; font-weight: 600; } table.monatsblitz caption { font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5em; } table.monatsblitz tbody tr:nth-child(even) { background-color: #fafafa; }',
     ];
     $GLOBALS['mb_test_next_post_id'] = 810;
     $GLOBALS['mb_test_get_posts_queue'] = [[], [], [], []];
@@ -82,4 +82,8 @@ it('finalizes a tournament successfully using the service', function () {
     expect($result['post_id'])->toBe(810);
     expect($GLOBALS['mb_test_last_inserted_post'])->not->toBeNull();
     expect($GLOBALS['mb_test_last_inserted_post']['post_content'])->toContain('<article>');
+    expect($GLOBALS['mb_test_last_inserted_post']['post_content'])->not->toContain('table.monatsblitz {');
+    expect($wpdb->last_update_table)->toBe('wp_monatsblitz_tournaments');
+    expect($wpdb->last_update_data['status'])->toBe('finalized');
+    expect($wpdb->last_update_where['id'])->toBe(15);
 });

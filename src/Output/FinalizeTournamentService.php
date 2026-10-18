@@ -137,6 +137,8 @@ class FinalizeTournamentService
             $year_page = (new YearStaticPageHandler())->createOrUpdate((int)$tournament['year']);
         }
 
+        $this->repository->markFinalized($tournament_id);
+
         return [
             'success'       => true,
             'tournament_id' => $tournament_id,

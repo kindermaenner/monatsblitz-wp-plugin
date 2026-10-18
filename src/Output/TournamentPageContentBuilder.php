@@ -8,6 +8,15 @@ class TournamentPageContentBuilder
 {
     public function buildContent(string $template_content, array $replacements): string
     {
+        $template_content = preg_replace(
+            '~(?:<style\b[^>]*>\s*)?table\.monatsblitz\b(?:[^{}]*\{[^{}]*\}\s*)+(?:</style\s*>)?~i',
+            '',
+            $template_content
+        );
+        if ($template_content === null) {
+            throw new \RuntimeException('Could not remove table styles from tournament template.');
+        }
+
         return str_replace(
             array_keys($replacements),
             array_values($replacements),

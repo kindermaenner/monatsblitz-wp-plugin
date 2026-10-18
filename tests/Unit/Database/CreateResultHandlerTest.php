@@ -159,3 +159,27 @@ it('rejects invalid batch result payloads', function () {
     expect($result)->toBeInstanceOf(WP_Error::class);
 });
 
+it('fails to create result when tournament is finalized', function () {
+    global $wpdb;
+
+    $wpdb->get_var_queue = ['finalized'];
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'tournament_id' => 1,
+                'player_id' => 2,
+                'points' => 3.5,
+                'rank' => 1
+            ];
+        }
+    };
+
+    $handler = new CreateResultHandler();
+    $result  = $handler->handle($request);
+
+    expect($result)->toBeInstanceOf(WP_Error::class);
+    expect($result->get_error_code())->toBe('tournament_finalized');
+    expect($result->get_error_data()['status'])->toBe(403);
+});
+

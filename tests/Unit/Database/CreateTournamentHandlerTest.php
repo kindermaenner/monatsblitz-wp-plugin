@@ -91,6 +91,8 @@ it('creates tournament with mode and default round_count', function () {
     expect($result['tournament_id'])->toBe(77);
     expect($wpdb->last_insert_data['mode'])->toBe('schweizer');
     expect($wpdb->last_insert_data['round_count'])->toBe(1);
+    expect($wpdb->last_insert_data['status'])->toBe('open');
+    expect($wpdb->last_insert_format)->toBe(['%d', '%d', '%d', '%s', '%d', '%s']);
 });
 
 it('fails when tournament mode is missing', function () {

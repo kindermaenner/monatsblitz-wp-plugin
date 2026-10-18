@@ -51,6 +51,7 @@ class DatabaseSchema
                 day TINYINT NOT NULL,
                 mode VARCHAR(30) NOT NULL,
                 round_count TINYINT(1) NOT NULL DEFAULT 1,
+                status ENUM('open','finalized') NOT NULL DEFAULT 'open',
 
                 PRIMARY KEY (id),
                 UNIQUE KEY unique_tournament_date (year, month, day)

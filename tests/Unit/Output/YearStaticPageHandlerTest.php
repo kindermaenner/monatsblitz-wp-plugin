@@ -77,6 +77,7 @@ it('creates yearly page and skips non-blitz modes and invalid months', function 
     expect($result['success'])->toBeTrue();
     expect($content)->toContain('<h1>2026</h1>');
     expect($content)->toContain('Gueltig Spieler');
+    expect($content)->not->toContain('<style');
     expect($content)->not->toContain('Nicht Blitz');
     expect($content)->not->toContain('Ungueltiger Monat');
     expect($GLOBALS['mb_test_post_meta_updates'])->toContainEqual([

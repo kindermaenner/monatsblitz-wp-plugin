@@ -403,6 +403,21 @@ if (!class_exists('WP_Error')) {
             public string $message = '',
             public array $data = []
         ) {}
+
+        public function get_error_code() {
+            return $this->code;
+        }
+
+        public function get_error_message() {
+            return $this->message;
+        }
+
+        public function get_error_data($key = '') {
+            if ($key !== '' && is_array($this->data) && array_key_exists($key, $this->data)) {
+                return $this->data[$key];
+            }
+            return $this->data;
+        }
     }
 }
 

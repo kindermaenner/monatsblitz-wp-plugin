@@ -9,7 +9,7 @@ class TournamentContentBuilder
     public static function buildCrossTable(array $players, array $games, bool $include_totals, ?int $round = null): string
     {
         $game_map = static::buildGameMap($games, $round);
-        $table_html = static::buildCrossTableStyle();
+        $table_html = static::buildCrossTableStart();
         $table_html .= static::buildCrossTableHeader(count($players), $include_totals);
         $table_html .= '<tbody>';
 
@@ -39,12 +39,9 @@ class TournamentContentBuilder
         return $game_map;
     }
 
-    private static function buildCrossTableStyle(): string
+    private static function buildCrossTableStart(): string
     {
-        $css_file = MONATSBLITZ_PLUGIN_PATH . 'assets/css/monatsblitz-cross-table.css';
-        $css = file_get_contents($css_file);
-
-        return "<style>\n" . $css . "\n</style>\n" . '<div class="mb-crosstable-scroll">' . '<table class="monatsblitz-crosstable">';
+        return '<div class="mb-crosstable-scroll"><table class="monatsblitz-crosstable">';
     }
 
     private static function buildCrossTableHeader(int $player_count, bool $include_totals): string

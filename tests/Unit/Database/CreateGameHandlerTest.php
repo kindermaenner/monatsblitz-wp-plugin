@@ -205,3 +205,53 @@ it('updates existing game when game_id is provided', function () {
     expect($wpdb->last_update_data['player2_id'])->toBe(8);
     expect($wpdb->last_update_data['result'])->toBe('0:1');
 });
+
+it('fails to create game when tournament is finalized', function () {
+    global $wpdb;
+
+    $wpdb->get_var_result = 'finalized';
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'tournament_id' => 9,
+                'player1_id' => 1,
+                'player2_id' => 2,
+                'result' => '1:0'
+            ];
+        }
+    };
+
+    $handler = new CreateGameHandler();
+    $result  = $handler->handle($request);
+
+    expect($result)->toBeInstanceOf(WP_Error::class);
+    expect($result->get_error_code())->toBe('tournament_finalized');
+    expect($result->get_error_data()['status'])->toBe(403);
+});
+
+it('fails to update game when tournament is finalized', function () {
+    global $wpdb;
+
+    $wpdb->get_var_queue = [99, 'finalized'];
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'game_id' => 99,
+                'tournament_id' => 9,
+                'player1_id' => 1,
+                'player2_id' => 2,
+                'leg_type' => 1,
+                'result' => '1:0'
+            ];
+        }
+    };
+
+    $handler = new CreateGameHandler();
+    $result  = $handler->handle($request);
+
+    expect($result)->toBeInstanceOf(WP_Error::class);
+    expect($result->get_error_code())->toBe('tournament_finalized');
+    expect($result->get_error_data()['status'])->toBe(403);
+});
