@@ -14,7 +14,7 @@ class TournamentPageContentBuilder
             $template_content
         );
         if ($template_content === null) {
-            throw new \RuntimeException('Could not remove table styles from tournament template.');
+            throw new TemplateProcessingException('Could not remove table styles from tournament template.');
         }
 
         return str_replace(

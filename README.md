@@ -147,6 +147,8 @@ Base path: `/wp-json/monatsblitz/v1`
 - `POST /game`
   - Creates a game.
   - If `game_id` is provided, updates an existing game.
+  - If the pairing `(tournament_id, player1_id, player2_id, leg_type)` already exists, it automatically updates the existing game (seamless upsert).
+  - Rejects modifications with HTTP 403 if the tournament is already `finalized`.
   - `PUT /game` is also supported for updates.
   - Alternatively accepts a batch payload via `games`.
   - Body (JSON):
