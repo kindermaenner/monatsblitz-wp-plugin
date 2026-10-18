@@ -99,6 +99,22 @@ class CreateGameHandler
             return new \WP_Error('tournament_finalized', 'Turnier ist bereits finalisiert', ['status' => 403]);
         }
 
+        $existing_game = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT id FROM {$wpdb->prefix}monatsblitz_games
+                 WHERE tournament_id = %d AND player1_id = %d AND player2_id = %d AND leg_type = %d",
+                $tournament_id,
+                $player1_id,
+                $player2_id,
+                $leg_type
+            )
+        );
+
+        if ($existing_game && isset($existing_game->id)) {
+            $params['game_id'] = intval($existing_game->id);
+            return $this->updateSingle($wpdb, $params);
+        }
+
         $wpdb->insert(
             $wpdb->prefix . 'monatsblitz_games',
             [

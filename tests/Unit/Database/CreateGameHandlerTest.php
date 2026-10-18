@@ -255,3 +255,31 @@ it('fails to update game when tournament is finalized', function () {
     expect($result->get_error_code())->toBe('tournament_finalized');
     expect($result->get_error_data()['status'])->toBe(403);
 });
+
+it('automatically updates existing game without game_id if pairing already exists', function () {
+    global $wpdb;
+
+    $wpdb->get_var_queue = ['open', 77, 'open', null];
+    $wpdb->get_row_result = (object)['id' => 77];
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'tournament_id' => 9,
+                'player1_id' => 1,
+                'player2_id' => 2,
+                'leg_type' => 1,
+                'result' => '0:1'
+            ];
+        }
+    };
+
+    $handler = new CreateGameHandler();
+    $result  = $handler->handle($request);
+
+    expect($result['success'])->toBeTrue();
+    expect($result['game_id'])->toBe(77);
+    expect($result['message'])->toBe('Spiel aktualisiert');
+    expect($wpdb->last_update_data['result'])->toBe('0:1');
+    expect($wpdb->last_update_where['id'])->toBe(77);
+});
