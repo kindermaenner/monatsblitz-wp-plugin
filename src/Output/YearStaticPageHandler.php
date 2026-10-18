@@ -13,7 +13,7 @@ class YearStaticPageHandler
         $this->contentBuilder = $contentBuilder ?? new YearStaticContentBuilder();
     }
 
-    public function createOrUpdate(int $year, bool $force = false): array|\WP_Error
+    public function createOrUpdate(int $year): array|\WP_Error
     {
         global $wpdb;
 

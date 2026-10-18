@@ -102,7 +102,7 @@ class MainService
         $params = $request->get_json_params();
         $year = intval($params['year'] ?? 0);
 
-        $result = (new YearStaticPageHandler())->createOrUpdate($year, true);
+        $result = (new YearStaticPageHandler())->createOrUpdate($year);
 
         if ($result instanceof \WP_Error) {
             return $result;
