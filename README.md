@@ -47,9 +47,10 @@ We automate the boring parts so there is more time for what really matters in cl
 
 ## What the Plugin Does
 
-- Creates the required tables on activation:
+- Creates the required tables on activation (and automatically upgrades the schema on plugin updates):
   - `wp_monatsblitz_players`
   - `wp_monatsblitz_tournaments`
+  - `wp_monatsblitz_tournament_players`
   - `wp_monatsblitz_games`
   - `wp_monatsblitz_results`
 - Provides REST API endpoints for managing players, tournaments, games, and results.
@@ -130,17 +131,18 @@ Base path: `/wp-json/monatsblitz/v1`
 ### Tournaments
 
 - `POST /tournament`
-  - Creates a new tournament.
+  - Creates a new tournament (or reuses and resets an existing `open` tournament on the same date).
   - Body (JSON):
     - `date`: date in format `YYYY-MM-DD`
     - `mode`: tournament mode (for example `3+5`, `5+0`)
     - `round_count` (optional): number of rounds, default `1`
+    - `player_ids` (optional): array of participating player IDs stored in `monatsblitz_tournament_players`
 
 - `GET /tournaments`
   - Returns all tournaments.
 
 - `GET /tournament/{id}`
-  - Returns tournament details for a given ID.
+  - Returns tournament details for a given ID, including assigned `player_ids`.
 
 ### Games
 
@@ -283,9 +285,10 @@ Base path: `/wp-json/monatsblitz/v1`
 
 The project uses a relational data model specifically designed for Monatsblitz tournament requirements.
 
-The database consists of four tables:
+The database consists of five tables:
 - monatsblitz_players: player management
 - monatsblitz_tournaments: tournament metadata
+- monatsblitz_tournament_players: assigned tournament participants
 - monatsblitz_games: all played games
 - monatsblitz_results: final results per player and tournament
 
@@ -301,6 +304,7 @@ The full schema is shown in the following diagram:
 
 - monatsblitz_players: UNIQUE(forename, surname)
 - monatsblitz_tournaments: UNIQUE(year, month, day)
+- monatsblitz_tournament_players: UNIQUE(tournament_id, player_id)
 - monatsblitz_games: UNIQUE(tournament_id, player1_id, player2_id, leg_type)
 - monatsblitz_results: UNIQUE(tournament_id, player_id)
 

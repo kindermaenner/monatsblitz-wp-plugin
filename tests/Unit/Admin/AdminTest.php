@@ -73,7 +73,7 @@ it('generates and stores a new api key from settings page', function () {
 it('renders dashboard overview table', function () {
     global $wpdb;
 
-    $wpdb->get_var_queue = ['yes', 4, 'yes', 2, null, 'yes', 7];
+    $wpdb->get_var_queue = ['yes', 4, 'yes', 2, 'yes', 12, null, 'yes', 7];
 
     ob_start();
     Admin::render_page();
@@ -83,6 +83,7 @@ it('renders dashboard overview table', function () {
     expect($html)->toContain('vorhanden');
     expect($html)->toContain('fehlt');
     expect($html)->toContain('wp_monatsblitz_players');
+    expect($html)->toContain('wp_monatsblitz_tournament_players');
 });
 
 it('renders table detail when table is requested', function () {
@@ -157,6 +158,7 @@ it('resets tables when action is valid', function () {
     $html = ob_get_clean();
 
     expect($html)->toContain('Tabellen wurden neu erstellt');
+    expect(in_array('DROP TABLE IF EXISTS wp_monatsblitz_tournament_players', $wpdb->queries, true))->toBeTrue();
     expect(in_array('DROP TABLE IF EXISTS wp_monatsblitz_games', $wpdb->queries, true))->toBeTrue();
     expect($wpdb->queries)->toContain('SET FOREIGN_KEY_CHECKS=0');
     expect($wpdb->queries)->toContain('SET FOREIGN_KEY_CHECKS=1');

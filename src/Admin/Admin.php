@@ -162,10 +162,11 @@ class Admin
         self::handle_actions();
 
         $tables = [
-            'players'     => $wpdb->prefix . 'monatsblitz_players',
-            'tournaments' => $wpdb->prefix . 'monatsblitz_tournaments',
-            'games'       => $wpdb->prefix . 'monatsblitz_games',
-            'results'     => $wpdb->prefix . 'monatsblitz_results',
+            'players'            => $wpdb->prefix . 'monatsblitz_players',
+            'tournaments'        => $wpdb->prefix . 'monatsblitz_tournaments',
+            'tournament_players' => $wpdb->prefix . 'monatsblitz_tournament_players',
+            'games'              => $wpdb->prefix . 'monatsblitz_games',
+            'results'            => $wpdb->prefix . 'monatsblitz_results',
         ];
 
         echo '<div class="wrap">';
@@ -252,6 +253,7 @@ class Admin
         $prefix = $wpdb->prefix . 'monatsblitz_';
 
         $tables = [
+            $prefix . 'tournament_players',
             $prefix . 'games',
             $prefix . 'results',
             $prefix . 'tournaments',
