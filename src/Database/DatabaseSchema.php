@@ -12,9 +12,25 @@ if (!defined('ABSPATH')) {
 
 class DatabaseSchema
 {
+    public const DB_VERSION = '1.1';
+
     public static function init()
     {
         self::create_tables();
+        if (function_exists('update_option')) {
+            update_option('monatsblitz_db_version', self::DB_VERSION);
+        }
+    }
+
+    public static function maybe_upgrade(): void
+    {
+        $installed_version = function_exists('get_option')
+            ? (string) get_option('monatsblitz_db_version', '')
+            : '';
+
+        if ($installed_version !== self::DB_VERSION) {
+            self::init();
+        }
     }
 
     public static function reset_tables()
@@ -26,13 +42,18 @@ class DatabaseSchema
     {
         global $wpdb;
 
+        if (!function_exists('dbDelta') && defined('ABSPATH') && file_exists(ABSPATH . 'wp-admin/includes/upgrade.php')) {
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        }
+
         $charset_collate = $wpdb->get_charset_collate();
 
         // Tabellen-Namen
-        $players_table     = $wpdb->prefix . 'monatsblitz_players';
-        $tournaments_table = $wpdb->prefix . 'monatsblitz_tournaments';
-        $games_table       = $wpdb->prefix . 'monatsblitz_games';
-        $results_table     = $wpdb->prefix . 'monatsblitz_results';
+        $players_table            = $wpdb->prefix . 'monatsblitz_players';
+        $tournaments_table        = $wpdb->prefix . 'monatsblitz_tournaments';
+        $tournament_players_table = $wpdb->prefix . 'monatsblitz_tournament_players';
+        $games_table              = $wpdb->prefix . 'monatsblitz_games';
+        $results_table            = $wpdb->prefix . 'monatsblitz_results';
 
         $sql = "
             CREATE TABLE {$players_table} (
@@ -55,6 +76,19 @@ class DatabaseSchema
 
                 PRIMARY KEY (id),
                 UNIQUE KEY unique_tournament_date (year, month, day)
+            ) $charset_collate;
+
+            CREATE TABLE {$tournament_players_table} (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                tournament_id BIGINT UNSIGNED NOT NULL,
+                player_id BIGINT UNSIGNED NOT NULL,
+
+                PRIMARY KEY (id),
+
+                UNIQUE KEY unique_tournament_player (tournament_id, player_id),
+
+                KEY idx_tournament (tournament_id),
+                KEY idx_player (player_id)
             ) $charset_collate;
 
             CREATE TABLE {$games_table} (
@@ -91,5 +125,12 @@ class DatabaseSchema
         ";
 
         dbDelta($sql);
+
+        if (isset($wpdb) && method_exists($wpdb, 'query')) {
+            $wpdb->query(
+                "INSERT IGNORE INTO {$tournament_players_table} (tournament_id, player_id)
+                 SELECT tournament_id, player_id FROM {$results_table}"
+            );
+        }
     }
 }

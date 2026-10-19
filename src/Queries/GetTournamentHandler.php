@@ -47,6 +47,28 @@ class GetTournamentHandler
             $result['date'] = sprintf('%04d-%02d-%02d', (int)$result['year'], (int)$result['month'], (int)$result['day']);
         }
 
+        $players_table = $wpdb->prefix . 'monatsblitz_tournament_players';
+        $player_rows = method_exists($wpdb, 'get_results')
+            ? $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT player_id FROM {$players_table} WHERE tournament_id = %d ORDER BY id ASC",
+                    $tournament_id
+                ),
+                ARRAY_A
+            )
+            : [];
+
+        $player_ids = [];
+        if (is_array($player_rows)) {
+            foreach ($player_rows as $row) {
+                $pid = is_array($row) ? intval($row['player_id'] ?? 0) : intval($row->player_id ?? 0);
+                if ($pid > 0) {
+                    $player_ids[] = $pid;
+                }
+            }
+        }
+        $result['player_ids'] = $player_ids;
+
         return $result;
     }
 }

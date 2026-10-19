@@ -65,6 +65,7 @@ class CreateTournamentHandler
         $mode        = sanitize_text_field($params['mode'] ?? '');
         $round_count = intval($params['round_count'] ?? 1);
         $status      = 'open';
+        $player_ids  = $this->extractPlayerIds($params['player_ids'] ?? []);
 
         if ($mode === '') {
             return new \WP_Error('invalid_data', 'Mode is required', ['status' => 400]);
@@ -93,6 +94,44 @@ class CreateTournamentHandler
             $dbError = $wpdb->last_error;
 
             if (stripos($dbError, 'Duplicate entry') !== false) {
+                if (method_exists($wpdb, 'prepare') && method_exists($wpdb, 'get_row')) {
+                    $existing = $wpdb->get_row(
+                        $wpdb->prepare(
+                            "SELECT id, status FROM {$table} WHERE year = %d AND month = %d AND day = %d",
+                            $yearInt,
+                            $monthInt,
+                            $dayInt
+                        )
+                    );
+
+                    if ($existing && isset($existing->id) && ($existing->status ?? '') === 'open') {
+                        $existingId = (int)$existing->id;
+                        if (method_exists($wpdb, 'update')) {
+                            $wpdb->update(
+                                $table,
+                                [
+                                    'mode'        => $mode,
+                                    'round_count' => $round_count,
+                                ],
+                                ['id' => $existingId],
+                                ['%s', '%d'],
+                                ['%d']
+                            );
+                        }
+                        if (method_exists($wpdb, 'delete')) {
+                            $wpdb->delete($wpdb->prefix . 'monatsblitz_tournament_players', ['tournament_id' => $existingId], ['%d']);
+                            $wpdb->delete($wpdb->prefix . 'monatsblitz_games', ['tournament_id' => $existingId], ['%d']);
+                            $wpdb->delete($wpdb->prefix . 'monatsblitz_results', ['tournament_id' => $existingId], ['%d']);
+                        }
+                        $this->insertTournamentPlayers($wpdb, $existingId, $player_ids);
+
+                        return [
+                            'success'       => true,
+                            'tournament_id' => $existingId,
+                        ];
+                    }
+                }
+
                 return new \WP_Error(
                     'duplicate_tournament',
                     'Tournament for this date already exists',
@@ -142,9 +181,56 @@ class CreateTournamentHandler
             );
         }
 
+        $this->insertTournamentPlayers($wpdb, $insertId, $player_ids);
+
         return [
             'success'        => true,
             'tournament_id'  => $insertId
         ];
+    }
+
+    /**
+     * @param mixed $rawPlayerIds
+     * @return int[]
+     */
+    private function extractPlayerIds($rawPlayerIds): array
+    {
+        if (!is_array($rawPlayerIds)) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($rawPlayerIds as $rawId) {
+            $id = intval($rawId);
+            if ($id > 0 && !in_array($id, $ids, true)) {
+                $ids[] = $id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @param object $wpdb
+     * @param int $tournamentId
+     * @param int[] $playerIds
+     */
+    private function insertTournamentPlayers($wpdb, int $tournamentId, array $playerIds): void
+    {
+        if (empty($playerIds) || !method_exists($wpdb, 'insert')) {
+            return;
+        }
+
+        $playersTable = $wpdb->prefix . 'monatsblitz_tournament_players';
+        foreach ($playerIds as $playerId) {
+            $wpdb->insert(
+                $playersTable,
+                [
+                    'tournament_id' => $tournamentId,
+                    'player_id'     => $playerId,
+                ],
+                ['%d', '%d']
+            );
+        }
     }
 }

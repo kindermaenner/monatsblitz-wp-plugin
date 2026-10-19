@@ -38,6 +38,7 @@ register_activation_hook(__FILE__, [\Monatsblitz\Database\DatabaseSchema::class,
 
 // 🚀 Initialisierung
 add_action('plugins_loaded', function () {
+    \Monatsblitz\Database\DatabaseSchema::maybe_upgrade();
     \Monatsblitz\Api\Api::init();
     \Monatsblitz\Admin\Admin::init();
 
