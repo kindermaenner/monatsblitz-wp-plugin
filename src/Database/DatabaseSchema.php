@@ -29,7 +29,7 @@ class DatabaseSchema
             : '';
 
         if ($installed_version !== self::DB_VERSION) {
-            self::init();
+            static::init();
         }
     }
 
