@@ -94,7 +94,7 @@ class CreatePlayerHandler
         if ($existing) {
             return [
                 'success'   => true,
-                'player_id' => $existing,
+                'player_id' => (int) $existing,
                 'message'   => 'Spieler existiert bereits'
             ];
         }
@@ -109,7 +109,7 @@ class CreatePlayerHandler
 
         return [
             'success'   => true,
-            'player_id' => $wpdb->insert_id
+            'player_id' => (int) $wpdb->insert_id
         ];
     }
 }

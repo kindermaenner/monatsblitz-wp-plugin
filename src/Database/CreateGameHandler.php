@@ -129,7 +129,7 @@ class CreateGameHandler
 
         return [
             'success' => true,
-            'game_id' => $wpdb->insert_id
+            'game_id' => (int) $wpdb->insert_id
         ];
     }
 

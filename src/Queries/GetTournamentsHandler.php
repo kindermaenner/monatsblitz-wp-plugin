@@ -28,17 +28,30 @@ class GetTournamentsHandler
             ARRAY_A
         );
 
-        if (is_array($results)) {
-            foreach ($results as &$row) {
-                if (!isset($row['status'])) {
-                    $row['status'] = 'open';
-                }
-                if (isset($row['year'], $row['month'], $row['day']) && !isset($row['date'])) {
-                    $row['date'] = sprintf('%04d-%02d-%02d', (int)$row['year'], (int)$row['month'], (int)$row['day']);
-                }
-            }
+        if (!is_array($results)) {
+            return [];
         }
 
-        return is_array($results) ? $results : [];
+        $formatted = [];
+        foreach ($results as $row) {
+            $year = (int) $row['year'];
+            $month = (int) $row['month'];
+            $day = (int) $row['day'];
+            $date = $row['date'] ?? sprintf('%04d-%02d-%02d', $year, $month, $day);
+
+            $formatted[] = [
+                'id'             => (int) $row['id'],
+                'year'           => $year,
+                'month'          => $month,
+                'day'            => $day,
+                'mode'           => (string) ($row['mode'] ?? ''),
+                'round_count'    => (int) ($row['round_count'] ?? 1),
+                'status'         => (string) ($row['status'] ?? 'open'),
+                'date'           => $date,
+                'date_formatted' => (string) ($row['date_formatted'] ?? sprintf('%d.%d.%04d', $day, $month, $year)),
+            ];
+        }
+
+        return $formatted;
     }
 }

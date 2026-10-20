@@ -40,12 +40,10 @@ class GetTournamentHandler
             );
         }
 
-        if (!isset($result['status'])) {
-            $result['status'] = 'open';
-        }
-        if (isset($result['year'], $result['month'], $result['day']) && !isset($result['date'])) {
-            $result['date'] = sprintf('%04d-%02d-%02d', (int)$result['year'], (int)$result['month'], (int)$result['day']);
-        }
+        $year = (int) ($result['year'] ?? 0);
+        $month = (int) ($result['month'] ?? 0);
+        $day = (int) ($result['day'] ?? 0);
+        $date = $result['date'] ?? sprintf('%04d-%02d-%02d', $year, $month, $day);
 
         $players_table = $wpdb->prefix . 'monatsblitz_tournament_players';
         $player_rows = method_exists($wpdb, 'get_results')
@@ -67,8 +65,18 @@ class GetTournamentHandler
                 }
             }
         }
-        $result['player_ids'] = $player_ids;
 
-        return $result;
+        return [
+            'id'             => (int) ($result['id'] ?? 0),
+            'year'           => $year,
+            'month'          => $month,
+            'day'            => $day,
+            'mode'           => (string) ($result['mode'] ?? ''),
+            'round_count'    => (int) ($result['round_count'] ?? 1),
+            'status'         => (string) ($result['status'] ?? 'open'),
+            'date'           => $date,
+            'date_formatted' => (string) ($result['date_formatted'] ?? sprintf('%d.%d.%04d', $day, $month, $year)),
+            'player_ids'     => $player_ids,
+        ];
     }
 }

@@ -126,7 +126,7 @@ class CreateResultHandler
 
             return [
                 'success'   => true,
-                'result_id' => $existing,
+                'result_id' => (int) $existing,
                 'message'   => 'Ergebnis aktualisiert'
             ];
         }
@@ -144,7 +144,7 @@ class CreateResultHandler
 
         return [
             'success'   => true,
-            'result_id' => $wpdb->insert_id
+            'result_id' => (int) $wpdb->insert_id
         ];
     }
 }

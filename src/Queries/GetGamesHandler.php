@@ -14,7 +14,7 @@ class GetGamesHandler
         $games_table   = $wpdb->prefix . 'monatsblitz_games';
         $players_table = $wpdb->prefix . 'monatsblitz_players';
 
-        return $wpdb->get_results(
+        $results = $wpdb->get_results(
             $wpdb->prepare(
                 "SELECT
                     g.id,
@@ -36,5 +36,24 @@ class GetGamesHandler
             ),
             ARRAY_A
         );
+
+        if (!is_array($results)) {
+            return [];
+        }
+
+        return array_map(static function (array $row): array {
+            return [
+                'id'               => (int) ($row['id'] ?? 0),
+                'tournament_id'    => (int) ($row['tournament_id'] ?? 0),
+                'player1_id'       => (int) ($row['player1_id'] ?? 0),
+                'player2_id'       => (int) ($row['player2_id'] ?? 0),
+                'leg_type'         => (int) ($row['leg_type'] ?? 1),
+                'result'           => (string) ($row['result'] ?? ''),
+                'player1_forename' => (string) ($row['player1_forename'] ?? ''),
+                'player1_surname'  => (string) ($row['player1_surname'] ?? ''),
+                'player2_forename' => (string) ($row['player2_forename'] ?? ''),
+                'player2_surname'  => (string) ($row['player2_surname'] ?? ''),
+            ];
+        }, $results);
     }
 }
