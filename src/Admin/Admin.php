@@ -150,7 +150,7 @@ class Admin
             echo '</ul>';
             echo '</div>';
             echo '</div>';
-            echo '<script type="text/javascript">' . self::get_qrcode_js() . '</script>';
+            echo '<script type="text/javascript">' . static::get_qrcode_js() . '</script>';
             echo '<script type="text/javascript">
             (function() {
                 function renderQr() {
