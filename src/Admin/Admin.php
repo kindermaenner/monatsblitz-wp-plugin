@@ -23,6 +23,26 @@ class Admin
             register_setting('monatsblitz_settings', 'monatsblitz_api_key');
             register_setting('monatsblitz_settings', 'monatsblitz_hide_january_overview');
         });
+        add_action('admin_enqueue_scripts', [self::class, 'enqueue_admin_assets']);
+    }
+
+    public static function enqueue_admin_assets(string $hook = ''): void
+    {
+        if (strpos($hook, 'monatsblitz-settings') === false && (!isset($_GET['page']) || $_GET['page'] !== 'monatsblitz-settings')) {
+            return;
+        }
+
+        $script_url = defined('MB_PLUGIN_URL')
+            ? MB_PLUGIN_URL . 'assets/js/qrcode.min.js'
+            : plugins_url('assets/js/qrcode.min.js', dirname(__DIR__));
+
+        wp_enqueue_script(
+            'monatsblitz-qrcode',
+            $script_url,
+            [],
+            '1.0.0',
+            true
+        );
     }
 
     public static function register_menu()
@@ -37,7 +57,7 @@ class Admin
             26
         );
 
-        // 👉 Unterpunkt: Einstellungen
+        // ðŸ‘‰ Unterpunkt: Einstellungen
         add_submenu_page(
             'monatsblitz',
             'Monatsblitz Einstellungen',
@@ -59,7 +79,7 @@ class Admin
         $api_key   = get_option('monatsblitz_api_key', '');
         $hide_january_overview = (bool)get_option('monatsblitz_hide_january_overview', false);
 
-        // Wenn "Neuen Key generieren" gedrückt wurde (eigenes Formular!)
+        // Wenn "Neuen Key generieren" gedrÃ¼ckt wurde (eigenes Formular!)
         if (isset($_POST['monatsblitz_generate_key'])) {
             check_admin_referer('monatsblitz_generate_key_action');
 
@@ -67,7 +87,7 @@ class Admin
             update_option('monatsblitz_api_key', $new_key);
             $api_key = $new_key;
 
-            echo '<div class="updated"><p>Neuer API‑Key wurde generiert.</p></div>';
+            echo '<div class="updated"><p>Neuer APIâ€‘Key wurde generiert.</p></div>';
         }
 
         // Userliste
@@ -76,34 +96,82 @@ class Admin
         ]);
 
         echo '<div class="wrap">';
-        echo '<h1>Monatsblitz – Einstellungen</h1>';
+        echo '<h1>Monatsblitz â€“ Einstellungen</h1>';
 
         /*
-        * FORMULAR 1: API‑Key generieren (NICHT über options.php)
+        * FORMULAR 1: APIâ€‘Key generieren (NICHT Ã¼ber options.php)
         */
         echo '<form method="post">';
         wp_nonce_field('monatsblitz_generate_key_action');
 
         echo '<table class="form-table">';
-        echo '<tr><th scope="row">API‑Key</th><td>';
+        echo '<tr><th scope="row">APIâ€‘Key</th><td>';
         echo '<input type="text" value="' . esc_attr($api_key) . '" class="regular-text" style="width:350px;" readonly>';
-        echo '<p class="description">Diesen Key muss die Blitzabend‑App im Header <code>X-MB-Key</code> mitsenden.</p>';
-        echo '<p><input type="submit" name="monatsblitz_generate_key" class="button" value="Neuen API‑Key generieren"></p>';
+        echo '<p class="description">Diesen Key muss die Blitzabendâ€‘App im Header <code>X-MB-Key</code> mitsenden.</p>';
+        echo '<p><input type="submit" name="monatsblitz_generate_key" class="button" value="Neuen APIâ€‘Key generieren"></p>';
         echo '</td></tr>';
         echo '</table>';
 
         echo '</form>';
 
         /*
-        * FORMULAR 2: Normale Einstellungen (läuft über options.php)
+        * SEKTION: App-Einrichtung per QR-Code
+        */
+        echo '<div class="card" style="max-width:600px; margin:20px 0; padding:16px 20px;">';
+        echo '<h2 style="margin-top:0;">📱 App-Einrichtung per QR-Code</h2>';
+        if (!empty($api_key)) {
+            $qr_payload = json_encode([
+                'url' => home_url(),
+                'key' => $api_key,
+            ], JSON_UNESCAPED_SLASHES);
+
+            echo '<p>Scanne diesen QR-Code mit der <strong>Monatsblitz-App</strong> (unter <em>Einstellungen &rarr; QR-Code scannen</em>), um Server-Adresse und API-Key automatisch einzurichten:</p>';
+            echo '<div style="margin:16px 0; display:flex; align-items:center; gap:20px; flex-wrap:wrap;">';
+            echo '<div id="monatsblitz-qrcode" style="display:inline-block; padding:12px; background:#fff; border:1px solid #ccd0d4; border-radius:4px;"></div>';
+            echo '<div style="font-size:13px; color:#555;">';
+            echo '<p style="margin-top:0;"><strong>Enthaltene Konfiguration:</strong></p>';
+            echo '<ul style="list-style:disc; margin-left:20px;">';
+            echo '<li><strong>URL:</strong> <code>' . esc_html(home_url()) . '</code></li>';
+            echo '<li><strong>API-Key:</strong> <code>' . esc_html(substr($api_key, 0, 6) . '...' . substr($api_key, -4)) . '</code></li>';
+            echo '</ul>';
+            echo '</div>';
+            echo '</div>';
+            echo '<script type="text/javascript">
+            function initMonatsblitzQr() {
+                var container = document.getElementById("monatsblitz-qrcode");
+                if (container && typeof QRCode !== "undefined") {
+                    container.innerHTML = "";
+                    new QRCode(container, {
+                        text: ' . wp_json_encode($qr_payload) . ',
+                        width: 180,
+                        height: 180,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                }
+            }
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", initMonatsblitzQr);
+            } else {
+                initMonatsblitzQr();
+            }
+            </script>';
+        } else {
+            echo '<p style="color:#d63638;"><em>Bitte generiere zuerst oben einen API-Key, damit der QR-Code für die App erzeugt werden kann.</em></p>';
+        }
+        echo '</div>';
+
+        /*
+        * FORMULAR 2: Normale Einstellungen (lÃ¤uft Ã¼ber options.php)
         */
         echo '<form method="post" action="options.php">';
         settings_fields('monatsblitz_settings');
 
         echo '<table class="form-table">';
 
-        // API‑Key auch hier einfügen, damit WordPress ihn speichert
-        echo '<tr><th scope="row">API‑Key (gespeichert)</th><td>';
+        // APIâ€‘Key auch hier einfÃ¼gen, damit WordPress ihn speichert
+        echo '<tr><th scope="row">APIâ€‘Key (gespeichert)</th><td>';
         echo '<input type="text" name="monatsblitz_api_key" value="' . esc_attr($api_key) . '" class="regular-text" style="width:350px;" readonly>';
         echo '<p class="description">Wird automatisch aktualisiert, wenn ein neuer Key generiert wird.</p>';
         echo '</td></tr>';
@@ -111,7 +179,7 @@ class Admin
         // Autor-Auswahl
         echo '<tr><th scope="row">Autor des Beitrags</th><td>';
         echo '<select name="monatsblitz_author">';
-        echo '<option value="">— Bitte wählen —</option>';
+        echo '<option value="">â€” Bitte wÃ¤hlen â€”</option>';
 
         foreach ($users as $u) {
             $selected = selected($author, $u->ID, false);
@@ -122,11 +190,11 @@ class Admin
         echo '</td></tr>';
 
         // Template-Name
-        echo '<tr><th scope="row">Template‑Name</th><td>';
+        echo '<tr><th scope="row">Templateâ€‘Name</th><td>';
         echo '<input type="text" name="monatsblitz_template" value="' . esc_attr($template) . '" class="regular-text">';
         echo '</td></tr>';
 
-        // Template für statische Jahresseite
+        // Template fÃ¼r statische Jahresseite
         echo '<tr><th scope="row">Template: Statische Jahresseite</th><td>';
         echo '<input type="text" name="monatsblitz_template_static_page" value="' . esc_attr($template_static_page) . '" class="regular-text">';
         echo '<p class="description">Enthalt Platzhalter {{blitz_monthly_overview}} und {{blitz_ranking_year}}.</p>';
@@ -140,7 +208,7 @@ class Admin
         echo '<p class="description">Empfohlen, wenn im Januar grundsatzlich kein Monatsblitz stattfindet.</p>';
         echo '</td></tr>';
 
-        // Zusätzliche Blitz-Modi
+        // ZusÃ¤tzliche Blitz-Modi
         echo '<tr><th scope="row">Zusatzliche Blitz-Modi</th><td>';
         echo '<input type="text" name="monatsblitz_blitz_modes" value="' . esc_attr($blitz_modes) . '" class="regular-text">';
         echo '<p class="description">Komma-Liste, z. B. Handicap, Armageddon. Standardregel bleibt aktiv: alle Modi <= 5+X zahlen als Blitz.</p>';
@@ -158,7 +226,7 @@ class Admin
     {
         global $wpdb;
 
-        // 👉 Reset-Action verarbeiten
+        // ðŸ‘‰ Reset-Action verarbeiten
         self::handle_actions();
 
         $tables = [
@@ -170,26 +238,26 @@ class Admin
         ];
 
         echo '<div class="wrap">';
-        echo '<h1>Monatsblitz Übersicht</h1>';
+        echo '<h1>Monatsblitz Ãœbersicht</h1>';
 
-        // 👉 Reset-Button
+        // ðŸ‘‰ Reset-Button
         echo '<form method="post" style="margin-bottom:20px;">';
         wp_nonce_field('monatsblitz_reset_tables');
         echo '<input type="hidden" name="monatsblitz_action" value="reset_tables">';
-        echo '<input type="submit" class="button button-danger" value="⚠️ Tabellen neu erstellen"
-              onclick="return confirm(\'Wirklich ALLE Tabellen löschen und neu erstellen?\');">';
+        echo '<input type="submit" class="button button-danger" value="âš ï¸ Tabellen neu erstellen"
+              onclick="return confirm(\'Wirklich ALLE Tabellen lÃ¶schen und neu erstellen?\');">';
         echo '</form>';
 
-        // 👉 Wenn Tabelle ausgewählt → Detailansicht
+        // ðŸ‘‰ Wenn Tabelle ausgewÃ¤hlt â†’ Detailansicht
         if (isset($_GET['table']) && isset($tables[$_GET['table']])) {
             self::render_table_detail($tables[$_GET['table']]);
             echo '</div>';
             return;
         }
 
-        // 👉 Übersicht
+        // ðŸ‘‰ Ãœbersicht
         echo '<table class="widefat fixed striped">';
-        echo '<thead><tr><th>Tabelle</th><th>Status</th><th>Einträge</th></tr></thead>';
+        echo '<thead><tr><th>Tabelle</th><th>Status</th><th>EintrÃ¤ge</th></tr></thead>';
         echo '<tbody>';
 
         foreach ($tables as $key => $table) {
@@ -199,13 +267,13 @@ class Admin
 
             if ($exists) {
                 $count = $wpdb->get_var("SELECT COUNT(*) FROM $table");
-                $status = '✅ vorhanden';
+                $status = 'âœ… vorhanden';
 
                 $link = admin_url('admin.php?page=monatsblitz&table=' . $key);
                 $label = "<a href='$link'><strong>$table</strong></a>";
             } else {
                 $count = '-';
-                $status = '❌ fehlt';
+                $status = 'âŒ fehlt';
                 $label = $table;
             }
 
@@ -280,15 +348,15 @@ class Admin
 
         echo "<h2>Detailansicht: $table</h2>";
 
-        // Zurück-Link
+        // ZurÃ¼ck-Link
         $back = admin_url('admin.php?page=monatsblitz');
-        echo "<p><a href='$back'>← Zurück</a></p>";
+        echo "<p><a href='$back'>â† ZurÃ¼ck</a></p>";
 
         // Daten holen
         $rows = $wpdb->get_results("SELECT * FROM $table LIMIT 100", ARRAY_A);
 
         if (empty($rows)) {
-            echo "<p>Keine Einträge vorhanden.</p>";
+            echo "<p>Keine EintrÃ¤ge vorhanden.</p>";
             return;
         }
 

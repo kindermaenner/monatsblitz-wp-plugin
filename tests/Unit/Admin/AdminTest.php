@@ -7,11 +7,14 @@ use Monatsblitz\Admin\Admin;
 it('registers admin hooks on init', function () {
     Admin::init();
 
-    expect($GLOBALS['mb_test_actions'])->toHaveCount(2);
+    expect($GLOBALS['mb_test_actions'])->toHaveCount(3);
     expect($GLOBALS['mb_test_actions'][0]['hook'])->toBe('admin_menu');
     expect($GLOBALS['mb_test_actions'][1]['hook'])->toBe('admin_init');
     expect($GLOBALS['mb_test_actions'][0]['callback'][0])->toBe(Admin::class);
     expect($GLOBALS['mb_test_actions'][0]['callback'][1])->toBe('register_menu');
+    expect($GLOBALS['mb_test_actions'][2]['hook'])->toBe('admin_enqueue_scripts');
+    expect($GLOBALS['mb_test_actions'][2]['callback'][0])->toBe(Admin::class);
+    expect($GLOBALS['mb_test_actions'][2]['callback'][1])->toBe('enqueue_admin_assets');
 });
 
 it('registers settings inside admin_init callback', function () {
@@ -57,6 +60,31 @@ it('renders settings page with stored values', function () {
     expect($html)->toContain('name="monatsblitz_template_static_page"');
     expect($html)->toContain('name="monatsblitz_blitz_modes"');
     expect($html)->toContain('name="monatsblitz_hide_january_overview"');
+    expect($html)->toContain('App-Einrichtung per QR-Code');
+    expect($html)->toContain('id="monatsblitz-qrcode"');
+    expect($html)->toContain('https://example.test');
+});
+
+it('renders settings page prompt to generate key when api key is missing', function () {
+    $GLOBALS['mb_test_options']['monatsblitz_api_key'] = '';
+
+    ob_start();
+    Admin::render_settings_page();
+    $html = ob_get_clean();
+
+    expect($html)->toContain('App-Einrichtung per QR-Code');
+    expect($html)->toContain('Bitte generiere zuerst');
+    expect($html)->not->toContain('id="monatsblitz-qrcode"');
+});
+
+it('enqueues qrcode script only on settings page', function () {
+    Admin::enqueue_admin_assets('toplevel_page_monatsblitz');
+    expect($GLOBALS['mb_test_enqueued_scripts'])->toBeEmpty();
+
+    Admin::enqueue_admin_assets('monatsblitz_page_monatsblitz-settings');
+    expect($GLOBALS['mb_test_enqueued_scripts'])->toHaveCount(1);
+    expect($GLOBALS['mb_test_enqueued_scripts'][0]['handle'])->toBe('monatsblitz-qrcode');
+    expect($GLOBALS['mb_test_enqueued_scripts'][0]['src'])->toContain('assets/js/qrcode.min.js');
 });
 
 it('generates and stores a new api key from settings page', function () {
@@ -79,7 +107,7 @@ it('renders dashboard overview table', function () {
     Admin::render_page();
     $html = ob_get_clean();
 
-    expect($html)->toContain('Monatsblitz Übersicht');
+    expect($html)->toContain('Monatsblitz Ãœbersicht');
     expect($html)->toContain('vorhanden');
     expect($html)->toContain('fehlt');
     expect($html)->toContain('wp_monatsblitz_players');
@@ -99,7 +127,7 @@ it('renders table detail when table is requested', function () {
     $html = ob_get_clean();
 
     expect($html)->toContain('Detailansicht');
-    expect($html)->toContain('Zurück');
+    expect($html)->toContain('ZurÃ¼ck');
     expect($html)->toContain('Max');
 });
 
@@ -113,7 +141,7 @@ it('shows empty message when detail table has no rows', function () {
     Admin::render_page();
     $html = ob_get_clean();
 
-    expect($html)->toContain('Keine Einträge vorhanden.');
+    expect($html)->toContain('Keine EintrÃ¤ge vorhanden.');
 });
 
 it('does not reset tables when user lacks capability', function () {

@@ -10,6 +10,10 @@ if (!defined('MB_PLUGIN_PATH')) {
     define('MB_PLUGIN_PATH', dirname(__DIR__) . DIRECTORY_SEPARATOR);
 }
 
+if (!defined('MB_PLUGIN_URL')) {
+    define('MB_PLUGIN_URL', 'https://example.test/wp-content/plugins/monatsblitz/');
+}
+
 if (!defined('ARRAY_A')) {
     define('ARRAY_A', 'ARRAY_A');
 }
@@ -20,7 +24,7 @@ if (!defined('OBJECT')) {
 
 if (!function_exists('sanitize_text_field')) {
     function sanitize_text_field($text) {
-        return $text; // minimal mock: keine Veränderung
+        return $text; // minimal mock: keine VerÃ¤nderung
     }
 }
 
@@ -263,6 +267,34 @@ if (!function_exists('admin_url')) {
     }
 }
 
+if (!function_exists('home_url')) {
+    function home_url($path = '') {
+        return 'https://example.test' . ($path ? '/' . ltrim($path, '/') : '');
+    }
+}
+
+if (!function_exists('plugins_url')) {
+    function plugins_url($path = '', $plugin = '') {
+        return 'https://example.test/wp-content/plugins/' . ltrim($path, '/');
+    }
+}
+
+if (!function_exists('wp_json_encode')) {
+    function wp_json_encode($data, $options = 0, $depth = 512) {
+        return json_encode($data, $options, $depth);
+    }
+}
+
+if (!isset($GLOBALS['mb_test_enqueued_scripts'])) {
+    $GLOBALS['mb_test_enqueued_scripts'] = [];
+}
+
+if (!function_exists('wp_enqueue_script')) {
+    function wp_enqueue_script($handle, $src = '', $deps = [], $ver = false, $in_footer = false) {
+        $GLOBALS['mb_test_enqueued_scripts'][] = compact('handle', 'src', 'deps', 'ver', 'in_footer');
+    }
+}
+
 if (!function_exists('current_user_can')) {
     function current_user_can($capability) {
         return (bool) ($GLOBALS['mb_test_current_user_can'] ?? false);
@@ -437,7 +469,7 @@ if (!class_exists('WP_REST_Response')) {
 
 if (!function_exists('plugin_dir_path')) {
     function plugin_dir_path($file) {
-        // Plugin-Root: eine Ebene über /tests/
+        // Plugin-Root: eine Ebene Ã¼ber /tests/
         return dirname(__DIR__) . '/';
     }
 }

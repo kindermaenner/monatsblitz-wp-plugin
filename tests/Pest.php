@@ -46,6 +46,7 @@ pest()->beforeEach(function () {
     $GLOBALS['mb_test_object_taxonomies'] = [];
     $GLOBALS['mb_test_object_terms'] = [];
     $GLOBALS['mb_test_set_object_terms_calls'] = [];
+    $GLOBALS['mb_test_enqueued_scripts'] = [];
     $GLOBALS['mb_test_next_post_id'] = 123;
 
     $wpdb = new class {
