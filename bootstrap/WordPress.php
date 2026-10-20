@@ -24,7 +24,7 @@ if (!defined('OBJECT')) {
 
 if (!function_exists('sanitize_text_field')) {
     function sanitize_text_field($text) {
-        return $text; // minimal mock: keine VerÃ¤nderung
+        return $text; // minimal mock: keine Veränderung
     }
 }
 
@@ -469,7 +469,7 @@ if (!class_exists('WP_REST_Response')) {
 
 if (!function_exists('plugin_dir_path')) {
     function plugin_dir_path($file) {
-        // Plugin-Root: eine Ebene Ã¼ber /tests/
+        // Plugin-Root: eine Ebene über /tests/
         return dirname(__DIR__) . '/';
     }
 }

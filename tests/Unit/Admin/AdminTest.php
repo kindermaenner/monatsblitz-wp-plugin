@@ -107,7 +107,7 @@ it('renders dashboard overview table', function () {
     Admin::render_page();
     $html = ob_get_clean();
 
-    expect($html)->toContain('Monatsblitz Ãœbersicht');
+    expect($html)->toContain('Monatsblitz Übersicht');
     expect($html)->toContain('vorhanden');
     expect($html)->toContain('fehlt');
     expect($html)->toContain('wp_monatsblitz_players');
@@ -127,7 +127,7 @@ it('renders table detail when table is requested', function () {
     $html = ob_get_clean();
 
     expect($html)->toContain('Detailansicht');
-    expect($html)->toContain('ZurÃ¼ck');
+    expect($html)->toContain('Zurück');
     expect($html)->toContain('Max');
 });
 
@@ -141,7 +141,7 @@ it('shows empty message when detail table has no rows', function () {
     Admin::render_page();
     $html = ob_get_clean();
 
-    expect($html)->toContain('Keine EintrÃ¤ge vorhanden.');
+    expect($html)->toContain('Keine Einträge vorhanden.');
 });
 
 it('does not reset tables when user lacks capability', function () {
