@@ -40,14 +40,35 @@ final class PluginUpdater
             return $transient;
         }
 
-        $transient->response[$this->pluginBasename] = (object) [
+        $update = (object) [
             'id' => $this->manifestUrl,
             'slug' => $this->pluginSlug,
             'plugin' => $this->pluginBasename,
             'new_version' => $manifest['version'],
-            'url' => $this->manifestUrl,
+            'url' => $this->getGitHubUrl($manifest['release_url'] ?? null) ?? $this->manifestUrl,
             'package' => $manifest['download_url'],
         ];
+        $releaseNotes = $manifest['release_notes'] ?? '';
+        if (is_string($releaseNotes) && $releaseNotes !== '') {
+            $update->upgrade_notice = $this->formatReleaseNotes($releaseNotes);
+            $noticeLabels = [];
+            if (($manifest['security_fixes'] ?? false) === true) {
+                $noticeLabels[] = 'Security update';
+            }
+            if (($manifest['prerelease'] ?? false) === true) {
+                $noticeLabels[] = 'Pre-release';
+            }
+            if ($noticeLabels !== []) {
+                $update->upgrade_notice = '<strong>' . esc_html(implode(' · ', $noticeLabels)) . ':</strong> '
+                    . $update->upgrade_notice;
+            }
+        }
+        $requiresPhp = $this->getPhpVersion($manifest['requires_php'] ?? null);
+        if ($requiresPhp !== null) {
+            $update->requires_php = $requiresPhp;
+        }
+
+        $transient->response[$this->pluginBasename] = $update;
 
         return $transient;
     }
@@ -63,17 +84,34 @@ final class PluginUpdater
             return $result;
         }
 
+        $homepage = $this->getGitHubUrl($manifest['homepage'] ?? null) ?? $this->manifestUrl;
+        $releaseUrl = $this->getGitHubUrl($manifest['release_url'] ?? null);
+        $description = sprintf(
+            'Plugin updates are provided by <a href="%s">the project on GitHub</a>.',
+            esc_url($homepage)
+        );
+        $compatibility = $this->buildCompatibilitySection($manifest);
+        if ($compatibility !== '') {
+            $description .= $compatibility;
+        }
+
+        $sections = [
+            'description' => $description,
+            'changelog' => $this->buildChangelog($manifest, $releaseUrl),
+        ];
+
         return (object) [
-            'name' => $this->pluginSlug,
+            'name' => is_string($manifest['name'] ?? null) && $manifest['name'] !== ''
+                ? $manifest['name']
+                : $this->pluginSlug,
             'slug' => $this->pluginSlug,
             'version' => $manifest['version'],
             'author' => 'Kindermaenner',
-            'homepage' => $this->manifestUrl,
+            'homepage' => $homepage,
             'download_link' => $manifest['download_url'],
-            'sections' => [
-                'description' => 'Plugin updates are provided by kindermaenner.de.',
-                'changelog' => 'See the project release notes for changes in this version.',
-            ],
+            'requires_php' => $this->getPhpVersion($manifest['requires_php'] ?? null),
+            'last_updated' => $this->formatReleaseDate($manifest['released_at'] ?? null),
+            'sections' => $sections,
         ];
     }
 
@@ -170,6 +208,137 @@ final class PluginUpdater
         $downloadScheme = wp_parse_url($downloadUrl, PHP_URL_SCHEME);
 
         return $downloadScheme === 'https' && is_string($manifestHost) && $manifestHost === $downloadHost;
+    }
+
+    private function buildChangelog(array $manifest, ?string $releaseUrl): string
+    {
+        $releases = $manifest['releases'] ?? null;
+        if (!is_array($releases)) {
+            $notes = $manifest['release_notes'] ?? '';
+            if (!is_string($notes) || $notes === '') {
+                return 'Release notes are not available.';
+            }
+
+            return $this->appendReleaseLink($this->formatReleaseNotes($notes), $releaseUrl);
+        }
+
+        $html = '';
+        foreach ($releases as $release) {
+            if (!is_array($release) || !is_string($release['version'] ?? null)) {
+                continue;
+            }
+
+            $html .= '<h4>' . esc_html($release['version']);
+            $labels = [];
+            if (($release['security_fixes'] ?? false) === true) {
+                $labels[] = 'Security update';
+            }
+            if (($release['prerelease'] ?? false) === true) {
+                $labels[] = 'Pre-release';
+            }
+            if ($labels !== []) {
+                $html .= ' <em>(' . esc_html(implode(', ', $labels)) . ')</em>';
+            }
+            $html .= '</h4>';
+
+            $releasedAt = $this->getReleaseDate($release['released_at'] ?? null);
+            if ($releasedAt !== '') {
+                $html .= '<p>Released: ' . esc_html($releasedAt) . '</p>';
+            }
+
+            $notes = $release['notes'] ?? '';
+            if (is_string($notes) && $notes !== '') {
+                $html .= $this->formatReleaseNotes($notes);
+            }
+
+            $releaseLink = $this->getGitHubUrl($release['url'] ?? null);
+            if ($releaseLink !== null) {
+                $html .= '<p><a href="' . esc_url($releaseLink) . '">View release on GitHub</a>';
+                $compareLink = $this->getGitHubUrl($release['compare_url'] ?? null);
+                if ($compareLink !== null) {
+                    $html .= ' | <a href="' . esc_url($compareLink) . '">Compare changes</a>';
+                }
+                $html .= '</p>';
+            }
+        }
+
+        if ($html !== '') {
+            return $html;
+        }
+
+        $notes = $manifest['release_notes'] ?? '';
+        if (!is_string($notes) || $notes === '') {
+            return 'Release notes are not available.';
+        }
+
+        return $this->appendReleaseLink($this->formatReleaseNotes($notes), $releaseUrl);
+    }
+
+    private function buildCompatibilitySection(array $manifest): string
+    {
+        $requirements = [];
+        $requiresPhp = $this->getPhpVersion($manifest['requires_php'] ?? null);
+        if ($requiresPhp !== null) {
+            $requirements[] = 'Requires PHP ' . esc_html($requiresPhp) . '.';
+        }
+
+        $testedPhp = $this->getPhpVersion($manifest['tested_php'] ?? null);
+        if ($testedPhp !== null) {
+            $requirements[] = 'Automated CI tested with PHP ' . esc_html($testedPhp) . '.';
+        }
+
+        return $requirements === [] ? '' : '<p>' . implode('<br>', $requirements) . '</p>';
+    }
+
+    private function appendReleaseLink(string $notes, ?string $releaseUrl): string
+    {
+        return $releaseUrl === null
+            ? $notes
+            : $notes . '<p><a href="' . esc_url($releaseUrl) . '">View release on GitHub</a></p>';
+    }
+
+    private function formatReleaseNotes(string $notes): string
+    {
+        return nl2br(esc_html($notes), false);
+    }
+
+    private function getGitHubUrl($url): ?string
+    {
+        if (!is_string($url) || !wp_http_validate_url($url)) {
+            return null;
+        }
+
+        $scheme = wp_parse_url($url, PHP_URL_SCHEME);
+        $host = wp_parse_url($url, PHP_URL_HOST);
+
+        return $scheme === 'https' && $host === 'github.com' ? $url : null;
+    }
+
+    private function getPhpVersion($version): ?string
+    {
+        return is_string($version) && preg_match('/^\d+(?:\.\d+){1,2}$/D', $version) === 1
+            ? $version
+            : null;
+    }
+
+    private function getReleaseDate($date): string
+    {
+        if (!is_string($date)) {
+            return '';
+        }
+
+        $timestamp = strtotime($date);
+        return $timestamp === false ? '' : gmdate('Y-m-d', $timestamp);
+    }
+
+    private function formatReleaseDate($date): string
+    {
+        if (!is_string($date)) {
+            return '';
+        }
+
+        $timestamp = strtotime($date);
+        return $timestamp === false ? '' : gmdate('Y-m-d H:i:s', $timestamp);
     }
 
     private function log(string $message): void

@@ -23,6 +23,13 @@ if (!function_exists('plugin_basename')) {
     }
 }
 
+if (!function_exists('esc_url')) {
+    function esc_url($url)
+    {
+        return (string) $url;
+    }
+}
+
 if (!function_exists('get_site_transient')) {
     function get_site_transient($key)
     {
@@ -149,7 +156,12 @@ it('registers WordPress updater hooks with the required argument counts', functi
 });
 
 it('adds an update when the manifest version is newer', function () {
-    $GLOBALS['mb_test_remote_response']['body'] = json_encode(monatsblitzManifest());
+    $GLOBALS['mb_test_remote_response']['body'] = json_encode(monatsblitzManifest([
+        'release_notes' => 'Fixes and improvements',
+        'prerelease' => true,
+        'security_fixes' => true,
+        'requires_php' => '8.1',
+    ]));
     $transient = (object) [
         'checked' => ['monatsblitz/monatsblitz.php' => '0.9.0'],
         'response' => [],
@@ -159,6 +171,9 @@ it('adds an update when the manifest version is newer', function () {
 
     expect($result->response['monatsblitz/monatsblitz.php']->new_version)->toBe('1.0.0')
         ->and($result->response['monatsblitz/monatsblitz.php']->package)->toBe(monatsblitzManifest()['download_url'])
+        ->and($result->response['monatsblitz/monatsblitz.php']->upgrade_notice)->toContain('Pre-release:')
+        ->and($result->response['monatsblitz/monatsblitz.php']->upgrade_notice)->toContain('Security update')
+        ->and($result->response['monatsblitz/monatsblitz.php']->requires_php)->toBe('8.1')
         ->and($GLOBALS['mb_test_site_transient_expiration']['monatsblitz_plugin_update'])->toBe(6 * HOUR_IN_SECONDS);
 });
 
@@ -191,6 +206,41 @@ it('returns plugin information only for this plugin', function () {
         ->toBe($otherResult)
         ->and($this->updater->pluginInformation(null, 'plugin_information', (object) ['slug' => 'monatsblitz'])->version)
         ->toBe('1.0.0');
+});
+
+it('shows release metadata, changelog links, and tested PHP compatibility', function () {
+    $releaseUrl = 'https://github.com/kindermaenner/monatsblitz-wp-plugin/releases/tag/v1.0.0';
+    $compareUrl = 'https://github.com/kindermaenner/monatsblitz-wp-plugin/compare/v0.9.0...v1.0.0';
+    monatsblitzCacheManifest(monatsblitzManifest([
+        'name' => 'Monatsblitz',
+        'homepage' => 'https://github.com/kindermaenner/monatsblitz-wp-plugin',
+        'release_url' => $releaseUrl,
+        'released_at' => '2026-10-20T22:25:45Z',
+        'requires_php' => '8.1',
+        'tested_php' => '8.4',
+        'releases' => [[
+            'version' => '1.0.0',
+            'released_at' => '2026-10-20T22:25:45Z',
+            'notes' => "Security:\n- Improved tournament handling",
+            'url' => $releaseUrl,
+            'compare_url' => $compareUrl,
+            'prerelease' => false,
+            'security_fixes' => true,
+        ]],
+    ]));
+
+    $info = $this->updater->pluginInformation(null, 'plugin_information', (object) ['slug' => 'monatsblitz']);
+
+    expect($info->name)->toBe('Monatsblitz')
+        ->and($info->homepage)->toBe('https://github.com/kindermaenner/monatsblitz-wp-plugin')
+        ->and($info->requires_php)->toBe('8.1')
+        ->and($info->last_updated)->toBe('2026-10-20 22:25:45')
+        ->and($info->sections['changelog'])->toContain('Security:')
+        ->and($info->sections['changelog'])->toContain($releaseUrl)
+        ->and($info->sections['changelog'])->toContain($compareUrl)
+        ->and($info->sections['changelog'])->toContain('Security update')
+        ->and($info->sections['description'])->toContain('Requires PHP 8.1')
+        ->and($info->sections['description'])->toContain('tested with PHP 8.4');
 });
 
 it('clears its update manifest cache after plugin updates', function () {

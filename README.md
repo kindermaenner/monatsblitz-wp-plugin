@@ -79,6 +79,8 @@ We automate the boring parts so there is more time for what really matters in cl
 
 New releases are offered through the WordPress plugin updater. To check manually, open **Dashboard → Updates** (or **Plugins → Installed Plugins**) and check for updates. When a Monatsblitz update is available, choose **Update now**. Back up the site before updating, as with any plugin.
 
+The update details include the GitHub release notes and links to the release and its changes. Release date, pre-release status, required PHP version, and the PHP version exercised by automated CI are populated from GitHub and the release workflow.
+
 Versioned releases are also available at `https://kindermaenner.de/plugin-updates/monatsblitz/versions/`. Each release ZIP includes the production dependencies required by the plugin.
 
 ## REST API
