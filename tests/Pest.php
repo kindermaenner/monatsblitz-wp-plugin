@@ -64,8 +64,16 @@ pest()->beforeEach(function () {
         public array $last_update_data = [];
         public array $last_update_where = [];
         public array $queries = [];
+        public $get_var_callback = null;
+        public ?string $last_query = null;
+        public ?string $last_prepared_query = null;
+        public array $last_prepared_args = [];
 
         public function get_var($query = null) {
+            $this->last_query = $query;
+            if ($this->get_var_callback !== null) {
+                return call_user_func($this->get_var_callback, $query, $this->last_prepared_args);
+            }
             if (!empty($this->get_var_queue)) {
                 return array_shift($this->get_var_queue);
             }
@@ -77,6 +85,8 @@ pest()->beforeEach(function () {
         }
 
         public function prepare($query, ...$args) {
+            $this->last_prepared_query = $query;
+            $this->last_prepared_args = $args;
             return $query;
         }
 
