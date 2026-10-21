@@ -63,6 +63,8 @@ pest()->beforeEach(function () {
         public ?string $last_update_table = null;
         public array $last_update_data = [];
         public array $last_update_where = [];
+        public ?string $last_delete_table = null;
+        public array $last_delete_where = [];
         public array $queries = [];
         public $get_var_callback = null;
         public ?string $last_query = null;
@@ -108,6 +110,12 @@ pest()->beforeEach(function () {
             $this->last_update_table = $table;
             $this->last_update_data = $data;
             $this->last_update_where = $where;
+            return true;
+        }
+
+        public function delete($table, $where, $where_format = null) {
+            $this->last_delete_table = $table;
+            $this->last_delete_where = $where;
             return true;
         }
 

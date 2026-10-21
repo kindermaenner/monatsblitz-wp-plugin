@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 
 class DatabaseSchema
 {
-    public const DB_VERSION = '1.1';
+    public const DB_VERSION = '1.2';
 
     public static function init()
     {
@@ -54,8 +54,17 @@ class DatabaseSchema
         $tournament_players_table = $wpdb->prefix . 'monatsblitz_tournament_players';
         $games_table              = $wpdb->prefix . 'monatsblitz_games';
         $results_table            = $wpdb->prefix . 'monatsblitz_results';
+        $modes_table              = $wpdb->prefix . 'monatsblitz_modes';
 
         $sql = "
+            CREATE TABLE {$modes_table} (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                name VARCHAR(50) NOT NULL,
+
+                PRIMARY KEY (id),
+                UNIQUE KEY unique_mode_name (name)
+            ) $charset_collate;
+
             CREATE TABLE {$players_table} (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 forename VARCHAR(100) NOT NULL,
@@ -130,6 +139,13 @@ class DatabaseSchema
             $wpdb->query(
                 "INSERT IGNORE INTO {$tournament_players_table} (tournament_id, player_id)
                  SELECT tournament_id, player_id FROM {$results_table}"
+            );
+            $wpdb->query(
+                "INSERT IGNORE INTO {$modes_table} (name) VALUES ('3+2'), ('5+0')"
+            );
+            $wpdb->query(
+                "INSERT IGNORE INTO {$modes_table} (name)
+                 SELECT DISTINCT mode FROM {$tournaments_table} WHERE mode IS NOT NULL AND mode != ''"
             );
         }
     }

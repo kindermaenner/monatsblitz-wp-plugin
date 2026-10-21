@@ -23,10 +23,12 @@ it('registers rest_api_init action on init', function () {
 it('registers all REST routes with API key permission callback', function () {
     Api::register_routes();
 
-    expect($GLOBALS['mb_test_routes'])->toHaveCount(12);
+    expect($GLOBALS['mb_test_routes'])->toHaveCount(14);
 
     $expectedRoutes = [
         '/player' => [MainService::class, 'createPlayer'],
+        '/mode' => [MainService::class, 'createMode'],
+        '/modes' => [MainService::class, 'getModes'],
         '/tournament' => [MainService::class, 'createTournament'],
         '/game' => [MainService::class, 'createGame'],
         '/players' => [MainService::class, 'getPlayers'],

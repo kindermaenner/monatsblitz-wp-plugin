@@ -93,6 +93,35 @@ class Admin
         $api_key   = get_option('monatsblitz_api_key', '');
         $hide_january_overview = (bool)get_option('monatsblitz_hide_january_overview', false);
 
+        // Modus hinzufügen
+        if (isset($_POST['monatsblitz_add_mode'])) {
+            check_admin_referer('monatsblitz_add_mode_action');
+            $mode_name = sanitize_text_field(trim((string)($_POST['monatsblitz_new_mode_name'] ?? '')));
+            if ($mode_name !== '') {
+                $handler = new \Monatsblitz\Database\CreateModeHandler();
+                $result = $handler->handle(['name' => $mode_name]);
+                if (is_wp_error($result)) {
+                    echo '<div class="notice notice-error"><p>' . esc_html($result->get_error_message()) . '</p></div>';
+                } else {
+                    echo '<div class="notice notice-success"><p>Modus <strong>' . esc_html($mode_name) . '</strong> erfolgreich angelegt.</p></div>';
+                }
+            } else {
+                echo '<div class="notice notice-error"><p>Der Name des Modus darf nicht leer sein.</p></div>';
+            }
+        }
+
+        // Modus löschen
+        if (isset($_POST['monatsblitz_delete_mode'])) {
+            check_admin_referer('monatsblitz_delete_mode_action');
+            $delete_id = intval($_POST['monatsblitz_delete_mode_id'] ?? 0);
+            if ($delete_id > 0) {
+                global $wpdb;
+                $modes_table = $wpdb->prefix . 'monatsblitz_modes';
+                $wpdb->delete($modes_table, ['id' => $delete_id], ['%d']);
+                echo '<div class="notice notice-success"><p>Modus wurde gelöscht.</p></div>';
+            }
+        }
+
         // Wenn "Neuen Key generieren" gedrückt wurde (eigenes Formular!)
         if (isset($_POST['monatsblitz_generate_key'])) {
             check_admin_referer('monatsblitz_generate_key_action');
@@ -228,7 +257,7 @@ class Admin
         echo '<tr><th scope="row">API-Key</th><td>';
         echo '<input type="text" value="' . esc_attr($api_key) . '" class="regular-text" style="width:350px;" readonly> ';
         echo '<input type="submit" name="monatsblitz_generate_key" class="button" value="Neuen API-Key generieren">';
-        echo '<p class="description">Diesen Key muss die Blitzabend-App im Header <code>X-MB-Key</code> mitsenden.</p>';
+        echo '<p class="description">Diesen Key muss die Monatsblitz-App im Header <code>X-MB-Key</code> mitsenden.</p>';
         echo '</td></tr>';
         echo '</table>';
         echo '</form>';
@@ -284,6 +313,45 @@ class Admin
         submit_button();
         echo '</form>';
 
+        /*
+        * 4) SEKTION: Turniermodi (Katalog)
+        */
+        echo '<h2 style="margin-top:30px;">⏱️ Turniermodi (Katalog)</h2>';
+        echo '<p class="description">Diese Modi stehen in der App bei der Turniererstellung zur Auswahl und können für feste Vorgaben oder Rotationen verwendet werden.</p>';
+
+        $modes = (new \Monatsblitz\Queries\GetModesHandler())->handle();
+
+        echo '<table class="widefat fixed striped" style="max-width:600px; margin-bottom:15px;">';
+        echo '<thead><tr><th style="width:60px;">ID</th><th>Modus-Name</th><th style="width:100px;">Aktion</th></tr></thead>';
+        echo '<tbody>';
+
+        if (empty($modes)) {
+            echo '<tr><td colspan="3">Keine Modi hinterlegt.</td></tr>';
+        } else {
+            foreach ($modes as $m) {
+                echo '<tr>';
+                echo '<td>' . esc_html((string)$m['id']) . '</td>';
+                echo '<td><strong>' . esc_html($m['name']) . '</strong></td>';
+                echo '<td>';
+                echo '<form method="post" style="display:inline;" onsubmit="return confirm(\'Modus wirklich l&ouml;schen?\');">';
+                wp_nonce_field('monatsblitz_delete_mode_action');
+                echo '<input type="hidden" name="monatsblitz_delete_mode" value="1">';
+                echo '<input type="hidden" name="monatsblitz_delete_mode_id" value="' . esc_attr((string)$m['id']) . '">';
+                echo '<input type="submit" class="button button-small button-link-delete" value="Löschen">';
+                echo '</form>';
+                echo '</td>';
+                echo '</tr>';
+            }
+        }
+
+        echo '</tbody></table>';
+
+        echo '<form method="post" style="display:flex; align-items:center; gap:10px; max-width:600px;">';
+        wp_nonce_field('monatsblitz_add_mode_action');
+        echo '<input type="text" name="monatsblitz_new_mode_name" placeholder="z. B. 10+0 oder 3+0" class="regular-text" style="width:250px;" required>';
+        echo '<input type="submit" name="monatsblitz_add_mode" class="button" value="Modus hinzufügen">';
+        echo '</form>';
+
         echo '</div>';
     }
 
@@ -296,6 +364,7 @@ class Admin
 
         $tables = [
             'players'            => $wpdb->prefix . 'monatsblitz_players',
+            'modes'              => $wpdb->prefix . 'monatsblitz_modes',
             'tournaments'        => $wpdb->prefix . 'monatsblitz_tournaments',
             'tournament_players' => $wpdb->prefix . 'monatsblitz_tournament_players',
             'games'              => $wpdb->prefix . 'monatsblitz_games',
@@ -391,6 +460,7 @@ class Admin
             $prefix . 'results',
             $prefix . 'tournaments',
             $prefix . 'players',
+            $prefix . 'modes',
         ];
 
         // FK Checks aus

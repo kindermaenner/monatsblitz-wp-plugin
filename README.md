@@ -56,7 +56,7 @@ We automate the boring parts so there is more time for what really matters in cl
 - Provides REST API endpoints for managing players, tournaments, games, and results.
 - Creates a new published post from an existing `Template_Monatsblitz` post once a tournament is finalized.
 - Creates or updates a yearly static page (slug `blitz-YYYY`) from a configured page template.
-- Replaces template placeholders such as `{{month_name}}`, `{{year}}`, `{{date}}`, `{{winner_name}}`, `{{winner_games}}`, `{{winner_points}}`, `{{table}}`, and more.
+- Replaces template placeholders such as `{{month_name}}`, `{{year}}`, `{{date}}`, `{{winner_name}}`, `{{winner_verb}}`, `{{winner_games}}`, `{{winner_points}}`, `{{table}}`, and more.
 
 ## Installation
 

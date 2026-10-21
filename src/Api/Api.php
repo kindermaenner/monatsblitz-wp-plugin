@@ -28,6 +28,18 @@ class Api
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
 
+        register_rest_route($rest_api_namespace, '/mode', [
+            'methods'  => 'POST',
+            'callback' => [MainService::class, 'createMode'],
+            'permission_callback' => [self::class, 'verify_api_key'],
+        ]);
+
+        register_rest_route($rest_api_namespace, '/modes', [
+            'methods'  => 'GET',
+            'callback' => [MainService::class, 'getModes'],
+            'permission_callback' => [self::class, 'verify_api_key'],
+        ]);
+
         register_rest_route($rest_api_namespace, '/tournament', [
             'methods'  => 'POST',
             'callback' => [MainService::class, 'createTournament'],

@@ -233,10 +233,41 @@ it('resets tables when action is valid', function () {
     expect($html)->toContain('Tabellen wurden neu erstellt');
     expect(in_array('DROP TABLE IF EXISTS wp_monatsblitz_tournament_players', $wpdb->queries, true))->toBeTrue();
     expect(in_array('DROP TABLE IF EXISTS wp_monatsblitz_games', $wpdb->queries, true))->toBeTrue();
+    expect(in_array('DROP TABLE IF EXISTS wp_monatsblitz_modes', $wpdb->queries, true))->toBeTrue();
     expect($wpdb->queries)->toContain('SET FOREIGN_KEY_CHECKS=0');
     expect($wpdb->queries)->toContain('SET FOREIGN_KEY_CHECKS=1');
 });
 
+
+it('adds mode when submitted from settings page', function () {
+    global $wpdb;
+
+    $_POST['monatsblitz_add_mode'] = '1';
+    $_POST['monatsblitz_new_mode_name'] = '10+0';
+    $GLOBALS['mb_test_nonce_valid'] = true;
+    $wpdb->get_row_result = null;
+    $wpdb->insert_id = 99;
+
+    ob_start();
+    Admin::render_settings_page();
+    $html = ob_get_clean();
+
+    expect($html)->toContain('Modus <strong>10+0</strong> erfolgreich angelegt.');
+});
+
+it('deletes mode when delete action is submitted from settings page', function () {
+    global $wpdb;
+
+    $_POST['monatsblitz_delete_mode'] = '1';
+    $_POST['monatsblitz_delete_mode_id'] = '5';
+    $GLOBALS['mb_test_nonce_valid'] = true;
+
+    ob_start();
+    Admin::render_settings_page();
+    $html = ob_get_clean();
+
+    expect($html)->toContain('Modus wurde gelöscht.');
+});
 
 it('renders games detail with tournament filter and resolved player names', function () {
     global $wpdb;

@@ -5,6 +5,36 @@ declare(strict_types=1);
 use Monatsblitz\Service\MainService;
 use Tests\Unit\Helper\MainServiceFakeRequest;
 
+it('creates a mode through the service', function () {
+	global $wpdb;
+
+	$wpdb->get_row_result = null;
+	$wpdb->insert_id = 77;
+
+	$result = MainService::createMode(new MainServiceFakeRequest([
+		'name' => '10+0',
+	]));
+
+	expect($result['success'])->toBeTrue()
+		->and($result['id'])->toBe(77)
+		->and($result['name'])->toBe('10+0');
+});
+
+it('returns modes through service query wrapper', function () {
+	global $wpdb;
+
+	$wpdb->results = [
+		['id' => 1, 'name' => '3+2'],
+		['id' => 2, 'name' => '5+0'],
+	];
+
+	$result = MainService::getModes(new MainServiceFakeRequest([]));
+
+	expect($result)->toHaveCount(2)
+		->and($result[0]['name'])->toBe('3+2')
+		->and($result[1]['name'])->toBe('5+0');
+});
+
 it('creates a player through the service', function () {
 	global $wpdb;
 

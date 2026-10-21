@@ -12,6 +12,8 @@ use Monatsblitz\Database\CreatePlayerHandler;
 use Monatsblitz\Database\CreateTournamentHandler;
 use Monatsblitz\Database\CreateGameHandler;
 use Monatsblitz\Database\CreateResultHandler;
+use Monatsblitz\Database\CreateModeHandler;
+use Monatsblitz\Queries\GetModesHandler;
 use Monatsblitz\Queries\GetPlayersHandler;
 use Monatsblitz\Queries\GetTournamentsHandler;
 use Monatsblitz\Queries\GetTournamentHandler;
@@ -26,6 +28,22 @@ class MainService
     public static function createPlayer($request)
     {
         return (new CreatePlayerHandler())->handle($request);
+    }
+
+    public static function createMode($request)
+    {
+        $result = (new CreateModeHandler())->handle($request);
+
+        if ($result instanceof \WP_Error) {
+            return $result;
+        }
+
+        return rest_ensure_response($result);
+    }
+
+    public static function getModes($request = null)
+    {
+        return (new GetModesHandler())->handle();
     }
 
     public static function createTournament($request)
