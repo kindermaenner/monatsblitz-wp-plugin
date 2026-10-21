@@ -104,6 +104,23 @@ class Admin
             echo '<div class="updated"><p>Neuer API-Key wurde generiert.</p></div>';
         }
 
+        // Wenn "Auf Aktualisierungen prüfen" gedrückt wurde
+        $updateResult = null;
+        $cachePurgedNotice = false;
+        if (isset($_POST['monatsblitz_check_update'])) {
+            check_admin_referer('monatsblitz_check_update_action');
+
+            if (class_exists(\Monatsblitz\Update\PluginUpdater::class)) {
+                $updater = \Monatsblitz\Update\PluginUpdater::getInstance();
+                if ($updater !== null) {
+                    $updateResult = $updater->checkUpdateNow();
+                } else {
+                    \Monatsblitz\Update\PluginUpdater::purge();
+                    $cachePurgedNotice = true;
+                }
+            }
+        }
+
         // Userliste
         $users = get_users([
             'fields' => ['ID', 'user_login']
@@ -111,6 +128,18 @@ class Admin
 
         echo '<div class="wrap">';
         echo '<h1>Monatsblitz – Einstellungen</h1>';
+
+        if ($updateResult !== null) {
+            if ($updateResult['has_update']) {
+                $updateUrl = function_exists('admin_url') ? admin_url('update-core.php') : 'update-core.php';
+                echo '<div class="notice notice-warning"><p><strong>🚀 Neue Version ' . esc_html($updateResult['latest_version'] ?? '') . ' verfügbar!</strong> Aktuell installiert: ' . esc_html($updateResult['current_version']) . '. <a href="' . esc_url($updateUrl) . '">Jetzt auf der WordPress-Aktualisierungsseite ansehen &rarr;</a></p></div>';
+            } else {
+                $displayVersion = $updateResult['latest_version'] ?? $updateResult['current_version'];
+                echo '<div class="notice notice-success is-dismissible"><p>✅ <strong>Das Plugin ist auf dem neuesten Stand</strong> (Version ' . esc_html($displayVersion) . ').</p></div>';
+            }
+        } elseif ($cachePurgedNotice) {
+            echo '<div class="notice notice-success is-dismissible"><p>✅ <strong>Update-Cache wurde erfolgreich geleert.</strong></p></div>';
+        }
 
         /*
         * FORMULAR 1: API-Key generieren (NICHT über options.php)
@@ -180,6 +209,27 @@ class Admin
         } else {
             echo '<p style="color:#d63638;"><em>Bitte generiere zuerst oben einen API-Key, damit der QR-Code für die App erzeugt werden kann.</em></p>';
         }
+        echo '</div>';
+
+        /*
+        * SEKTION: Plugin-Aktualisierung
+        */
+        $installedVersion = defined('MONATSBLITZ_VERSION') ? MONATSBLITZ_VERSION : '0.9.3';
+        if (class_exists(\Monatsblitz\Update\PluginUpdater::class)) {
+            $updater = \Monatsblitz\Update\PluginUpdater::getInstance();
+            if ($updater !== null) {
+                $installedVersion = $updater->getCurrentVersion();
+            }
+        }
+
+        echo '<div class="card" style="max-width:600px; margin:20px 0; padding:16px 20px;">';
+        echo '<h2 style="margin-top:0;">🔄 Plugin-Aktualisierung</h2>';
+        echo '<p>Installierte Version: <strong>' . esc_html($installedVersion) . '</strong></p>';
+        echo '<form method="post" style="margin-top:12px;">';
+        wp_nonce_field('monatsblitz_check_update_action');
+        echo '<p><input type="submit" name="monatsblitz_check_update" class="button button-secondary" value="🔄 Auf Aktualisierungen prüfen"></p>';
+        echo '<p class="description">Leert den internen 6-Stunden-Cache und prüft sofort beim Update-Server auf neue Releases.</p>';
+        echo '</form>';
         echo '</div>';
 
         /*

@@ -98,6 +98,51 @@ it('generates and stores a new api key from settings page', function () {
     expect(strlen($GLOBALS['mb_test_updated_options']['monatsblitz_api_key']))->toBe(32);
 });
 
+it('renders update section on settings page', function () {
+    ob_start();
+    Admin::render_settings_page();
+    $html = ob_get_clean();
+
+    expect($html)->toContain('Plugin-Aktualisierung');
+    expect($html)->toContain('name="monatsblitz_check_update"');
+    expect($html)->toContain('Auf Aktualisierungen prüfen');
+});
+
+it('triggers update check and displays message when check button is submitted without updater instance', function () {
+    $_POST['monatsblitz_check_update'] = '1';
+
+    ob_start();
+    Admin::render_settings_page();
+    $html = ob_get_clean();
+
+    expect($GLOBALS['mb_test_deleted_site_transients'])->toContain('monatsblitz_plugin_update');
+    expect($html)->toContain('Update-Cache wurde erfolgreich geleert');
+});
+
+it('triggers update check and displays version status when updater instance is present', function () {
+    $updater = new \Monatsblitz\Update\PluginUpdater(
+        '/var/www/wp-content/plugins/monatsblitz/monatsblitz.php',
+        '0.9.0',
+        'https://kindermaenner.de/plugin-updates/monatsblitz/manifest.json'
+    );
+    $GLOBALS['mb_test_remote_response'] = [
+        'code' => 200,
+        'body' => json_encode([
+            'slug' => 'monatsblitz',
+            'version' => '0.9.0',
+            'download_url' => 'https://kindermaenner.de/plugin-updates/monatsblitz/versions/v0.9.0/monatsblitz.zip',
+            'checksum_sha256' => str_repeat('b', 64),
+        ]),
+    ];
+    $_POST['monatsblitz_check_update'] = '1';
+
+    ob_start();
+    Admin::render_settings_page();
+    $html = ob_get_clean();
+
+    expect($html)->toContain('Das Plugin ist auf dem neuesten Stand');
+});
+
 it('renders dashboard overview table', function () {
     global $wpdb;
 

@@ -6,6 +6,10 @@ namespace Monatsblitz\Update;
 
 final class PluginUpdater
 {
+    public const CACHE_KEY = 'monatsblitz_plugin_update';
+
+    private static ?self $instance = null;
+
     private string $pluginBasename;
 
     private string $pluginSlug;
@@ -14,10 +18,12 @@ final class PluginUpdater
 
     private string $manifestUrl;
 
-    private string $cacheKey = 'monatsblitz_plugin_update';
+    private string $cacheKey = self::CACHE_KEY;
 
     public function __construct(string $pluginFile, string $currentVersion, string $manifestUrl)
     {
+        self::$instance = $this;
+
         $this->pluginBasename = plugin_basename($pluginFile);
         $this->pluginSlug = dirname($this->pluginBasename);
         $this->currentVersion = $currentVersion;
@@ -27,6 +33,7 @@ final class PluginUpdater
         add_filter('plugins_api', [$this, 'pluginInformation'], 20, 3);
         add_filter('upgrader_pre_download', [$this, 'verifyDownload'], 10, 2);
         add_action('upgrader_process_complete', [$this, 'clearCache'], 10, 2);
+        add_action('load-update-core.php', [$this, 'clearManifestCache']);
     }
 
     public function checkForUpdate($transient)
@@ -115,11 +122,76 @@ final class PluginUpdater
         ];
     }
 
-    public function clearCache($upgrader, array $options): void
+    public static function getInstance(): ?self
     {
-        if (($options['action'] ?? '') === 'update' && ($options['type'] ?? '') === 'plugin') {
+        return self::$instance;
+    }
+
+    public static function resetInstance(): void
+    {
+        self::$instance = null;
+    }
+
+    public function getCurrentVersion(): string
+    {
+        return $this->currentVersion;
+    }
+
+    public function clearManifestCache(): void
+    {
+        delete_site_transient($this->cacheKey);
+    }
+
+    public function clearCache($upgrader = null, array $options = []): void
+    {
+        if (
+            $upgrader === null ||
+            (($options['action'] ?? '') === 'update' && ($options['type'] ?? '') === 'plugin')
+        ) {
             delete_site_transient($this->cacheKey);
         }
+    }
+
+    public function purgeCache(): void
+    {
+        delete_site_transient($this->cacheKey);
+        delete_site_transient('update_plugins');
+        if (function_exists('wp_update_plugins')) {
+            wp_update_plugins();
+        }
+    }
+
+    public static function purge(): void
+    {
+        if (self::$instance !== null) {
+            self::$instance->purgeCache();
+        } else {
+            delete_site_transient(self::CACHE_KEY);
+            delete_site_transient('update_plugins');
+            if (function_exists('wp_update_plugins')) {
+                wp_update_plugins();
+            }
+        }
+    }
+
+    public function checkUpdateNow(): array
+    {
+        $this->purgeCache();
+        $manifest = $this->getManifest();
+
+        $latestVersion = is_array($manifest) && is_string($manifest['version'] ?? null)
+            ? $manifest['version']
+            : null;
+
+        $hasUpdate = $latestVersion !== null && version_compare($latestVersion, $this->currentVersion, '>');
+
+        return [
+            'current_version' => $this->currentVersion,
+            'latest_version'  => $latestVersion,
+            'has_update'      => $hasUpdate,
+            'release_url'     => is_array($manifest) ? ($manifest['release_url'] ?? null) : null,
+            'download_url'    => is_array($manifest) ? ($manifest['download_url'] ?? null) : null,
+        ];
     }
 
     public function verifyDownload($reply, string $package)

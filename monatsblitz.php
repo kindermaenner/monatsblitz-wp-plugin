@@ -27,9 +27,10 @@ require_once __DIR__ . '/vendor/autoload.php';
 define('MONATSBLITZ_PLUGIN_PATH', plugin_dir_path(__FILE__));
 
 $pluginData = get_file_data(__FILE__, ['Version' => 'Version']);
+define('MONATSBLITZ_VERSION', $pluginData['Version'] ?? '1.0');
 new \Monatsblitz\Update\PluginUpdater(
     __FILE__,
-    $pluginData['Version'],
+    MONATSBLITZ_VERSION,
     'https://kindermaenner.de/plugin-updates/monatsblitz/manifest.json'
 );
 

@@ -281,3 +281,31 @@ it('rejects a downloaded package with a checksum mismatch', function () {
         ->and($result->code)->toBe('monatsblitz_update_checksum_mismatch')
         ->and(is_file($file))->toBeFalse();
 });
+
+it('clears manifest cache when clearManifestCache is called', function () {
+    monatsblitzCacheManifest(monatsblitzManifest());
+    expect($GLOBALS['mb_test_site_transients'])->toHaveKey('monatsblitz_plugin_update');
+
+    $this->updater->clearManifestCache();
+
+    expect($GLOBALS['mb_test_site_transients'])->toBeEmpty()
+        ->and($GLOBALS['mb_test_deleted_site_transients'])->toContain('monatsblitz_plugin_update');
+});
+
+it('purges cache and detects update on checkUpdateNow', function () {
+    monatsblitzCacheManifest(monatsblitzManifest(['version' => '0.8.0']));
+    $GLOBALS['mb_test_remote_response']['body'] = json_encode(monatsblitzManifest(['version' => '1.2.0']));
+
+    $status = $this->updater->checkUpdateNow();
+
+    expect($status['current_version'])->toBe('0.9.0')
+        ->and($status['latest_version'])->toBe('1.2.0')
+        ->and($status['has_update'])->toBeTrue()
+        ->and($GLOBALS['mb_test_deleted_site_transients'])->toContain('monatsblitz_plugin_update')
+        ->and($GLOBALS['mb_test_deleted_site_transients'])->toContain('update_plugins');
+});
+
+it('exposes singleton instance', function () {
+    expect(PluginUpdater::getInstance())->toBe($this->updater)
+        ->and($this->updater->getCurrentVersion())->toBe('0.9.0');
+});

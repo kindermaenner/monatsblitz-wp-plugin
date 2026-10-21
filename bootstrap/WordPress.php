@@ -474,4 +474,32 @@ if (!function_exists('plugin_dir_path')) {
     }
 }
 
+if (!function_exists('delete_site_transient')) {
+    function delete_site_transient($key) {
+        $GLOBALS['mb_test_deleted_site_transients'][] = $key;
+        unset($GLOBALS['mb_test_site_transients'][$key]);
+        return true;
+    }
+}
+
+if (!function_exists('get_site_transient')) {
+    function get_site_transient($key) {
+        return $GLOBALS['mb_test_site_transients'][$key] ?? false;
+    }
+}
+
+if (!function_exists('set_site_transient')) {
+    function set_site_transient($key, $value, $expiration = 0) {
+        $GLOBALS['mb_test_site_transients'][$key] = $value;
+        $GLOBALS['mb_test_site_transient_expiration'][$key] = $expiration;
+        return true;
+    }
+}
+
+if (!function_exists('wp_update_plugins')) {
+    function wp_update_plugins() {
+        $GLOBALS['mb_test_wp_update_plugins_called'] = true;
+    }
+}
+
 define('MONATSBLITZ_PLUGIN_PATH', plugin_dir_path(__FILE__));
