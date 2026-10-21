@@ -314,7 +314,7 @@ class Admin
 
         // 👉 Wenn Tabelle ausgewählt → Detailansicht
         if (isset($_GET['table']) && isset($tables[$_GET['table']])) {
-            self::render_table_detail($tables[$_GET['table']]);
+            self::render_table_detail($_GET['table'], $tables[$_GET['table']]);
             echo '</div>';
             return;
         }
@@ -406,7 +406,7 @@ class Admin
         DatabaseSchema::reset_tables();
     }
 
-    private static function render_table_detail($table)
+    private static function render_table_detail(string $tableKey, string $table): void
     {
         global $wpdb;
 
@@ -416,19 +416,144 @@ class Admin
         $back = admin_url('admin.php?page=monatsblitz');
         echo "<p><a href='$back'>← Zurück</a></p>";
 
-        // Daten holen
-        $rows = $wpdb->get_results("SELECT * FROM $table LIMIT 100", ARRAY_A);
+        $playersTable = $wpdb->prefix . 'monatsblitz_players';
+        $tournamentsTable = $wpdb->prefix . 'monatsblitz_tournaments';
+
+        $hasTournamentFilter = in_array($tableKey, ['games', 'results', 'tournament_players'], true);
+        $filterTournamentId = null;
+
+        if ($hasTournamentFilter) {
+            $tournaments = $wpdb->get_results(
+                "SELECT id, year, month, day, mode, status FROM {$tournamentsTable} ORDER BY id DESC"
+            );
+
+            $openTournamentId = null;
+            if (is_array($tournaments)) {
+                foreach ($tournaments as $t) {
+                    $status = is_object($t) ? ($t->status ?? '') : ($t['status'] ?? '');
+                    if ($status === 'open') {
+                        $openTournamentId = is_object($t) ? (int)$t->id : (int)$t['id'];
+                        break;
+                    }
+                }
+            }
+
+            if (isset($_GET['tournament_id'])) {
+                $filterTournamentId = $_GET['tournament_id'] === 'all' ? 'all' : (int) $_GET['tournament_id'];
+            } else {
+                $filterTournamentId = $openTournamentId !== null ? $openTournamentId : 'all';
+            }
+
+            $currentPageUrl = admin_url('admin.php');
+            echo '<form method="get" action="' . esc_url($currentPageUrl) . '" style="margin: 15px 0; display:flex; align-items:center; gap:10px;">';
+            echo '<input type="hidden" name="page" value="monatsblitz">';
+            echo '<input type="hidden" name="table" value="' . esc_attr($tableKey) . '">';
+            echo '<label for="mb_filter_tournament"><strong>Turnier filtern:</strong></label>';
+            echo '<select name="tournament_id" id="mb_filter_tournament" onchange="this.form.submit()">';
+            echo '<option value="all"' . selected($filterTournamentId, 'all', false) . '>— Alle Turniere (neueste zuerst) —</option>';
+            if (is_array($tournaments)) {
+                foreach ($tournaments as $t) {
+                    $tId = is_object($t) ? (int)$t->id : (int)$t['id'];
+                    $tYear = is_object($t) ? (int)$t->year : (int)$t['year'];
+                    $tMonth = is_object($t) ? (int)$t->month : (int)$t['month'];
+                    $tDay = is_object($t) ? (int)$t->day : (int)$t['day'];
+                    $tMode = is_object($t) ? ($t->mode ?? '') : ($t['mode'] ?? '');
+                    $tStatus = is_object($t) ? ($t->status ?? '') : ($t['status'] ?? '');
+                    $isOpen = $tStatus === 'open';
+                    $label = sprintf('%04d-%02d-%02d (%s)%s', $tYear, $tMonth, $tDay, $tMode, $isOpen ? ' [OFFEN]' : '');
+                    echo '<option value="' . $tId . '"' . selected($filterTournamentId, $tId, false) . '>' . esc_html($label) . '</option>';
+                }
+            }
+            echo '</select>';
+            echo '<noscript><input type="submit" class="button" value="Filtern"></noscript>';
+            echo '</form>';
+        }
+
+        if ($tableKey === 'players') {
+            $rows = $wpdb->get_results("SELECT id, forename, surname FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A);
+        } elseif ($tableKey === 'tournaments') {
+            $rows = $wpdb->get_results("SELECT id, year, month, day, mode, round_count, status FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A);
+        } elseif ($tableKey === 'tournament_players') {
+            if ($filterTournamentId !== null && $filterTournamentId !== 'all') {
+                $query = $wpdb->prepare(
+                    "SELECT tp.id, tp.tournament_id, tp.player_id,
+                            COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name
+                     FROM {$table} tp
+                     LEFT JOIN {$playersTable} p ON p.id = tp.player_id
+                     WHERE tp.tournament_id = %d
+                     ORDER BY tp.id DESC",
+                    $filterTournamentId
+                );
+            } else {
+                $query = "SELECT tp.id, tp.tournament_id, tp.player_id,
+                                 COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name
+                          FROM {$table} tp
+                          LEFT JOIN {$playersTable} p ON p.id = tp.player_id
+                          ORDER BY tp.id DESC LIMIT 100";
+            }
+            $rows = $wpdb->get_results($query, ARRAY_A);
+        } elseif ($tableKey === 'games') {
+            if ($filterTournamentId !== null && $filterTournamentId !== 'all') {
+                $query = $wpdb->prepare(
+                    "SELECT g.id, g.tournament_id,
+                            g.player1_id, COALESCE(CONCAT(p1.surname, ', ', p1.forename), '-') AS player1_name,
+                            g.player2_id, COALESCE(CONCAT(p2.surname, ', ', p2.forename), '-') AS player2_name,
+                            g.leg_type, g.result
+                     FROM {$table} g
+                     LEFT JOIN {$playersTable} p1 ON p1.id = g.player1_id
+                     LEFT JOIN {$playersTable} p2 ON p2.id = g.player2_id
+                     WHERE g.tournament_id = %d
+                     ORDER BY g.id DESC",
+                    $filterTournamentId
+                );
+            } else {
+                $query = "SELECT g.id, g.tournament_id,
+                                 g.player1_id, COALESCE(CONCAT(p1.surname, ', ', p1.forename), '-') AS player1_name,
+                                 g.player2_id, COALESCE(CONCAT(p2.surname, ', ', p2.forename), '-') AS player2_name,
+                                 g.leg_type, g.result
+                          FROM {$table} g
+                          LEFT JOIN {$playersTable} p1 ON p1.id = g.player1_id
+                          LEFT JOIN {$playersTable} p2 ON p2.id = g.player2_id
+                          ORDER BY g.id DESC LIMIT 100";
+            }
+            $rows = $wpdb->get_results($query, ARRAY_A);
+        } elseif ($tableKey === 'results') {
+            if ($filterTournamentId !== null && $filterTournamentId !== 'all') {
+                $query = $wpdb->prepare(
+                    "SELECT r.id, r.tournament_id,
+                            r.player_id, COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name,
+                            r.points, r.rank
+                     FROM {$table} r
+                     LEFT JOIN {$playersTable} p ON p.id = r.player_id
+                     WHERE r.tournament_id = %d
+                     ORDER BY r.rank ASC, r.id DESC",
+                    $filterTournamentId
+                );
+            } else {
+                $query = "SELECT r.id, r.tournament_id,
+                                 r.player_id, COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name,
+                                 r.points, r.rank
+                          FROM {$table} r
+                          LEFT JOIN {$playersTable} p ON p.id = r.player_id
+                          ORDER BY r.id DESC LIMIT 100";
+            }
+            $rows = $wpdb->get_results($query, ARRAY_A);
+        } else {
+            $rows = $wpdb->get_results("SELECT * FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A);
+        }
 
         if (empty($rows)) {
             echo "<p>Keine Einträge vorhanden.</p>";
             return;
         }
 
+        echo '<p style="color:#666; font-size:13px; margin: 10px 0;">Einträge: ' . count($rows) . '</p>';
+
         echo '<table class="widefat fixed striped">';
         echo '<thead><tr>';
 
         foreach (array_keys($rows[0]) as $column) {
-            echo "<th>$column</th>";
+            echo '<th>' . esc_html($column) . '</th>';
         }
 
         echo '</tr></thead><tbody>';
@@ -436,7 +561,7 @@ class Admin
         foreach ($rows as $row) {
             echo '<tr>';
             foreach ($row as $value) {
-                echo '<td>' . esc_html($value) . '</td>';
+                echo '<td>' . esc_html((string)($value ?? '')) . '</td>';
             }
             echo '</tr>';
         }

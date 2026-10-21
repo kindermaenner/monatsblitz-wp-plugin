@@ -236,3 +236,38 @@ it('resets tables when action is valid', function () {
     expect($wpdb->queries)->toContain('SET FOREIGN_KEY_CHECKS=0');
     expect($wpdb->queries)->toContain('SET FOREIGN_KEY_CHECKS=1');
 });
+
+
+it('renders games detail with tournament filter and resolved player names', function () {
+    global $wpdb;
+
+    $_GET['table'] = 'games';
+    $wpdb->get_results_queue = [
+        [
+            (object) ['id' => 10, 'year' => 2026, 'month' => 10, 'day' => 21, 'mode' => '5+0', 'status' => 'open'],
+        ],
+        [
+            [
+                'id' => 55,
+                'tournament_id' => 10,
+                'player1_id' => 1,
+                'player1_name' => 'Mustermann, Max',
+                'player2_id' => 2,
+                'player2_name' => 'Erika, Musterfrau',
+                'leg_type' => 1,
+                'result' => '1:0',
+            ],
+        ],
+    ];
+
+    ob_start();
+    Admin::render_page();
+    $html = ob_get_clean();
+
+    expect($html)->toContain('Detailansicht');
+    expect($html)->toContain('Turnier filtern');
+    expect($html)->toContain('2026-10-21 (5+0) [OFFEN]');
+    expect($html)->toContain('Mustermann, Max');
+    expect($html)->toContain('Erika, Musterfrau');
+    expect($html)->toContain('1:0');
+});
