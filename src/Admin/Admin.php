@@ -256,6 +256,7 @@ class Admin
         // Template-Name
         echo '<tr><th scope="row">Template-Name</th><td>';
         echo '<input type="text" name="monatsblitz_template" value="' . esc_attr($template) . '" class="regular-text">';
+        echo '<p class="description">Platzhalter: <code>{{month_name}}</code>, <code>{{year}}</code>, <code>{{date}}</code>, <code>{{mode}}</code>, <code>{{round_count}}</code>, <code>{{table}}</code>, <code>{{winner_name}}</code>, <code>{{winner_points}}</code>, <code>{{winner_games}}</code>, <code>{{winner_verb}}</code>, <code>{{winner_text}}</code>.<br>Singular/Plural: <code>{{plural:siegt|siegen}}</code> oder <code>{{#singular}}...{{/singular}}</code> / <code>{{#plural}}...{{/plural}}</code>.</p>';
         echo '</td></tr>';
 
         // Template für statische Jahresseite

@@ -93,7 +93,8 @@ class FinalizeTournamentService
                 $games_list,
                 $table_html,
                 $winner_data
-            )
+            ),
+            $winner_data
         );
 
         $post_data = TournamentPostFactory::buildPostData((string)($tournament['mode'] ?? ''), $iso_date, $post_author_id, $content);
