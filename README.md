@@ -175,7 +175,18 @@ Base path: `/wp-json/monatsblitz/v1`
   - Returns all tournaments.
 
 - `GET /tournament/{id}`
-  - Returns tournament details for a given ID, including assigned `player_ids`.
+  - Returns tournament details for a given ID, including assigned `player_ids` and `withdrawn_player_ids`.
+
+- `POST /tournament/withdraw`
+  - Marks a player as withdrawn / having left the tournament early (`has_left = 1`).
+  - Body (JSON):
+    - `tournament_id`: ID of the tournament
+    - `player_id`: ID of the player
+    - `has_left` (optional): `1` (default) or `0`
+  - Response (JSON, HTTP 200 OK):
+    ```json
+    { "success": true }
+    ```
 
 ### Games
 
@@ -192,7 +203,7 @@ Base path: `/wp-json/monatsblitz/v1`
     - `player1_id`
     - `player2_id`
     - `leg_type` (optional): round/leg number, default `1`
-    - `result` (`1:0`, `0:1`, `0.5:0.5`, `+:-`, `-:+`, `offen`)
+    - `result` (`1:0`, `0:1`, `0.5:0.5`, `=`, `+:-`, `-:+`, `offen` — note: `=` denotes an unplayed draw for early withdrawal)
   - Behavior:
     - Player IDs are normalized before storing: `player1_id <= player2_id`.
     - If IDs are swapped during normalization, the result is mirrored (for example `1:0` becomes `0:1`).
@@ -290,6 +301,7 @@ Base path: `/wp-json/monatsblitz/v1`
   - Creates or updates a published post from the configured template post.
   - Body (JSON):
     - `tournament_id`
+    - `withdrawn_player_ids` (optional): array of player IDs who withdrew early. Withdrawn players are flagged with `(z)` in the cross-tables and final ranking table, accompanied by an explanatory footnote `(z) = vorzeitig beendet / zurückgetreten`.
 
 - `POST /buildYearPage`
   - Creates or updates the yearly static page for a given year.
@@ -321,8 +333,8 @@ The project uses a relational data model specifically designed for Monatsblitz t
 The database consists of six tables:
 - monatsblitz_players: player management
 - monatsblitz_tournaments: tournament metadata
-- monatsblitz_tournament_players: assigned tournament participants
-- monatsblitz_games: all played games
+- monatsblitz_tournament_players: assigned tournament participants (includes `has_left` flag for early withdrawal)
+- monatsblitz_games: all played games (includes `=` result for unplayed draw upon early exit)
 - monatsblitz_results: final results per player and tournament
 - monatsblitz_modes: mode catalog for tournament time controls
 
