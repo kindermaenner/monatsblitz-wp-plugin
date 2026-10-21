@@ -137,15 +137,7 @@ class DatabaseSchema
 
         if (isset($wpdb) && method_exists($wpdb, 'query')) {
             $wpdb->query(
-                "INSERT IGNORE INTO {$tournament_players_table} (tournament_id, player_id)
-                 SELECT tournament_id, player_id FROM {$results_table}"
-            );
-            $wpdb->query(
                 "INSERT IGNORE INTO {$modes_table} (name) VALUES ('3+2'), ('5+0')"
-            );
-            $wpdb->query(
-                "INSERT IGNORE INTO {$modes_table} (name)
-                 SELECT DISTINCT mode FROM {$tournaments_table} WHERE mode IS NOT NULL AND mode != ''"
             );
         }
     }
