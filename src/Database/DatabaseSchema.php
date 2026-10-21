@@ -134,11 +134,5 @@ class DatabaseSchema
         ";
 
         dbDelta($sql);
-
-        if (isset($wpdb) && method_exists($wpdb, 'query')) {
-            $wpdb->query(
-                "INSERT IGNORE INTO {$modes_table} (name) VALUES ('3+2'), ('5+0')"
-            );
-        }
     }
 }
