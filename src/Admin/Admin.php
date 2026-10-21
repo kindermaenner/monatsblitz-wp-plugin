@@ -131,8 +131,8 @@ class Admin
 
         if ($updateResult !== null) {
             if ($updateResult['has_update']) {
-                $updateUrl = function_exists('admin_url') ? admin_url('update-core.php') : 'update-core.php';
-                echo '<div class="notice notice-warning"><p><strong>🚀 Neue Version ' . esc_html($updateResult['latest_version'] ?? '') . ' verfügbar!</strong> Aktuell installiert: ' . esc_html($updateResult['current_version']) . '. <a href="' . esc_url($updateUrl) . '">Jetzt auf der WordPress-Aktualisierungsseite ansehen &rarr;</a></p></div>';
+                $updateUrl = function_exists('admin_url') ? admin_url('plugins.php') : 'plugins.php';
+                echo '<div class="notice notice-warning"><p><strong>🚀 Neue Version ' . esc_html($updateResult['latest_version'] ?? '') . ' verfügbar!</strong> Aktuell installiert: ' . esc_html($updateResult['current_version']) . '. <a href="' . esc_url($updateUrl) . '">Jetzt auf der Plugin-Seite aktualisieren &rarr;</a></p></div>';
             } else {
                 $displayVersion = $updateResult['latest_version'] ?? $updateResult['current_version'];
                 echo '<div class="notice notice-success is-dismissible"><p>✅ <strong>Das Plugin ist auf dem neuesten Stand</strong> (Version ' . esc_html($displayVersion) . ').</p></div>';
@@ -142,23 +142,28 @@ class Admin
         }
 
         /*
-        * FORMULAR 1: API-Key generieren (NICHT über options.php)
+        * 1) SEKTION: Plugin-Aktualisierung
         */
-        echo '<form method="post">';
-        wp_nonce_field('monatsblitz_generate_key_action');
+        $installedVersion = defined('MONATSBLITZ_VERSION') ? MONATSBLITZ_VERSION : '0.9.3';
+        if (class_exists(\Monatsblitz\Update\PluginUpdater::class)) {
+            $updater = \Monatsblitz\Update\PluginUpdater::getInstance();
+            if ($updater !== null) {
+                $installedVersion = $updater->getCurrentVersion();
+            }
+        }
 
-        echo '<table class="form-table">';
-        echo '<tr><th scope="row">API-Key</th><td>';
-        echo '<input type="text" value="' . esc_attr($api_key) . '" class="regular-text" style="width:350px;" readonly>';
-        echo '<p class="description">Diesen Key muss die Blitzabend-App im Header <code>X-MB-Key</code> mitsenden.</p>';
-        echo '<p><input type="submit" name="monatsblitz_generate_key" class="button" value="Neuen API-Key generieren"></p>';
-        echo '</td></tr>';
-        echo '</table>';
-
-                echo '</form>';
+        echo '<div class="card" style="max-width:600px; margin:20px 0; padding:16px 20px;">';
+        echo '<h2 style="margin-top:0;">🔄 Plugin-Aktualisierung</h2>';
+        echo '<p>Installierte Version: <strong>' . esc_html($installedVersion) . '</strong></p>';
+        echo '<form method="post" style="margin-top:12px;">';
+        wp_nonce_field('monatsblitz_check_update_action');
+        echo '<p><input type="submit" name="monatsblitz_check_update" class="button button-secondary" value="🔄 Auf Aktualisierungen prüfen"></p>';
+        echo '<p class="description">Leert den internen 6-Stunden-Cache und prüft sofort beim Update-Server auf neue Releases.</p>';
+        echo '</form>';
+        echo '</div>';
 
         /*
-        * SEKTION: App-Einrichtung per QR-Code
+        * 2) SEKTION: App-Einrichtung per QR-Code
         */
         echo '<div class="card" style="max-width:600px; margin:20px 0; padding:16px 20px;">';
         echo '<h2 style="margin-top:0;">📱 App-Einrichtung per QR-Code</h2>';
@@ -207,44 +212,33 @@ class Admin
             })();
             </script>';
         } else {
-            echo '<p style="color:#d63638;"><em>Bitte generiere zuerst oben einen API-Key, damit der QR-Code für die App erzeugt werden kann.</em></p>';
+            echo '<p style="color:#d63638;"><em>Bitte generiere zuerst unten unter Einstellungen einen API-Key, damit der QR-Code für die App erzeugt werden kann.</em></p>';
         }
         echo '</div>';
 
         /*
-        * SEKTION: Plugin-Aktualisierung
+        * 3) SEKTION: Einstellungen
         */
-        $installedVersion = defined('MONATSBLITZ_VERSION') ? MONATSBLITZ_VERSION : '0.9.3';
-        if (class_exists(\Monatsblitz\Update\PluginUpdater::class)) {
-            $updater = \Monatsblitz\Update\PluginUpdater::getInstance();
-            if ($updater !== null) {
-                $installedVersion = $updater->getCurrentVersion();
-            }
-        }
+        echo '<h2 style="margin-top:30px;">⚙️ Einstellungen</h2>';
 
-        echo '<div class="card" style="max-width:600px; margin:20px 0; padding:16px 20px;">';
-        echo '<h2 style="margin-top:0;">🔄 Plugin-Aktualisierung</h2>';
-        echo '<p>Installierte Version: <strong>' . esc_html($installedVersion) . '</strong></p>';
-        echo '<form method="post" style="margin-top:12px;">';
-        wp_nonce_field('monatsblitz_check_update_action');
-        echo '<p><input type="submit" name="monatsblitz_check_update" class="button button-secondary" value="🔄 Auf Aktualisierungen prüfen"></p>';
-        echo '<p class="description">Leert den internen 6-Stunden-Cache und prüft sofort beim Update-Server auf neue Releases.</p>';
+        // Formular 1: API-Key generieren
+        echo '<form method="post" style="margin-bottom:0;">';
+        wp_nonce_field('monatsblitz_generate_key_action');
+        echo '<table class="form-table" style="margin-bottom:0;">';
+        echo '<tr><th scope="row">API-Key</th><td>';
+        echo '<input type="text" value="' . esc_attr($api_key) . '" class="regular-text" style="width:350px;" readonly> ';
+        echo '<input type="submit" name="monatsblitz_generate_key" class="button" value="Neuen API-Key generieren">';
+        echo '<p class="description">Diesen Key muss die Blitzabend-App im Header <code>X-MB-Key</code> mitsenden.</p>';
+        echo '</td></tr>';
+        echo '</table>';
         echo '</form>';
-        echo '</div>';
 
-        /*
-        * FORMULAR 2: Normale Einstellungen (läuft über options.php)
-        */
+        // Formular 2: Normale Einstellungen (läuft über options.php)
         echo '<form method="post" action="options.php">';
         settings_fields('monatsblitz_settings');
+        echo '<input type="hidden" name="monatsblitz_api_key" value="' . esc_attr($api_key) . '">';
 
         echo '<table class="form-table">';
-
-        // API-Key auch hier einfügen, damit WordPress ihn speichert
-        echo '<tr><th scope="row">API-Key (gespeichert)</th><td>';
-        echo '<input type="text" name="monatsblitz_api_key" value="' . esc_attr($api_key) . '" class="regular-text" style="width:350px;" readonly>';
-        echo '<p class="description">Wird automatisch aktualisiert, wenn ein neuer Key generiert wird.</p>';
-        echo '</td></tr>';
 
         // Autor-Auswahl
         echo '<tr><th scope="row">Autor des Beitrags</th><td>';
