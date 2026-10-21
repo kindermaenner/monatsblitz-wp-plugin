@@ -33,9 +33,10 @@ class TournamentRepository
 
         $results = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT r.player_id, r.points, r.rank, p.forename, p.surname
+                "SELECT r.player_id, r.points, r.rank, p.forename, p.surname, COALESCE(tp.has_left, 0) as has_left
                  FROM {$wpdb->prefix}monatsblitz_results r
                  LEFT JOIN {$wpdb->prefix}monatsblitz_players p ON r.player_id = p.id
+                 LEFT JOIN {$wpdb->prefix}monatsblitz_tournament_players tp ON tp.tournament_id = r.tournament_id AND tp.player_id = r.player_id
                  WHERE r.tournament_id = %d
                  ORDER BY r.rank ASC",
                 $tournament_id

@@ -62,7 +62,7 @@ class TournamentContentBuilder
     {
         $row = '<tr>';
         $row .= '<td>' . ($row_index + 1) . '</td>';
-        $row .= '<td>' . $row_player['name'] . '</td>';
+        $row .= '<td>' . $row_player['name'] . (!empty($row_player['has_left']) ? ' (z)' : '') . '</td>';
 
         foreach ($players as $column_index => $column_player) {
             $row .= static::buildCrossTableCell($row_index, $column_index, $row_player, $column_player, $game_map);
@@ -102,15 +102,23 @@ class TournamentContentBuilder
         $summary .= '<table class="monatsblitz">';
         $summary .= '<thead><tr><th>Spieler</th><th>Gesamtpunkte</th><th>Platz</th></tr></thead><tbody>';
 
+        $has_withdrawn = false;
         foreach ($players as $player) {
+            $is_withdrawn = !empty($player['has_left']);
+            if ($is_withdrawn) {
+                $has_withdrawn = true;
+            }
             $summary .= '<tr>';
-            $summary .= '<td>' . $player['name'] . '</td>';
+            $summary .= '<td>' . $player['name'] . ($is_withdrawn ? ' (z)' : '') . '</td>';
             $summary .= '<td>' . $player['points'] . '</td>';
             $summary .= '<td>' . $player['rank'] . '</td>';
             $summary .= '</tr>';
         }
 
         $summary .= '</tbody></table>';
+        if ($has_withdrawn) {
+            $summary .= '<p class="description" style="font-size:0.9em; margin-top:4px;"><em>(z) = vorzeitig beendet / zur&uuml;ckgetreten</em></p>';
+        }
         return $summary;
     }
 
@@ -120,8 +128,16 @@ class TournamentContentBuilder
         $html .= '<thead><tr><th>Nr.</th><th>Spieler</th><th>Punkte</th><th>Platz</th></tr></thead><tbody>';
 
         $i = 1;
+        $has_withdrawn = false;
         foreach ($results as $result) {
+            $is_withdrawn = !empty($result['has_left']);
+            if ($is_withdrawn) {
+                $has_withdrawn = true;
+            }
             $name = esc_html(trim(((string)($result['forename'] ?? '')) . ' ' . ((string)($result['surname'] ?? ''))));
+            if ($is_withdrawn) {
+                $name .= ' (z)';
+            }
             $points = esc_html((string)($result['points'] ?? ''));
             $rank = esc_html((string)($result['rank'] ?? ''));
 
@@ -135,6 +151,9 @@ class TournamentContentBuilder
         }
 
         $html .= '</tbody></table>';
+        if ($has_withdrawn) {
+            $html .= '<p class="description" style="font-size:0.9em; margin-top:4px;"><em>(z) = vorzeitig beendet / zur&uuml;ckgetreten</em></p>';
+        }
         return $html;
     }
 
@@ -161,6 +180,7 @@ class TournamentContentBuilder
             '0-1' => '0',
             '+:-' => '+',
             '-:+' => '-',
+            '='   => '=',
         ];
     }
 
@@ -173,6 +193,7 @@ class TournamentContentBuilder
             '0-1' => '1',
             '+:-' => '-',
             '-:+' => '+',
+            '='   => '=',
         ];
     }
 

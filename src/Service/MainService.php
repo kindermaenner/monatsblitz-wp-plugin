@@ -139,4 +139,16 @@ class MainService
 
         return rest_ensure_response($result);
     }
+
+    public static function withdrawPlayer($request)
+    {
+        $params = $request instanceof \WP_REST_Request ? $request->get_json_params() : $request;
+        $result = (new \Monatsblitz\Database\WithdrawPlayerHandler())->handle($params ?? []);
+
+        if ($result instanceof \WP_Error) {
+            return $result;
+        }
+
+        return rest_ensure_response($result);
+    }
 }

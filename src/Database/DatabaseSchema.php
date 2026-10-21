@@ -91,6 +91,7 @@ class DatabaseSchema
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 tournament_id BIGINT UNSIGNED NOT NULL,
                 player_id BIGINT UNSIGNED NOT NULL,
+                has_left TINYINT(1) NOT NULL DEFAULT 0,
 
                 PRIMARY KEY (id),
 
@@ -106,7 +107,7 @@ class DatabaseSchema
                 player1_id BIGINT UNSIGNED NOT NULL,
                 player2_id BIGINT UNSIGNED NOT NULL,
                 leg_type TINYINT NOT NULL DEFAULT 1,
-                result ENUM('1:0','0:1','0.5:0.5','+:-','-:+','offen') NOT NULL,
+                result ENUM('1:0','0:1','0.5:0.5','+:-','-:+','=','offen') NOT NULL,
 
                 PRIMARY KEY (id),
 

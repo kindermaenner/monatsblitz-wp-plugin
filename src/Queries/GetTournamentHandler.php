@@ -49,7 +49,7 @@ class GetTournamentHandler
         $player_rows = method_exists($wpdb, 'get_results')
             ? $wpdb->get_results(
                 $wpdb->prepare(
-                    "SELECT player_id FROM {$players_table} WHERE tournament_id = %d ORDER BY id ASC",
+                    "SELECT player_id, has_left FROM {$players_table} WHERE tournament_id = %d ORDER BY id ASC",
                     $tournament_id
                 ),
                 ARRAY_A
@@ -57,26 +57,32 @@ class GetTournamentHandler
             : [];
 
         $player_ids = [];
+        $withdrawn_player_ids = [];
         if (is_array($player_rows)) {
             foreach ($player_rows as $row) {
                 $pid = is_array($row) ? intval($row['player_id'] ?? 0) : intval($row->player_id ?? 0);
+                $has_left = is_array($row) ? intval($row['has_left'] ?? 0) : intval($row->has_left ?? 0);
                 if ($pid > 0) {
                     $player_ids[] = $pid;
+                    if ($has_left === 1) {
+                        $withdrawn_player_ids[] = $pid;
+                    }
                 }
             }
         }
 
         return [
-            'id'             => (int) ($result['id'] ?? 0),
-            'year'           => $year,
-            'month'          => $month,
-            'day'            => $day,
-            'mode'           => (string) ($result['mode'] ?? ''),
-            'round_count'    => (int) ($result['round_count'] ?? 1),
-            'status'         => (string) ($result['status'] ?? 'open'),
-            'date'           => $date,
-            'date_formatted' => (string) ($result['date_formatted'] ?? sprintf('%d.%d.%04d', $day, $month, $year)),
-            'player_ids'     => $player_ids,
+            'id'                   => (int) ($result['id'] ?? 0),
+            'year'                 => $year,
+            'month'                => $month,
+            'day'                  => $day,
+            'mode'                 => (string) ($result['mode'] ?? ''),
+            'round_count'          => (int) ($result['round_count'] ?? 1),
+            'status'               => (string) ($result['status'] ?? 'open'),
+            'date'                 => $date,
+            'date_formatted'       => (string) ($result['date_formatted'] ?? sprintf('%d.%d.%04d', $day, $month, $year)),
+            'player_ids'           => $player_ids,
+            'withdrawn_player_ids' => $withdrawn_player_ids,
         ];
     }
 }

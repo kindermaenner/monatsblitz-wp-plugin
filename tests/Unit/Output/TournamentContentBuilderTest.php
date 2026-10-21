@@ -67,6 +67,33 @@ it('normalizes common result cells with and without inversion', function () {
     expect(TournamentContentBuilder::normalizeResultCell('1:0', true))->toBe('0');
     expect(TournamentContentBuilder::normalizeResultCell('+:-', false))->toBe('+');
     expect(TournamentContentBuilder::normalizeResultCell('+:-', true))->toBe('-');
+    expect(TournamentContentBuilder::normalizeResultCell('=', false))->toBe('=');
+    expect(TournamentContentBuilder::normalizeResultCell('=', true))->toBe('=');
     expect(TournamentContentBuilder::normalizeResultCell('0.5-0.5', false))->toBe('½');
     expect(TournamentContentBuilder::normalizeResultCell('RAW', false))->toBe('RAW');
+});
+
+it('marks withdrawn players with (z) in results and cross table', function () {
+    $htmlResults = TournamentContentBuilder::buildResultsTable([
+        ['forename' => 'Max', 'surname' => 'Muster', 'points' => 5, 'rank' => 1, 'has_left' => 0],
+        ['forename' => 'Paul', 'surname' => 'Jugend', 'points' => 2.5, 'rank' => 2, 'has_left' => 1],
+    ]);
+
+    expect($htmlResults)->toContain('Max Muster');
+    expect($htmlResults)->toContain('Paul Jugend (z)');
+    expect($htmlResults)->toContain('(z) = vorzeitig beendet / zur&uuml;ckgetreten');
+
+    $htmlCross = TournamentContentBuilder::buildCrossTable(
+        [
+            ['id' => 1, 'name' => 'Max', 'points' => 5, 'rank' => 1, 'has_left' => 0],
+            ['id' => 2, 'name' => 'Paul', 'points' => 2.5, 'rank' => 2, 'has_left' => 1],
+        ],
+        [
+            ['player1_id' => 1, 'player2_id' => 2, 'leg_type' => 1, 'result' => '='],
+        ],
+        true
+    );
+
+    expect($htmlCross)->toContain('<td>Paul (z)</td>');
+    expect($htmlCross)->toContain('<td>=</td>');
 });
