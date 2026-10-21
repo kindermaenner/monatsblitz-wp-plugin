@@ -53,6 +53,7 @@ We automate the boring parts so there is more time for what really matters in cl
   - `wp_monatsblitz_tournament_players`
   - `wp_monatsblitz_games`
   - `wp_monatsblitz_results`
+  - `wp_monatsblitz_modes`
 - Provides REST API endpoints for managing players, tournaments, games, and results.
 - Creates a new published post from an existing `Template_Monatsblitz` post once a tournament is finalized.
 - Creates or updates a yearly static page (slug `blitz-YYYY`) from a configured page template.
@@ -129,6 +130,36 @@ Base path: `/wp-json/monatsblitz/v1`
 
 - `GET /players`
   - Returns all players.
+
+### Modes
+
+- `GET /modes`
+  - Returns all available modes in the catalog.
+  - Response (JSON):
+    ```json
+    [
+      { "id": 1, "name": "3+2" },
+      { "id": 2, "name": "5+0" }
+    ]
+    ```
+
+- `POST /mode`
+  - Adds a new mode to the catalog (or returns existing mode if it already exists).
+  - Body (JSON):
+    ```json
+    { "name": "10+0" }
+    ```
+  - Validation:
+    - `name`: max 50 characters, non-empty.
+    - Case-insensitive duplicate check.
+  - Response (JSON, HTTP 201 Created or HTTP 200 OK):
+    ```json
+    {
+      "success": true,
+      "id": 3,
+      "name": "10+0"
+    }
+    ```
 
 ### Tournaments
 
@@ -287,12 +318,13 @@ Base path: `/wp-json/monatsblitz/v1`
 
 The project uses a relational data model specifically designed for Monatsblitz tournament requirements.
 
-The database consists of five tables:
+The database consists of six tables:
 - monatsblitz_players: player management
 - monatsblitz_tournaments: tournament metadata
 - monatsblitz_tournament_players: assigned tournament participants
 - monatsblitz_games: all played games
 - monatsblitz_results: final results per player and tournament
+- monatsblitz_modes: mode catalog for tournament time controls
 
 The full schema is shown in the following diagram:
 
@@ -306,6 +338,7 @@ The full schema is shown in the following diagram:
 
 - monatsblitz_players: UNIQUE(forename, surname)
 - monatsblitz_tournaments: UNIQUE(year, month, day)
+- monatsblitz_modes: UNIQUE(name)
 - monatsblitz_tournament_players: UNIQUE(tournament_id, player_id)
 - monatsblitz_games: UNIQUE(tournament_id, player1_id, player2_id, leg_type)
 - monatsblitz_results: UNIQUE(tournament_id, player_id)
