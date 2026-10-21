@@ -87,6 +87,9 @@ it('updates existing result', function () {
 
     expect($result['success'])->toBeTrue();
     expect($result['result_id'])->toBe(55);
+    expect($result['player_id'])->toBe(2);
+    expect($result['points'])->toBe(4.0);
+    expect($result['rank'])->toBe(1);
     expect($wpdb->last_update_data['points'])->toBe(4.0);
 });
 
@@ -112,6 +115,9 @@ it('creates new result when none exists', function () {
 
     expect($result['success'])->toBeTrue();
     expect($result['result_id'])->toBe(88);
+    expect($result['player_id'])->toBe(2);
+    expect($result['points'])->toBe(2.5);
+    expect($result['rank'])->toBe(4);
     expect($wpdb->last_insert_data['points'])->toBe(2.5);
 });
 
@@ -141,6 +147,9 @@ it('creates batch results from a results array', function () {
     expect($result['count'])->toBe(3);
     expect($result['items'])->toHaveCount(3);
     expect($result['items'][0]['result_id'])->toBe(100);
+    expect($result['items'][0]['player_id'])->toBe(5);
+    expect($result['items'][0]['points'])->toBe(8.0);
+    expect($result['items'][0]['rank'])->toBe(1);
 });
 
 it('rejects invalid batch result payloads', function () {

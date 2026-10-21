@@ -127,6 +127,9 @@ class CreateResultHandler
             return [
                 'success'   => true,
                 'result_id' => (int) $existing,
+                'player_id' => $player_id,
+                'points'    => $points,
+                'rank'      => $rank,
                 'message'   => 'Ergebnis aktualisiert'
             ];
         }
@@ -144,7 +147,10 @@ class CreateResultHandler
 
         return [
             'success'   => true,
-            'result_id' => (int) $wpdb->insert_id
+            'result_id' => (int) $wpdb->insert_id,
+            'player_id' => $player_id,
+            'points'    => $points,
+            'rank'      => $rank
         ];
     }
 }
