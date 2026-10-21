@@ -23,13 +23,16 @@ it('registers settings inside admin_init callback', function () {
     $adminInit = $GLOBALS['mb_test_actions'][1]['callback'];
     $adminInit();
 
-    expect($GLOBALS['mb_test_settings'])->toHaveCount(6);
+    expect($GLOBALS['mb_test_settings'])->toHaveCount(9);
     expect($GLOBALS['mb_test_settings'][0])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_author']);
     expect($GLOBALS['mb_test_settings'][1])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_template']);
     expect($GLOBALS['mb_test_settings'][2])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_template_static_page']);
     expect($GLOBALS['mb_test_settings'][3])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_blitz_modes']);
     expect($GLOBALS['mb_test_settings'][4])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_api_key']);
     expect($GLOBALS['mb_test_settings'][5])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_hide_january_overview']);
+    expect($GLOBALS['mb_test_settings'][6])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_default_mode_type']);
+    expect($GLOBALS['mb_test_settings'][7])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_default_fixed_mode']);
+    expect($GLOBALS['mb_test_settings'][8])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_default_rotation_modes']);
 });
 
 it('registers main menu and settings submenu', function () {
@@ -60,9 +63,45 @@ it('renders settings page with stored values', function () {
     expect($html)->toContain('name="monatsblitz_template_static_page"');
     expect($html)->toContain('name="monatsblitz_blitz_modes"');
     expect($html)->toContain('name="monatsblitz_hide_january_overview"');
+    expect($html)->toContain('name="monatsblitz_default_mode_type"');
+    expect($html)->toContain('name="monatsblitz_default_fixed_mode"');
+    expect($html)->toContain('name="monatsblitz_default_rotation_modes[]"');
     expect($html)->toContain('App-Einrichtung per QR-Code');
     expect($html)->toContain('id="monatsblitz-qrcode"');
     expect($html)->toContain('https://example.test');
+});
+
+it('embeds fixed mode preselection in qr payload', function () {
+    $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'key-123';
+    $GLOBALS['mb_test_options']['monatsblitz_default_mode_type'] = 'fixed';
+    $GLOBALS['mb_test_options']['monatsblitz_default_fixed_mode'] = '3+2';
+
+    ob_start();
+    Admin::render_settings_page();
+    $html = ob_get_clean();
+
+    expect($html)->toContain('mode_type');
+    expect($html)->toContain('fixed');
+    expect($html)->toContain('fixed_mode');
+    expect($html)->toContain('3+2');
+    expect($html)->toContain('Fest (<code>3+2</code>)');
+});
+
+it('embeds rotation mode preselection in qr payload', function () {
+    $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'key-123';
+    $GLOBALS['mb_test_options']['monatsblitz_default_mode_type'] = 'rotation';
+    $GLOBALS['mb_test_options']['monatsblitz_default_rotation_modes'] = ['3+2', '5+0'];
+
+    ob_start();
+    Admin::render_settings_page();
+    $html = ob_get_clean();
+
+    expect($html)->toContain('mode_type');
+    expect($html)->toContain('rotation');
+    expect($html)->toContain('rotation_modes');
+    expect($html)->toContain('3+2');
+    expect($html)->toContain('5+0');
+    expect($html)->toContain('Rotation (<code>3+2, 5+0</code>)');
 });
 
 it('renders settings page prompt to generate key when api key is missing', function () {

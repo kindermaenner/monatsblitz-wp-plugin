@@ -380,9 +380,19 @@ Yearly overview behavior:
 - Month cells in `{{blitz_monthly_overview}}` show only points when a player participated.
 - If a player did not participate in a month, the cell is empty (instead of `0/0`).
 
-## Security
+## Security & App Setup
 
-The API is protected by an API key that must be sent in the request header. The key can be generated in the plugin settings and must be configured in the related app.
+The API is protected by an API key that must be sent in the request header (`X-MB-Key`).
+
+### App-Einrichtung per QR-Code
+In WordPress Admin (*Monatsblitz &rarr; Einstellungen*), a QR code is generated for easy onboarding of tournament directors:
+- **Server-URL** and **API-Key**
+- **Standard-Turniermodus (Vorauswahl):**
+  - `none`: Keine automatische Vorauswahl
+  - `fixed`: Fester Standardmodus (z. B. `3+2`)
+  - `rotation`: Liste rotierender Modi (z. B. `["3+2", "5+0"]`), bei denen die App automatisch anhand vergangener Turniere in der Datenbank den nächsten Modus wählt.
+
+Scanning the QR code in the Monatsblitz Android app automatically sets up the backend connection, synchronizes players and modes, and preselects the configured tournament mode.
 
 ## Note
 

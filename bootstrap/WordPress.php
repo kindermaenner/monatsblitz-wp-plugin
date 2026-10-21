@@ -161,7 +161,7 @@ if (!function_exists('register_rest_route')) {
 }
 
 if (!function_exists('register_setting')) {
-    function register_setting($group, $name) {
+    function register_setting($group, $name, $args = []) {
         $GLOBALS['mb_test_settings'][] = ['group' => $group, 'name' => $name];
         return true;
     }

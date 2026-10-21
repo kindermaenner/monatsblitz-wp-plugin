@@ -22,6 +22,9 @@ class Admin
             register_setting('monatsblitz_settings', 'monatsblitz_blitz_modes');
             register_setting('monatsblitz_settings', 'monatsblitz_api_key');
             register_setting('monatsblitz_settings', 'monatsblitz_hide_january_overview');
+            register_setting('monatsblitz_settings', 'monatsblitz_default_mode_type');
+            register_setting('monatsblitz_settings', 'monatsblitz_default_fixed_mode');
+            register_setting('monatsblitz_settings', 'monatsblitz_default_rotation_modes');
         });
         add_action('admin_enqueue_scripts', [self::class, 'enqueue_admin_assets']);
     }
@@ -92,6 +95,14 @@ class Admin
         $blitz_modes = get_option('monatsblitz_blitz_modes', '');
         $api_key   = get_option('monatsblitz_api_key', '');
         $hide_january_overview = (bool)get_option('monatsblitz_hide_january_overview', false);
+        $default_mode_type = get_option('monatsblitz_default_mode_type', 'none');
+        $default_fixed_mode = get_option('monatsblitz_default_fixed_mode', '');
+        $default_rotation_modes = get_option('monatsblitz_default_rotation_modes', []);
+        if (!is_array($default_rotation_modes)) {
+            $default_rotation_modes = array_values(array_filter(array_map('trim', explode(',', (string)$default_rotation_modes)), fn($v) => $v !== ''));
+        } else {
+            $default_rotation_modes = array_values(array_filter($default_rotation_modes, fn($v) => !empty($v)));
+        }
 
         // Modus hinzufügen
         if (isset($_POST['monatsblitz_add_mode'])) {
@@ -150,6 +161,8 @@ class Admin
             }
         }
 
+        $modes = (new \Monatsblitz\Queries\GetModesHandler())->handle();
+
         // Userliste
         $users = get_users([
             'fields' => ['ID', 'user_login']
@@ -197,10 +210,20 @@ class Admin
         echo '<div class="card" style="max-width:600px; margin:20px 0; padding:16px 20px;">';
         echo '<h2 style="margin-top:0;">📱 App-Einrichtung per QR-Code</h2>';
         if (!empty($api_key)) {
-            $qr_payload = json_encode([
+            $payload = [
                 'url' => home_url(),
                 'key' => $api_key,
-            ], JSON_UNESCAPED_SLASHES);
+            ];
+            if (in_array($default_mode_type, ['fixed', 'rotation', 'none'], true)) {
+                $payload['mode_type'] = $default_mode_type;
+                if ($default_mode_type === 'fixed' && !empty($default_fixed_mode)) {
+                    $payload['fixed_mode'] = $default_fixed_mode;
+                } elseif ($default_mode_type === 'rotation' && !empty($default_rotation_modes)) {
+                    $payload['rotation_modes'] = array_values($default_rotation_modes);
+                }
+            }
+
+            $qr_payload = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
             echo '<p>Scanne diesen QR-Code mit der <strong>Monatsblitz-App</strong> (unter <em>Einstellungen &rarr; QR-Code scannen</em>), um Server-Adresse und API-Key automatisch einzurichten:</p>';
             echo '<div style="margin:16px 0; display:flex; align-items:center; gap:20px; flex-wrap:wrap;">';
@@ -210,6 +233,13 @@ class Admin
             echo '<ul style="list-style:disc; margin-left:20px;">';
             echo '<li><strong>URL:</strong> <code>' . esc_html(home_url()) . '</code></li>';
             echo '<li><strong>API-Key:</strong> <code>' . esc_html(substr($api_key, 0, 6) . '...' . substr($api_key, -4)) . '</code></li>';
+            if ($default_mode_type === 'fixed' && !empty($default_fixed_mode)) {
+                echo '<li><strong>Turniermodus:</strong> Fest (<code>' . esc_html($default_fixed_mode) . '</code>)</li>';
+            } elseif ($default_mode_type === 'rotation' && !empty($default_rotation_modes)) {
+                echo '<li><strong>Turniermodus:</strong> Rotation (<code>' . esc_html(implode(', ', $default_rotation_modes)) . '</code>)</li>';
+            } else {
+                echo '<li><strong>Turniermodus:</strong> Keine automatische Vorauswahl</li>';
+            }
             echo '</ul>';
             echo '</div>';
             echo '</div>';
@@ -306,6 +336,45 @@ class Admin
         echo '<tr><th scope="row">Zusatzliche Blitz-Modi</th><td>';
         echo '<input type="text" name="monatsblitz_blitz_modes" value="' . esc_attr($blitz_modes) . '" class="regular-text">';
         echo '<p class="description">Komma-Liste, z. B. Handicap, Armageddon. Standardregel bleibt aktiv: alle Modi <= 5+X zahlen als Blitz.</p>';
+        echo '</td></tr>';
+
+        // Standard-Turniermodus (Vorauswahl)
+        echo '<tr><th scope="row">Standard-Turniermodus</th><td>';
+        echo '<select name="monatsblitz_default_mode_type">';
+        echo '<option value="none" ' . selected($default_mode_type, 'none', false) . '>Keine automatische Vorauswahl</option>';
+        echo '<option value="fixed" ' . selected($default_mode_type, 'fixed', false) . '>Fester Modus</option>';
+        echo '<option value="rotation" ' . selected($default_mode_type, 'rotation', false) . '>Rotierender Modus</option>';
+        echo '</select>';
+        echo '<p class="description">Steuert die Vorauswahl bei neuen Turnieren in der App (wird auch im QR-Code übermittelt).</p>';
+        echo '</td></tr>';
+
+        // Fester Standardmodus
+        echo '<tr><th scope="row">Fester Standardmodus</th><td>';
+        echo '<select name="monatsblitz_default_fixed_mode">';
+        echo '<option value="">— Bitte wählen —</option>';
+        foreach ($modes as $m) {
+            $selected = selected($default_fixed_mode, $m['name'], false);
+            echo "<option value='" . esc_attr($m['name']) . "' $selected>" . esc_html($m['name']) . "</option>";
+        }
+        echo '</select>';
+        echo '<p class="description">Wird verwendet, wenn oben <em>Fester Modus</em> gewählt ist.</p>';
+        echo '</td></tr>';
+
+        // Modus-Rotation
+        echo '<tr><th scope="row">Modus-Rotation</th><td>';
+        echo '<input type="hidden" name="monatsblitz_default_rotation_modes[]" value="">';
+        if (empty($modes)) {
+            echo '<p class="description">Keine Modi im Katalog vorhanden. Bitte lege weiter unten Modi an.</p>';
+        } else {
+            foreach ($modes as $m) {
+                $checked = in_array($m['name'], $default_rotation_modes, true) ? 'checked="checked"' : '';
+                echo '<label style="display:inline-block; margin-right:15px; margin-bottom:5px;">';
+                echo '<input type="checkbox" name="monatsblitz_default_rotation_modes[]" value="' . esc_attr($m['name']) . '" ' . $checked . '> ';
+                echo esc_html($m['name']);
+                echo '</label>';
+            }
+            echo '<p class="description">Wird verwendet, wenn oben <em>Rotierender Modus</em> gewählt ist. Die App wählt dann basierend auf den vergangenen Turnieren den nächsten Modus dieser Reihenfolge.</p>';
+        }
         echo '</td></tr>';
 
         echo '</table>';
