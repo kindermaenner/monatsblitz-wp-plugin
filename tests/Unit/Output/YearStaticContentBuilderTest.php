@@ -49,3 +49,42 @@ it('aggregates monthly stats and builds content', function () {
     expect($content)->toContain('monatsblitz-year-overview');
     expect($content)->toContain('monatsblitz-year-ranking');
 });
+
+it('includes 0-point tournaments in pointsPerTournament and counts them towards top 7 participations', function () {
+    $builder = new YearStaticContentBuilder();
+    $rows = [
+        // Player 1: 3 tournaments (5, 0, 0) -> counted 3, points 5
+        ['tournament_id' => 1, 'month' => 1, 'mode' => '5+0', 'player_id' => 1, 'rank' => 1, 'forename' => 'Alice', 'surname' => 'A'],
+        ['tournament_id' => 2, 'month' => 2, 'mode' => '5+0', 'player_id' => 1, 'rank' => 6, 'forename' => 'Alice', 'surname' => 'A'],
+        ['tournament_id' => 3, 'month' => 3, 'mode' => '5+0', 'player_id' => 1, 'rank' => 7, 'forename' => 'Alice', 'surname' => 'A'],
+
+        // Player 2: 8 tournaments (5, 4, and 6x 0) -> counted 7, points 9
+        ['tournament_id' => 1, 'month' => 1, 'mode' => '5+0', 'player_id' => 2, 'rank' => 1, 'forename' => 'Bob', 'surname' => 'B'],
+        ['tournament_id' => 2, 'month' => 2, 'mode' => '5+0', 'player_id' => 2, 'rank' => 2, 'forename' => 'Bob', 'surname' => 'B'],
+        ['tournament_id' => 3, 'month' => 3, 'mode' => '5+0', 'player_id' => 2, 'rank' => 6, 'forename' => 'Bob', 'surname' => 'B'],
+        ['tournament_id' => 4, 'month' => 4, 'mode' => '5+0', 'player_id' => 2, 'rank' => 6, 'forename' => 'Bob', 'surname' => 'B'],
+        ['tournament_id' => 5, 'month' => 5, 'mode' => '5+0', 'player_id' => 2, 'rank' => 6, 'forename' => 'Bob', 'surname' => 'B'],
+        ['tournament_id' => 6, 'month' => 6, 'mode' => '5+0', 'player_id' => 2, 'rank' => 6, 'forename' => 'Bob', 'surname' => 'B'],
+        ['tournament_id' => 7, 'month' => 7, 'mode' => '5+0', 'player_id' => 2, 'rank' => 6, 'forename' => 'Bob', 'surname' => 'B'],
+        ['tournament_id' => 8, 'month' => 8, 'mode' => '5+0', 'player_id' => 2, 'rank' => 6, 'forename' => 'Bob', 'surname' => 'B'],
+
+        // Player 3: 2 tournaments with 0 points -> counted 2, points 0
+        ['tournament_id' => 1, 'month' => 1, 'mode' => '5+0', 'player_id' => 3, 'rank' => 8, 'forename' => 'Charlie', 'surname' => 'C'],
+        ['tournament_id' => 2, 'month' => 2, 'mode' => '5+0', 'player_id' => 3, 'rank' => 9, 'forename' => 'Charlie', 'surname' => 'C'],
+    ];
+
+    [$monthly, $pointsPerTournament] = $builder->aggregateMonthlyStats($rows);
+
+    expect($pointsPerTournament[1])->toBe([5, 0, 0]);
+    expect($pointsPerTournament[2])->toBe([5, 4, 0, 0, 0, 0, 0, 0]);
+    expect($pointsPerTournament[3])->toBe([0, 0]);
+
+    $rankingHtml = $builder->buildYearRankingTable($monthly, $pointsPerTournament);
+
+    // Bob: 9 points, 7 counted participations
+    expect($rankingHtml)->toContain('<td>Bob B</td><td>9</td><td>7</td>');
+    // Alice: 5 points, 3 counted participations
+    expect($rankingHtml)->toContain('<td>Alice A</td><td>5</td><td>3</td>');
+    // Charlie: 0 points, 2 counted participations
+    expect($rankingHtml)->toContain('<td>Charlie C</td><td>0</td><td>2</td>');
+});

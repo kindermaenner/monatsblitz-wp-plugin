@@ -47,9 +47,7 @@ class YearStaticContentBuilder
             $monthly[$playerId]['months'][$month]['participations'] += 1;
             $monthly[$playerId]['months'][$month]['points'] += $rankPoints;
 
-            if ($rankPoints > 0) {
-                $pointsPerTournament[$playerId][] = $rankPoints;
-            }
+            $pointsPerTournament[$playerId][] = $rankPoints;
         }
 
         uasort(
