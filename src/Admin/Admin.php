@@ -12,6 +12,9 @@ if (!defined('ABSPATH')) {
 
 class Admin
 {
+    private const TAG_SELECT_CLOSE = '</select>';
+    private const TAG_TD_CLOSE = '</td>';
+
     public static function init()
     {
         add_action('admin_menu', [self::class, 'register_menu']);
@@ -87,90 +90,136 @@ class Admin
 
     public static function render_settings_page()
     {
-
-        // Aktuelle Werte laden
-        $author    = get_option('monatsblitz_author', '');
-        $template  = get_option('monatsblitz_template', '');
-        $template_static_page = get_option('monatsblitz_template_static_page', '');
-        $blitz_modes = get_option('monatsblitz_blitz_modes', '');
-        $api_key   = get_option('monatsblitz_api_key', '');
-        $hide_january_overview = (bool)get_option('monatsblitz_hide_january_overview', false);
-        $default_mode_type = get_option('monatsblitz_default_mode_type', 'none');
-        $default_fixed_mode = get_option('monatsblitz_default_fixed_mode', '');
-        $default_rotation_modes = get_option('monatsblitz_default_rotation_modes', []);
-        if (!is_array($default_rotation_modes)) {
-            $default_rotation_modes = array_values(array_filter(array_map('trim', explode(',', (string)$default_rotation_modes)), fn($v) => $v !== ''));
-        } else {
-            $default_rotation_modes = array_values(array_filter($default_rotation_modes, fn($v) => !empty($v)));
-        }
-
-        // Modus hinzufügen
-        if (isset($_POST['monatsblitz_add_mode'])) {
-            check_admin_referer('monatsblitz_add_mode_action');
-            $mode_name = sanitize_text_field(trim((string)($_POST['monatsblitz_new_mode_name'] ?? '')));
-            if ($mode_name !== '') {
-                $handler = new \Monatsblitz\Database\CreateModeHandler();
-                $result = $handler->handle(['name' => $mode_name]);
-                if (is_wp_error($result)) {
-                    echo '<div class="notice notice-error"><p>' . esc_html($result->get_error_message()) . '</p></div>';
-                } else {
-                    echo '<div class="notice notice-success"><p>Modus <strong>' . esc_html($mode_name) . '</strong> erfolgreich angelegt.</p></div>';
-                }
-            } else {
-                echo '<div class="notice notice-error"><p>Der Name des Modus darf nicht leer sein.</p></div>';
-            }
-        }
-
-        // Modus löschen
-        if (isset($_POST['monatsblitz_delete_mode'])) {
-            check_admin_referer('monatsblitz_delete_mode_action');
-            $delete_id = intval($_POST['monatsblitz_delete_mode_id'] ?? 0);
-            if ($delete_id > 0) {
-                global $wpdb;
-                $modes_table = $wpdb->prefix . 'monatsblitz_modes';
-                $wpdb->delete($modes_table, ['id' => $delete_id], ['%d']);
-                echo '<div class="notice notice-success"><p>Modus wurde gelöscht.</p></div>';
-            }
-        }
-
-        // Wenn "Neuen Key generieren" gedrückt wurde (eigenes Formular!)
-        if (isset($_POST['monatsblitz_generate_key'])) {
-            check_admin_referer('monatsblitz_generate_key_action');
-
-            $new_key = wp_generate_password(32, false, false);
-            update_option('monatsblitz_api_key', $new_key);
-            $api_key = $new_key;
-
-            echo '<div class="updated"><p>Neuer API-Key wurde generiert.</p></div>';
-        }
-
-        // Wenn "Auf Aktualisierungen prüfen" gedrückt wurde
+        $apiKey = (string)get_option('monatsblitz_api_key', '');
         $updateResult = null;
         $cachePurgedNotice = false;
-        if (isset($_POST['monatsblitz_check_update'])) {
-            check_admin_referer('monatsblitz_check_update_action');
 
-            if (class_exists(\Monatsblitz\Update\PluginUpdater::class)) {
-                $updater = \Monatsblitz\Update\PluginUpdater::getInstance();
-                if ($updater !== null) {
-                    $updateResult = $updater->checkUpdateNow();
-                } else {
-                    \Monatsblitz\Update\PluginUpdater::purge();
-                    $cachePurgedNotice = true;
-                }
-            }
-        }
+        self::handle_settings_actions($apiKey, $updateResult, $cachePurgedNotice);
+
+        $author = get_option('monatsblitz_author', '');
+        $template = (string)get_option('monatsblitz_template', '');
+        $templateStaticPage = (string)get_option('monatsblitz_template_static_page', '');
+        $blitzModes = (string)get_option('monatsblitz_blitz_modes', '');
+        $hideJanuaryOverview = (bool)get_option('monatsblitz_hide_january_overview', false);
+        $defaultModeType = (string)get_option('monatsblitz_default_mode_type', 'none');
+        $defaultFixedMode = (string)get_option('monatsblitz_default_fixed_mode', '');
+        $defaultRotationModes = self::get_default_rotation_modes();
 
         $modes = (new \Monatsblitz\Queries\GetModesHandler())->handle();
-
-        // Userliste
-        $users = get_users([
-            'fields' => ['ID', 'user_login']
-        ]);
+        $users = get_users(['fields' => ['ID', 'user_login']]);
 
         echo '<div class="wrap">';
         echo '<h1>Monatsblitz – Einstellungen</h1>';
 
+        self::render_update_notices($updateResult, $cachePurgedNotice);
+        self::render_update_section();
+        self::render_qr_section($apiKey, $defaultModeType, $defaultFixedMode, $defaultRotationModes);
+        self::render_settings_form(
+            $apiKey,
+            $author,
+            $template,
+            $templateStaticPage,
+            $hideJanuaryOverview,
+            $blitzModes,
+            $defaultModeType,
+            $defaultFixedMode,
+            $defaultRotationModes,
+            $users,
+            $modes
+        );
+        self::render_modes_catalog($modes);
+
+        echo '</div>';
+    }
+
+    private static function get_default_rotation_modes(): array
+    {
+        $modes = get_option('monatsblitz_default_rotation_modes', []);
+        if (!is_array($modes)) {
+            return array_values(array_filter(array_map('trim', explode(',', (string)$modes)), fn($v) => $v !== ''));
+        }
+        return array_values(array_filter($modes, fn($v) => !empty($v)));
+    }
+
+    private static function handle_settings_actions(string &$apiKey, ?array &$updateResult, bool &$cachePurgedNotice): void
+    {
+        self::handle_add_mode_action();
+        self::handle_delete_mode_action();
+        self::handle_generate_key_action($apiKey);
+        self::handle_check_update_action($updateResult, $cachePurgedNotice);
+    }
+
+    private static function handle_add_mode_action(): void
+    {
+        if (!isset($_POST['monatsblitz_add_mode'])) {
+            return;
+        }
+        check_admin_referer('monatsblitz_add_mode_action');
+        $modeName = sanitize_text_field(trim((string)($_POST['monatsblitz_new_mode_name'] ?? '')));
+        if ($modeName === '') {
+            echo '<div class="notice notice-error"><p>Der Name des Modus darf nicht leer sein.</p></div>';
+            return;
+        }
+
+        $handler = new \Monatsblitz\Database\CreateModeHandler();
+        $result = $handler->handle(['name' => $modeName]);
+        if (is_wp_error($result)) {
+            echo '<div class="notice notice-error"><p>' . esc_html($result->get_error_message()) . '</p></div>';
+        } else {
+            echo '<div class="notice notice-success"><p>Modus <strong>' . esc_html($modeName) . '</strong> erfolgreich angelegt.</p></div>';
+        }
+    }
+
+    private static function handle_delete_mode_action(): void
+    {
+        if (!isset($_POST['monatsblitz_delete_mode'])) {
+            return;
+        }
+        check_admin_referer('monatsblitz_delete_mode_action');
+        $deleteId = intval($_POST['monatsblitz_delete_mode_id'] ?? 0);
+        if ($deleteId > 0) {
+            global $wpdb;
+            $modesTable = $wpdb->prefix . 'monatsblitz_modes';
+            $wpdb->delete($modesTable, ['id' => $deleteId], ['%d']);
+            echo '<div class="notice notice-success"><p>Modus wurde gelöscht.</p></div>';
+        }
+    }
+
+    private static function handle_generate_key_action(string &$apiKey): void
+    {
+        if (!isset($_POST['monatsblitz_generate_key'])) {
+            return;
+        }
+        check_admin_referer('monatsblitz_generate_key_action');
+
+        $newKey = wp_generate_password(32, false, false);
+        update_option('monatsblitz_api_key', $newKey);
+        $apiKey = $newKey;
+
+        echo '<div class="updated"><p>Neuer API-Key wurde generiert.</p></div>';
+    }
+
+    private static function handle_check_update_action(?array &$updateResult, bool &$cachePurgedNotice): void
+    {
+        if (!isset($_POST['monatsblitz_check_update'])) {
+            return;
+        }
+        check_admin_referer('monatsblitz_check_update_action');
+
+        if (!class_exists(\Monatsblitz\Update\PluginUpdater::class)) {
+            return;
+        }
+        $updater = \Monatsblitz\Update\PluginUpdater::getInstance();
+        if ($updater !== null) {
+            $updateResult = $updater->checkUpdateNow();
+        } else {
+            \Monatsblitz\Update\PluginUpdater::purge();
+            $cachePurgedNotice = true;
+        }
+    }
+
+    private static function render_update_notices(?array $updateResult, bool $cachePurgedNotice): void
+    {
         if ($updateResult !== null) {
             if ($updateResult['has_update']) {
                 $updateUrl = function_exists('admin_url') ? admin_url('plugins.php') : 'plugins.php';
@@ -182,10 +231,10 @@ class Admin
         } elseif ($cachePurgedNotice) {
             echo '<div class="notice notice-success is-dismissible"><p>✅ <strong>Update-Cache wurde erfolgreich geleert.</strong></p></div>';
         }
+    }
 
-        /*
-        * 1) SEKTION: Plugin-Aktualisierung
-        */
+    private static function render_update_section(): void
+    {
         $installedVersion = defined('MONATSBLITZ_VERSION') ? MONATSBLITZ_VERSION : '0.9.3';
         if (class_exists(\Monatsblitz\Update\PluginUpdater::class)) {
             $updater = \Monatsblitz\Update\PluginUpdater::getInstance();
@@ -203,81 +252,109 @@ class Admin
         echo '<p class="description">Leert den internen 6-Stunden-Cache und prüft sofort beim Update-Server auf neue Releases.</p>';
         echo '</form>';
         echo '</div>';
+    }
 
-        /*
-        * 2) SEKTION: App-Einrichtung per QR-Code
-        */
+    private static function render_qr_section(string $apiKey, string $defaultModeType, string $defaultFixedMode, array $defaultRotationModes): void
+    {
         echo '<div class="card" style="max-width:600px; margin:20px 0; padding:16px 20px;">';
         echo '<h2 style="margin-top:0;">📱 App-Einrichtung per QR-Code</h2>';
-        if (!empty($api_key)) {
-            $payload = [
-                'url' => home_url(),
-                'key' => $api_key,
-            ];
-            if (in_array($default_mode_type, ['fixed', 'rotation', 'none'], true)) {
-                $payload['mode_type'] = $default_mode_type;
-                if ($default_mode_type === 'fixed' && !empty($default_fixed_mode)) {
-                    $payload['fixed_mode'] = $default_fixed_mode;
-                } elseif ($default_mode_type === 'rotation' && !empty($default_rotation_modes)) {
-                    $payload['rotation_modes'] = array_values($default_rotation_modes);
-                }
-            }
-
-            $qr_payload = json_encode($payload, JSON_UNESCAPED_SLASHES);
-
-            echo '<p>Scanne diesen QR-Code mit der <strong>Monatsblitz-App</strong> (unter <em>Einstellungen &rarr; QR-Code scannen</em>), um Server-Adresse und API-Key automatisch einzurichten:</p>';
-            echo '<div style="margin:16px 0; display:flex; align-items:center; gap:20px; flex-wrap:wrap;">';
-            echo '<div id="monatsblitz-qrcode" style="display:inline-block; padding:12px; background:#fff; border:1px solid #ccd0d4; border-radius:4px; min-width:180px; min-height:180px;"></div>';
-            echo '<div style="font-size:13px; color:#555;">';
-            echo '<p style="margin-top:0;"><strong>Enthaltene Konfiguration:</strong></p>';
-            echo '<ul style="list-style:disc; margin-left:20px;">';
-            echo '<li><strong>URL:</strong> <code>' . esc_html(home_url()) . '</code></li>';
-            echo '<li><strong>API-Key:</strong> <code>' . esc_html(substr($api_key, 0, 6) . '...' . substr($api_key, -4)) . '</code></li>';
-            if ($default_mode_type === 'fixed' && !empty($default_fixed_mode)) {
-                echo '<li><strong>Turniermodus:</strong> Fest (<code>' . esc_html($default_fixed_mode) . '</code>)</li>';
-            } elseif ($default_mode_type === 'rotation' && !empty($default_rotation_modes)) {
-                echo '<li><strong>Turniermodus:</strong> Rotation (<code>' . esc_html(implode(', ', $default_rotation_modes)) . '</code>)</li>';
-            } else {
-                echo '<li><strong>Turniermodus:</strong> Keine automatische Vorauswahl</li>';
-            }
-            echo '</ul>';
-            echo '</div>';
-            echo '</div>';
-            echo '<script type="text/javascript">' . static::get_qrcode_js() . '</script>';
-            echo '<script type="text/javascript">
-            (function() {
-                function renderQr() {
-                    var container = document.getElementById("monatsblitz-qrcode");
-                    if (!container || typeof QRCode === "undefined") {
-                        return;
-                    }
-                    if (container.querySelector("canvas, img")) {
-                        return;
-                    }
-                    container.innerHTML = "";
-                    new QRCode(container, {
-                        text: ' . wp_json_encode($qr_payload) . ',
-                        width: 180,
-                        height: 180,
-                        colorDark: "#000000",
-                        colorLight: "#ffffff",
-                        correctLevel: QRCode.CorrectLevel.M
-                    });
-                }
-                renderQr();
-                if (document.readyState === "loading") {
-                    document.addEventListener("DOMContentLoaded", renderQr);
-                }
-            })();
-            </script>';
-        } else {
+        if (empty($apiKey)) {
             echo '<p style="color:#d63638;"><em>Bitte generiere zuerst unten unter Einstellungen einen API-Key, damit der QR-Code für die App erzeugt werden kann.</em></p>';
+            echo '</div>';
+            return;
         }
-        echo '</div>';
 
-        /*
-        * 3) SEKTION: Einstellungen
-        */
+        $payload = self::build_qr_payload($apiKey, $defaultModeType, $defaultFixedMode, $defaultRotationModes);
+        $qrPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
+
+        self::render_qr_markup($apiKey, $defaultModeType, $defaultFixedMode, $defaultRotationModes);
+        self::render_qr_script($qrPayload);
+        echo '</div>';
+    }
+
+    private static function build_qr_payload(string $apiKey, string $defaultModeType, string $defaultFixedMode, array $defaultRotationModes): array
+    {
+        $payload = [
+            'url' => home_url(),
+            'key' => $apiKey,
+        ];
+        if (in_array($defaultModeType, ['fixed', 'rotation', 'none'], true)) {
+            $payload['mode_type'] = $defaultModeType;
+            if ($defaultModeType === 'fixed' && !empty($defaultFixedMode)) {
+                $payload['fixed_mode'] = $defaultFixedMode;
+            } elseif ($defaultModeType === 'rotation' && !empty($defaultRotationModes)) {
+                $payload['rotation_modes'] = array_values($defaultRotationModes);
+            }
+        }
+        return $payload;
+    }
+
+    private static function render_qr_markup(string $apiKey, string $defaultModeType, string $defaultFixedMode, array $defaultRotationModes): void
+    {
+        echo '<p>Scanne diesen QR-Code mit der <strong>Monatsblitz-App</strong> (unter <em>Einstellungen &rarr; QR-Code scannen</em>), um Server-Adresse und API-Key automatisch einzurichten:</p>';
+        echo '<div style="margin:16px 0; display:flex; align-items:center; gap:20px; flex-wrap:wrap;">';
+        echo '<div id="monatsblitz-qrcode" style="display:inline-block; padding:12px; background:#fff; border:1px solid #ccd0d4; border-radius:4px; min-width:180px; min-height:180px;"></div>';
+        echo '<div style="font-size:13px; color:#555;">';
+        echo '<p style="margin-top:0;"><strong>Enthaltene Konfiguration:</strong></p>';
+        echo '<ul style="list-style:disc; margin-left:20px;">';
+        echo '<li><strong>URL:</strong> <code>' . esc_html(home_url()) . '</code></li>';
+        echo '<li><strong>API-Key:</strong> <code>' . esc_html(substr($apiKey, 0, 6) . '...' . substr($apiKey, -4)) . '</code></li>';
+        if ($defaultModeType === 'fixed' && !empty($defaultFixedMode)) {
+            echo '<li><strong>Turniermodus:</strong> Fest (<code>' . esc_html($defaultFixedMode) . '</code>)</li>';
+        } elseif ($defaultModeType === 'rotation' && !empty($defaultRotationModes)) {
+            echo '<li><strong>Turniermodus:</strong> Rotation (<code>' . esc_html(implode(', ', $defaultRotationModes)) . '</code>)</li>';
+        } else {
+            echo '<li><strong>Turniermodus:</strong> Keine automatische Vorauswahl</li>';
+        }
+        echo '</ul>';
+        echo '</div>';
+        echo '</div>';
+    }
+
+    private static function render_qr_script(string|false $qrPayload): void
+    {
+        echo '<script type="text/javascript">' . static::get_qrcode_js() . '</script>';
+        echo '<script type="text/javascript">
+        (function() {
+            function renderQr() {
+                var container = document.getElementById("monatsblitz-qrcode");
+                if (!container || typeof QRCode === "undefined") {
+                    return;
+                }
+                if (container.querySelector("canvas, img")) {
+                    return;
+                }
+                container.innerHTML = "";
+                new QRCode(container, {
+                    text: ' . wp_json_encode($qrPayload) . ',
+                    width: 180,
+                    height: 180,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            }
+            renderQr();
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", renderQr);
+            }
+        })();
+        </script>';
+    }
+
+    private static function render_settings_form(
+        string $apiKey,
+        $author,
+        string $template,
+        string $templateStaticPage,
+        bool $hideJanuaryOverview,
+        string $blitzModes,
+        string $defaultModeType,
+        string $defaultFixedMode,
+        array $defaultRotationModes,
+        array $users,
+        array $modes
+    ): void {
         echo '<h2 style="margin-top:30px;">⚙️ Einstellungen</h2>';
 
         // Formular 1: API-Key generieren
@@ -285,7 +362,7 @@ class Admin
         wp_nonce_field('monatsblitz_generate_key_action');
         echo '<table class="form-table" style="margin-bottom:0;">';
         echo '<tr><th scope="row">API-Key</th><td>';
-        echo '<input type="text" value="' . esc_attr($api_key) . '" class="regular-text" style="width:350px;" readonly> ';
+        echo '<input type="text" value="' . esc_attr($apiKey) . '" class="regular-text" style="width:350px;" readonly> ';
         echo '<input type="submit" name="monatsblitz_generate_key" class="button" value="Neuen API-Key generieren">';
         echo '<p class="description">Diesen Key muss die Monatsblitz-App im Header <code>X-MB-Key</code> mitsenden.</p>';
         echo '</td></tr>';
@@ -295,79 +372,86 @@ class Admin
         // Formular 2: Normale Einstellungen (läuft über options.php)
         echo '<form method="post" action="options.php">';
         settings_fields('monatsblitz_settings');
-        echo '<input type="hidden" name="monatsblitz_api_key" value="' . esc_attr($api_key) . '">';
+        echo '<input type="hidden" name="monatsblitz_api_key" value="' . esc_attr($apiKey) . '">';
 
         echo '<table class="form-table">';
+        self::render_author_setting($author, $users);
+        self::render_template_settings($template, $templateStaticPage, $hideJanuaryOverview, $blitzModes);
+        self::render_mode_preselection_settings($defaultModeType, $defaultFixedMode, $defaultRotationModes, $modes);
+        echo '</table>';
 
-        // Autor-Auswahl
+        submit_button();
+        echo '</form>';
+    }
+
+    private static function render_author_setting($author, array $users): void
+    {
         echo '<tr><th scope="row">Autor des Beitrags</th><td>';
         echo '<select name="monatsblitz_author">';
         echo '<option value="">— Bitte wählen —</option>';
-
         foreach ($users as $u) {
             $selected = selected($author, $u->ID, false);
             echo "<option value='{$u->ID}' $selected>{$u->user_login}</option>";
         }
-
-        echo '</select>';
+        echo self::TAG_SELECT_CLOSE;
         echo '</td></tr>';
+    }
 
-        // Template-Name
+    private static function render_template_settings(string $template, string $templateStaticPage, bool $hideJanuaryOverview, string $blitzModes): void
+    {
         echo '<tr><th scope="row">Template-Name</th><td>';
         echo '<input type="text" name="monatsblitz_template" value="' . esc_attr($template) . '" class="regular-text">';
         echo '<p class="description">Platzhalter: <code>{{month_name}}</code>, <code>{{year}}</code>, <code>{{date}}</code>, <code>{{mode}}</code>, <code>{{round_count}}</code>, <code>{{table}}</code>, <code>{{winner_name}}</code>, <code>{{winner_points}}</code>, <code>{{winner_games}}</code>, <code>{{winner_verb}}</code>, <code>{{winner_text}}</code>.<br>Singular/Plural: <code>{{plural:siegt|siegen}}</code> oder <code>{{#singular}}...{{/singular}}</code> / <code>{{#plural}}...{{/plural}}</code>.</p>';
         echo '</td></tr>';
 
-        // Template für statische Jahresseite
         echo '<tr><th scope="row">Template: Statische Jahresseite</th><td>';
-        echo '<input type="text" name="monatsblitz_template_static_page" value="' . esc_attr($template_static_page) . '" class="regular-text">';
+        echo '<input type="text" name="monatsblitz_template_static_page" value="' . esc_attr($templateStaticPage) . '" class="regular-text">';
         echo '<p class="description">Enthalt Platzhalter {{blitz_monthly_overview}} und {{blitz_ranking_year}}.</p>';
         echo '</td></tr>';
 
         echo '<tr><th scope="row">Teilnehmer-Ubersicht: Januar ausblenden</th><td>';
         echo '<label>';
-        echo '<input type="checkbox" name="monatsblitz_hide_january_overview" value="1" ' . ($hide_january_overview ? 'checked="checked"' : '') . '>';
+        echo '<input type="checkbox" name="monatsblitz_hide_january_overview" value="1" ' . ($hideJanuaryOverview ? 'checked="checked"' : '') . '>';
         echo ' Januar-Spalte in {{blitz_monthly_overview}} ausblenden';
         echo '</label>';
         echo '<p class="description">Empfohlen, wenn im Januar grundsatzlich kein Monatsblitz stattfindet.</p>';
         echo '</td></tr>';
 
-        // Zusätzliche Blitz-Modi
         echo '<tr><th scope="row">Zusatzliche Blitz-Modi</th><td>';
-        echo '<input type="text" name="monatsblitz_blitz_modes" value="' . esc_attr($blitz_modes) . '" class="regular-text">';
+        echo '<input type="text" name="monatsblitz_blitz_modes" value="' . esc_attr($blitzModes) . '" class="regular-text">';
         echo '<p class="description">Komma-Liste, z. B. Handicap, Armageddon. Standardregel bleibt aktiv: alle Modi <= 5+X zahlen als Blitz.</p>';
         echo '</td></tr>';
+    }
 
-        // Standard-Turniermodus (Vorauswahl)
+    private static function render_mode_preselection_settings(string $defaultModeType, string $defaultFixedMode, array $defaultRotationModes, array $modes): void
+    {
         echo '<tr><th scope="row">Standard-Turniermodus</th><td>';
         echo '<select name="monatsblitz_default_mode_type">';
-        echo '<option value="none" ' . selected($default_mode_type, 'none', false) . '>Keine automatische Vorauswahl</option>';
-        echo '<option value="fixed" ' . selected($default_mode_type, 'fixed', false) . '>Fester Modus</option>';
-        echo '<option value="rotation" ' . selected($default_mode_type, 'rotation', false) . '>Rotierender Modus</option>';
-        echo '</select>';
+        echo '<option value="none" ' . selected($defaultModeType, 'none', false) . '>Keine automatische Vorauswahl</option>';
+        echo '<option value="fixed" ' . selected($defaultModeType, 'fixed', false) . '>Fester Modus</option>';
+        echo '<option value="rotation" ' . selected($defaultModeType, 'rotation', false) . '>Rotierender Modus</option>';
+        echo self::TAG_SELECT_CLOSE;
         echo '<p class="description">Steuert die Vorauswahl bei neuen Turnieren in der App (wird auch im QR-Code übermittelt).</p>';
         echo '</td></tr>';
 
-        // Fester Standardmodus
         echo '<tr><th scope="row">Fester Standardmodus</th><td>';
         echo '<select name="monatsblitz_default_fixed_mode">';
         echo '<option value="">— Bitte wählen —</option>';
         foreach ($modes as $m) {
-            $selected = selected($default_fixed_mode, $m['name'], false);
+            $selected = selected($defaultFixedMode, $m['name'], false);
             echo "<option value='" . esc_attr($m['name']) . "' $selected>" . esc_html($m['name']) . "</option>";
         }
-        echo '</select>';
+        echo self::TAG_SELECT_CLOSE;
         echo '<p class="description">Wird verwendet, wenn oben <em>Fester Modus</em> gewählt ist.</p>';
         echo '</td></tr>';
 
-        // Modus-Rotation
         echo '<tr><th scope="row">Modus-Rotation</th><td>';
         echo '<input type="hidden" name="monatsblitz_default_rotation_modes[]" value="">';
         if (empty($modes)) {
             echo '<p class="description">Keine Modi im Katalog vorhanden. Bitte lege weiter unten Modi an.</p>';
         } else {
             foreach ($modes as $m) {
-                $checked = in_array($m['name'], $default_rotation_modes, true) ? 'checked="checked"' : '';
+                $checked = in_array($m['name'], $defaultRotationModes, true) ? 'checked="checked"' : '';
                 echo '<label style="display:inline-block; margin-right:15px; margin-bottom:5px;">';
                 echo '<input type="checkbox" name="monatsblitz_default_rotation_modes[]" value="' . esc_attr($m['name']) . '" ' . $checked . '> ';
                 echo esc_html($m['name']);
@@ -376,19 +460,12 @@ class Admin
             echo '<p class="description">Wird verwendet, wenn oben <em>Rotierender Modus</em> gewählt ist. Die App wählt dann basierend auf den vergangenen Turnieren den nächsten Modus dieser Reihenfolge.</p>';
         }
         echo '</td></tr>';
+    }
 
-        echo '</table>';
-
-        submit_button();
-        echo '</form>';
-
-        /*
-        * 4) SEKTION: Turniermodi (Katalog)
-        */
+    private static function render_modes_catalog(array $modes): void
+    {
         echo '<h2 style="margin-top:30px;">⏱️ Turniermodi (Katalog)</h2>';
         echo '<p class="description">Diese Modi stehen in der App bei der Turniererstellung zur Auswahl und können für feste Vorgaben oder Rotationen verwendet werden.</p>';
-
-        $modes = (new \Monatsblitz\Queries\GetModesHandler())->handle();
 
         echo '<table class="widefat fixed striped" style="max-width:600px; margin-bottom:15px;">';
         echo '<thead><tr><th style="width:60px;">ID</th><th>Modus-Name</th><th style="width:100px;">Aktion</th></tr></thead>';
@@ -399,8 +476,8 @@ class Admin
         } else {
             foreach ($modes as $m) {
                 echo '<tr>';
-                echo '<td>' . esc_html((string)$m['id']) . '</td>';
-                echo '<td><strong>' . esc_html($m['name']) . '</strong></td>';
+                echo '<td>' . esc_html((string)$m['id']) . self::TAG_TD_CLOSE;
+                echo '<td><strong>' . esc_html($m['name']) . '</strong>' . self::TAG_TD_CLOSE;
                 echo '<td>';
                 echo '<form method="post" style="display:inline;" onsubmit="return confirm(\'Modus wirklich l&ouml;schen?\');">';
                 wp_nonce_field('monatsblitz_delete_mode_action');
@@ -408,7 +485,7 @@ class Admin
                 echo '<input type="hidden" name="monatsblitz_delete_mode_id" value="' . esc_attr((string)$m['id']) . '">';
                 echo '<input type="submit" class="button button-small button-link-delete" value="Löschen">';
                 echo '</form>';
-                echo '</td>';
+                echo self::TAG_TD_CLOSE;
                 echo '</tr>';
             }
         }
@@ -420,8 +497,6 @@ class Admin
         echo '<input type="text" name="monatsblitz_new_mode_name" placeholder="z. B. 10+0 oder 3+0" class="regular-text" style="width:250px;" required>';
         echo '<input type="submit" name="monatsblitz_add_mode" class="button" value="Modus hinzufügen">';
         echo '</form>';
-
-        echo '</div>';
     }
 
     public static function render_page()
@@ -548,145 +623,186 @@ class Admin
 
     private static function render_table_detail(string $tableKey, string $table): void
     {
-        global $wpdb;
-
         echo "<h2>Detailansicht: $table</h2>";
 
-        // Zurück-Link
         $back = admin_url('admin.php?page=monatsblitz');
         echo "<p><a href='$back'>← Zurück</a></p>";
 
-        $playersTable = $wpdb->prefix . 'monatsblitz_players';
-        $tournamentsTable = $wpdb->prefix . 'monatsblitz_tournaments';
-
-        $hasTournamentFilter = in_array($tableKey, ['games', 'results', 'tournament_players'], true);
-        $filterTournamentId = null;
-
-        if ($hasTournamentFilter) {
-            $tournaments = $wpdb->get_results(
-                "SELECT id, year, month, day, mode, status FROM {$tournamentsTable} ORDER BY id DESC"
-            );
-
-            $openTournamentId = null;
-            if (is_array($tournaments)) {
-                foreach ($tournaments as $t) {
-                    $status = is_object($t) ? ($t->status ?? '') : ($t['status'] ?? '');
-                    if ($status === 'open') {
-                        $openTournamentId = is_object($t) ? (int)$t->id : (int)$t['id'];
-                        break;
-                    }
-                }
-            }
-
-            if (isset($_GET['tournament_id'])) {
-                $filterTournamentId = $_GET['tournament_id'] === 'all' ? 'all' : (int) $_GET['tournament_id'];
-            } else {
-                $filterTournamentId = $openTournamentId !== null ? $openTournamentId : 'all';
-            }
-
-            $currentPageUrl = admin_url('admin.php');
-            echo '<form method="get" action="' . esc_url($currentPageUrl) . '" style="margin: 15px 0; display:flex; align-items:center; gap:10px;">';
-            echo '<input type="hidden" name="page" value="monatsblitz">';
-            echo '<input type="hidden" name="table" value="' . esc_attr($tableKey) . '">';
-            echo '<label for="mb_filter_tournament"><strong>Turnier filtern:</strong></label>';
-            echo '<select name="tournament_id" id="mb_filter_tournament" onchange="this.form.submit()">';
-            echo '<option value="all"' . selected($filterTournamentId, 'all', false) . '>— Alle Turniere (neueste zuerst) —</option>';
-            if (is_array($tournaments)) {
-                foreach ($tournaments as $t) {
-                    $tId = is_object($t) ? (int)$t->id : (int)$t['id'];
-                    $tYear = is_object($t) ? (int)$t->year : (int)$t['year'];
-                    $tMonth = is_object($t) ? (int)$t->month : (int)$t['month'];
-                    $tDay = is_object($t) ? (int)$t->day : (int)$t['day'];
-                    $tMode = is_object($t) ? ($t->mode ?? '') : ($t['mode'] ?? '');
-                    $tStatus = is_object($t) ? ($t->status ?? '') : ($t['status'] ?? '');
-                    $isOpen = $tStatus === 'open';
-                    $label = sprintf('%04d-%02d-%02d (%s)%s', $tYear, $tMonth, $tDay, $tMode, $isOpen ? ' [OFFEN]' : '');
-                    echo '<option value="' . $tId . '"' . selected($filterTournamentId, $tId, false) . '>' . esc_html($label) . '</option>';
-                }
-            }
-            echo '</select>';
-            echo '<noscript><input type="submit" class="button" value="Filtern"></noscript>';
-            echo '</form>';
-        }
-
-        if ($tableKey === 'players') {
-            $rows = $wpdb->get_results("SELECT id, forename, surname FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A);
-        } elseif ($tableKey === 'tournaments') {
-            $rows = $wpdb->get_results("SELECT id, year, month, day, mode, round_count, status FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A);
-        } elseif ($tableKey === 'tournament_players') {
-            if ($filterTournamentId !== null && $filterTournamentId !== 'all') {
-                $query = $wpdb->prepare(
-                    "SELECT tp.id, tp.tournament_id, tp.player_id,
-                            COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name
-                     FROM {$table} tp
-                     LEFT JOIN {$playersTable} p ON p.id = tp.player_id
-                     WHERE tp.tournament_id = %d
-                     ORDER BY tp.id DESC",
-                    $filterTournamentId
-                );
-            } else {
-                $query = "SELECT tp.id, tp.tournament_id, tp.player_id,
-                                 COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name
-                          FROM {$table} tp
-                          LEFT JOIN {$playersTable} p ON p.id = tp.player_id
-                          ORDER BY tp.id DESC LIMIT 100";
-            }
-            $rows = $wpdb->get_results($query, ARRAY_A);
-        } elseif ($tableKey === 'games') {
-            if ($filterTournamentId !== null && $filterTournamentId !== 'all') {
-                $query = $wpdb->prepare(
-                    "SELECT g.id, g.tournament_id,
-                            g.player1_id, COALESCE(CONCAT(p1.surname, ', ', p1.forename), '-') AS player1_name,
-                            g.player2_id, COALESCE(CONCAT(p2.surname, ', ', p2.forename), '-') AS player2_name,
-                            g.leg_type, g.result
-                     FROM {$table} g
-                     LEFT JOIN {$playersTable} p1 ON p1.id = g.player1_id
-                     LEFT JOIN {$playersTable} p2 ON p2.id = g.player2_id
-                     WHERE g.tournament_id = %d
-                     ORDER BY g.id DESC",
-                    $filterTournamentId
-                );
-            } else {
-                $query = "SELECT g.id, g.tournament_id,
-                                 g.player1_id, COALESCE(CONCAT(p1.surname, ', ', p1.forename), '-') AS player1_name,
-                                 g.player2_id, COALESCE(CONCAT(p2.surname, ', ', p2.forename), '-') AS player2_name,
-                                 g.leg_type, g.result
-                          FROM {$table} g
-                          LEFT JOIN {$playersTable} p1 ON p1.id = g.player1_id
-                          LEFT JOIN {$playersTable} p2 ON p2.id = g.player2_id
-                          ORDER BY g.id DESC LIMIT 100";
-            }
-            $rows = $wpdb->get_results($query, ARRAY_A);
-        } elseif ($tableKey === 'results') {
-            if ($filterTournamentId !== null && $filterTournamentId !== 'all') {
-                $query = $wpdb->prepare(
-                    "SELECT r.id, r.tournament_id,
-                            r.player_id, COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name,
-                            r.points, r.rank
-                     FROM {$table} r
-                     LEFT JOIN {$playersTable} p ON p.id = r.player_id
-                     WHERE r.tournament_id = %d
-                     ORDER BY r.rank ASC, r.id DESC",
-                    $filterTournamentId
-                );
-            } else {
-                $query = "SELECT r.id, r.tournament_id,
-                                 r.player_id, COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name,
-                                 r.points, r.rank
-                          FROM {$table} r
-                          LEFT JOIN {$playersTable} p ON p.id = r.player_id
-                          ORDER BY r.id DESC LIMIT 100";
-            }
-            $rows = $wpdb->get_results($query, ARRAY_A);
-        } else {
-            $rows = $wpdb->get_results("SELECT * FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A);
-        }
+        $filterTournamentId = self::handle_tournament_filter($tableKey);
+        $rows = self::fetch_table_rows($tableKey, $table, $filterTournamentId);
 
         if (empty($rows)) {
             echo "<p>Keine Einträge vorhanden.</p>";
             return;
         }
 
+        self::render_rows_table($rows);
+    }
+
+    private static function handle_tournament_filter(string $tableKey): int|string|null
+    {
+        if (!in_array($tableKey, ['games', 'results', 'tournament_players'], true)) {
+            return null;
+        }
+
+        global $wpdb;
+        $tournamentsTable = $wpdb->prefix . 'monatsblitz_tournaments';
+        $tournaments = $wpdb->get_results(
+            "SELECT id, year, month, day, mode, status FROM {$tournamentsTable} ORDER BY id DESC"
+        );
+        $tournamentsList = is_array($tournaments) ? $tournaments : [];
+
+        $openTournamentId = self::find_open_tournament_id($tournamentsList);
+        $filterTournamentId = self::get_selected_tournament_filter($openTournamentId);
+
+        self::render_tournament_filter_form($tableKey, $tournamentsList, $filterTournamentId);
+
+        return $filterTournamentId;
+    }
+
+    private static function find_open_tournament_id(array $tournaments): ?int
+    {
+        foreach ($tournaments as $t) {
+            $status = is_object($t) ? ($t->status ?? '') : ($t['status'] ?? '');
+            if ($status === 'open') {
+                return is_object($t) ? (int)$t->id : (int)$t['id'];
+            }
+        }
+        return null;
+    }
+
+    private static function get_selected_tournament_filter(?int $openTournamentId): int|string
+    {
+        if (isset($_GET['tournament_id'])) {
+            return $_GET['tournament_id'] === 'all' ? 'all' : (int)$_GET['tournament_id'];
+        }
+        return $openTournamentId ?? 'all';
+    }
+
+    private static function render_tournament_filter_form(string $tableKey, array $tournaments, int|string $filterTournamentId): void
+    {
+        $currentPageUrl = admin_url('admin.php');
+        echo '<form method="get" action="' . esc_url($currentPageUrl) . '" style="margin: 15px 0; display:flex; align-items:center; gap:10px;">';
+        echo '<input type="hidden" name="page" value="monatsblitz">';
+        echo '<input type="hidden" name="table" value="' . esc_attr($tableKey) . '">';
+        echo '<label for="mb_filter_tournament"><strong>Turnier filtern:</strong></label>';
+        echo '<select name="tournament_id" id="mb_filter_tournament" onchange="this.form.submit()">';
+        echo '<option value="all"' . selected($filterTournamentId, 'all', false) . '>— Alle Turniere (neueste zuerst) —</option>';
+        foreach ($tournaments as $t) {
+            self::render_tournament_filter_option($t, $filterTournamentId);
+        }
+        echo self::TAG_SELECT_CLOSE;
+        echo '<noscript><input type="submit" class="button" value="Filtern"></noscript>';
+        echo '</form>';
+    }
+
+    private static function render_tournament_filter_option(object|array $t, int|string $filterTournamentId): void
+    {
+        $tId = is_object($t) ? (int)$t->id : (int)$t['id'];
+        $tYear = is_object($t) ? (int)$t->year : (int)$t['year'];
+        $tMonth = is_object($t) ? (int)$t->month : (int)$t['month'];
+        $tDay = is_object($t) ? (int)$t->day : (int)$t['day'];
+        $tMode = is_object($t) ? ($t->mode ?? '') : ($t['mode'] ?? '');
+        $tStatus = is_object($t) ? ($t->status ?? '') : ($t['status'] ?? '');
+        $isOpen = $tStatus === 'open';
+        $label = sprintf('%04d-%02d-%02d (%s)%s', $tYear, $tMonth, $tDay, $tMode, $isOpen ? ' [OFFEN]' : '');
+        echo '<option value="' . $tId . '"' . selected($filterTournamentId, $tId, false) . '>' . esc_html($label) . '</option>';
+    }
+
+    private static function fetch_table_rows(string $tableKey, string $table, int|string|null $filterTournamentId): array
+    {
+        global $wpdb;
+        $playersTable = $wpdb->prefix . 'monatsblitz_players';
+
+        return match ($tableKey) {
+            'players' => (array) $wpdb->get_results("SELECT id, forename, surname FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A),
+            'tournaments' => (array) $wpdb->get_results("SELECT id, year, month, day, mode, round_count, status FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A),
+            'tournament_players' => self::fetch_tournament_players($table, $playersTable, $filterTournamentId),
+            'games' => self::fetch_games($table, $playersTable, $filterTournamentId),
+            'results' => self::fetch_results($table, $playersTable, $filterTournamentId),
+            default => (array) $wpdb->get_results("SELECT * FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A),
+        };
+    }
+
+    private static function fetch_tournament_players(string $table, string $playersTable, int|string|null $filterTournamentId): array
+    {
+        global $wpdb;
+        if ($filterTournamentId !== null && $filterTournamentId !== 'all') {
+            $query = $wpdb->prepare(
+                "SELECT tp.id, tp.tournament_id, tp.player_id,
+                        COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name
+                 FROM {$table} tp
+                 LEFT JOIN {$playersTable} p ON p.id = tp.player_id
+                 WHERE tp.tournament_id = %d
+                 ORDER BY tp.id DESC",
+                (int)$filterTournamentId
+            );
+        } else {
+            $query = "SELECT tp.id, tp.tournament_id, tp.player_id,
+                             COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name
+                      FROM {$table} tp
+                      LEFT JOIN {$playersTable} p ON p.id = tp.player_id
+                      ORDER BY tp.id DESC LIMIT 100";
+        }
+        return (array) $wpdb->get_results($query, ARRAY_A);
+    }
+
+    private static function fetch_games(string $table, string $playersTable, int|string|null $filterTournamentId): array
+    {
+        global $wpdb;
+        if ($filterTournamentId !== null && $filterTournamentId !== 'all') {
+            $query = $wpdb->prepare(
+                "SELECT g.id, g.tournament_id,
+                        g.player1_id, COALESCE(CONCAT(p1.surname, ', ', p1.forename), '-') AS player1_name,
+                        g.player2_id, COALESCE(CONCAT(p2.surname, ', ', p2.forename), '-') AS player2_name,
+                        g.leg_type, g.result
+                 FROM {$table} g
+                 LEFT JOIN {$playersTable} p1 ON p1.id = g.player1_id
+                 LEFT JOIN {$playersTable} p2 ON p2.id = g.player2_id
+                 WHERE g.tournament_id = %d
+                 ORDER BY g.id DESC",
+                (int)$filterTournamentId
+            );
+        } else {
+            $query = "SELECT g.id, g.tournament_id,
+                             g.player1_id, COALESCE(CONCAT(p1.surname, ', ', p1.forename), '-') AS player1_name,
+                             g.player2_id, COALESCE(CONCAT(p2.surname, ', ', p2.forename), '-') AS player2_name,
+                             g.leg_type, g.result
+                      FROM {$table} g
+                      LEFT JOIN {$playersTable} p1 ON p1.id = g.player1_id
+                      LEFT JOIN {$playersTable} p2 ON p2.id = g.player2_id
+                      ORDER BY g.id DESC LIMIT 100";
+        }
+        return (array) $wpdb->get_results($query, ARRAY_A);
+    }
+
+    private static function fetch_results(string $table, string $playersTable, int|string|null $filterTournamentId): array
+    {
+        global $wpdb;
+        if ($filterTournamentId !== null && $filterTournamentId !== 'all') {
+            $query = $wpdb->prepare(
+                "SELECT r.id, r.tournament_id,
+                        r.player_id, COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name,
+                        r.points, r.rank
+                 FROM {$table} r
+                 LEFT JOIN {$playersTable} p ON p.id = r.player_id
+                 WHERE r.tournament_id = %d
+                 ORDER BY r.rank ASC, r.id DESC",
+                (int)$filterTournamentId
+            );
+        } else {
+            $query = "SELECT r.id, r.tournament_id,
+                             r.player_id, COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name,
+                             r.points, r.rank
+                      FROM {$table} r
+                      LEFT JOIN {$playersTable} p ON p.id = r.player_id
+                      ORDER BY r.id DESC LIMIT 100";
+        }
+        return (array) $wpdb->get_results($query, ARRAY_A);
+    }
+
+    private static function render_rows_table(array $rows): void
+    {
         echo '<p style="color:#666; font-size:13px; margin: 10px 0;">Einträge: ' . count($rows) . '</p>';
 
         echo '<table class="widefat fixed striped">';
@@ -701,7 +817,7 @@ class Admin
         foreach ($rows as $row) {
             echo '<tr>';
             foreach ($row as $value) {
-                echo '<td>' . esc_html((string)($value ?? '')) . '</td>';
+                echo '<td>' . esc_html((string)($value ?? '')) . self::TAG_TD_CLOSE;
             }
             echo '</tr>';
         }
