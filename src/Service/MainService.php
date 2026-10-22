@@ -41,7 +41,7 @@ class MainService
         return rest_ensure_response($result);
     }
 
-    public static function getModes($request = null)
+    public static function getModes()
     {
         return (new GetModesHandler())->handle();
     }

@@ -83,8 +83,8 @@ class GetTournamentHandler
         $withdrawn_player_ids = [];
         if (is_array($player_rows)) {
             foreach ($player_rows as $row) {
-                $pid = is_array($row) ? intval($row['player_id'] ?? 0) : intval($row->player_id ?? 0);
-                $has_left = is_array($row) ? intval($row['has_left'] ?? 0) : intval($row->has_left ?? 0);
+                $pid = $this->extractRowField($row, 'player_id');
+                $has_left = $this->extractRowField($row, 'has_left');
                 if ($pid > 0) {
                     $player_ids[] = $pid;
                     if ($has_left === 1) {
@@ -95,5 +95,18 @@ class GetTournamentHandler
         }
 
         return [$player_ids, $withdrawn_player_ids];
+    }
+
+    private function extractRowField(mixed $row, string $field): int
+    {
+        if (is_array($row)) {
+            return intval($row[$field] ?? 0);
+        }
+
+        if (is_object($row)) {
+            return intval($row->{$field} ?? 0);
+        }
+
+        return 0;
     }
 }
