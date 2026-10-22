@@ -6,6 +6,8 @@ namespace Monatsblitz\Output;
 
 class TournamentPageContentBuilder
 {
+    private const PLACEHOLDER_WINNER_COUNT = '{{winner_count}}';
+
     public function buildContent(string $template_content, array $replacements, array $winner_data = []): string
     {
         $template_content = preg_replace(
@@ -19,7 +21,7 @@ class TournamentPageContentBuilder
 
         $is_plural = $winner_data['is_plural'] ?? null;
         if ($is_plural === null) {
-            $is_plural = isset($replacements['{{winner_count}}']) && intval($replacements['{{winner_count}}']) > 1;
+            $is_plural = isset($replacements[self::PLACEHOLDER_WINNER_COUNT]) && intval($replacements[self::PLACEHOLDER_WINNER_COUNT]) > 1;
         }
 
         if ($is_plural) {
@@ -98,7 +100,7 @@ class TournamentPageContentBuilder
             '{{winner_names}}' => $winner_data['name'] ?? '',
             '{{winner_games}}' => $winner_data['games_placeholder'] ?? '',
             '{{winner_points}}' => $winner_data['points'] ?? '',
-            '{{winner_count}}' => (string)$count,
+            self::PLACEHOLDER_WINNER_COUNT => (string)$count,
             '{{winner_verb}}' => $is_plural ? 'siegen' : 'siegt',
             '{{winner_text}}' => $winner_data['text'] ?? '',
             '{{ranking_rows}}' => $ranking_rows,
@@ -115,48 +117,25 @@ class TournamentPageContentBuilder
         $winner_points = '';
         $winner_player_ids = [];
 
-        if (!empty($results)) {
-            if (isset($results[0]['rank'])) {
-                $min_rank = intval($results[0]['rank']);
-                $winners = array_values(array_filter($results, function ($r) use ($min_rank) {
-                    return isset($r['rank']) && intval($r['rank']) === $min_rank;
-                }));
-            } else {
-                $winners = [$results[0]];
+        $winners = $this->extractWinners($results);
+        foreach ($winners as $w) {
+            $forename = trim((string)($w['forename'] ?? ''));
+            $surname = trim((string)($w['surname'] ?? ''));
+            $full_name = trim($forename . ' ' . $surname);
+            if ($full_name !== '') {
+                $winner_names[] = esc_html($full_name);
             }
+            $winner_player_ids[] = intval($w['player_id'] ?? 0);
+        }
 
-            if (empty($winners)) {
-                $winners = [$results[0]];
-            }
-
-            foreach ($winners as $w) {
-                $forename = trim((string)($w['forename'] ?? ''));
-                $surname = trim((string)($w['surname'] ?? ''));
-                $full_name = trim($forename . ' ' . $surname);
-                if ($full_name !== '') {
-                    $winner_names[] = esc_html($full_name);
-                }
-                $winner_player_ids[] = intval($w['player_id'] ?? 0);
-            }
-
+        if (!empty($winners)) {
             $winner_points = esc_html((string)($winners[0]['points'] ?? ''));
         }
 
         $count = count($winner_names);
-        if ($count === 0) {
-            $name_str = '';
-        } elseif ($count === 1) {
-            $name_str = $winner_names[0];
-        } elseif ($count === 2) {
-            $name_str = $winner_names[0] . ' und ' . $winner_names[1];
-        } else {
-            $names_copy = $winner_names;
-            $last = array_pop($names_copy);
-            $name_str = implode(', ', $names_copy) . ' und ' . $last;
-        }
 
         return [
-            'name' => $name_str,
+            'name' => $this->formatWinnerNames($winner_names),
             'names' => $winner_names,
             'count' => max(1, $count),
             'is_plural' => $count > 1,
@@ -166,5 +145,42 @@ class TournamentPageContentBuilder
             'games_placeholder' => '',
             'text' => '',
         ];
+    }
+
+    private function extractWinners(array $results): array
+    {
+        if (empty($results)) {
+            return [];
+        }
+
+        if (isset($results[0]['rank'])) {
+            $min_rank = intval($results[0]['rank']);
+            $winners = array_values(array_filter($results, function ($r) use ($min_rank) {
+                return isset($r['rank']) && intval($r['rank']) === $min_rank;
+            }));
+            if (!empty($winners)) {
+                return $winners;
+            }
+        }
+
+        return [$results[0]];
+    }
+
+    private function formatWinnerNames(array $winner_names): string
+    {
+        $count = count($winner_names);
+        if ($count === 0) {
+            return '';
+        }
+        if ($count === 1) {
+            return $winner_names[0];
+        }
+        if ($count === 2) {
+            return $winner_names[0] . ' und ' . $winner_names[1];
+        }
+
+        $names_copy = $winner_names;
+        $last = array_pop($names_copy);
+        return implode(', ', $names_copy) . ' und ' . $last;
     }
 }

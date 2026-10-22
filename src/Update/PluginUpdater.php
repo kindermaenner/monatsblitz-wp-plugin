@@ -300,38 +300,7 @@ final class PluginUpdater
                 continue;
             }
 
-            $html .= '<h4>' . esc_html($release['version']);
-            $labels = [];
-            if (($release['security_fixes'] ?? false) === true) {
-                $labels[] = 'Security update';
-            }
-            if (($release['prerelease'] ?? false) === true) {
-                $labels[] = 'Pre-release';
-            }
-            if ($labels !== []) {
-                $html .= ' <em>(' . esc_html(implode(', ', $labels)) . ')</em>';
-            }
-            $html .= '</h4>';
-
-            $releasedAt = $this->getReleaseDate($release['released_at'] ?? null);
-            if ($releasedAt !== '') {
-                $html .= '<p>Released: ' . esc_html($releasedAt) . '</p>';
-            }
-
-            $notes = $release['notes'] ?? '';
-            if (is_string($notes) && $notes !== '') {
-                $html .= $this->formatReleaseNotes($notes);
-            }
-
-            $releaseLink = $this->getGitHubUrl($release['url'] ?? null);
-            if ($releaseLink !== null) {
-                $html .= '<p><a href="' . esc_url($releaseLink) . '">View release on GitHub</a>';
-                $compareLink = $this->getGitHubUrl($release['compare_url'] ?? null);
-                if ($compareLink !== null) {
-                    $html .= ' | <a href="' . esc_url($compareLink) . '">Compare changes</a>';
-                }
-                $html .= '</p>';
-            }
+            $html .= $this->renderReleaseEntry($release);
         }
 
         if ($html !== '') {
@@ -344,6 +313,44 @@ final class PluginUpdater
         }
 
         return $this->appendReleaseLink($this->formatReleaseNotes($notes), $releaseUrl);
+    }
+
+    private function renderReleaseEntry(array $release): string
+    {
+        $html = '<h4>' . esc_html($release['version']);
+        $labels = [];
+        if (($release['security_fixes'] ?? false) === true) {
+            $labels[] = 'Security update';
+        }
+        if (($release['prerelease'] ?? false) === true) {
+            $labels[] = 'Pre-release';
+        }
+        if ($labels !== []) {
+            $html .= ' <em>(' . esc_html(implode(', ', $labels)) . ')</em>';
+        }
+        $html .= '</h4>';
+
+        $releasedAt = $this->getReleaseDate($release['released_at'] ?? null);
+        if ($releasedAt !== '') {
+            $html .= '<p>Released: ' . esc_html($releasedAt) . '</p>';
+        }
+
+        $notes = $release['notes'] ?? '';
+        if (is_string($notes) && $notes !== '') {
+            $html .= $this->formatReleaseNotes($notes);
+        }
+
+        $releaseLink = $this->getGitHubUrl($release['url'] ?? null);
+        if ($releaseLink !== null) {
+            $html .= '<p><a href="' . esc_url($releaseLink) . '">View release on GitHub</a>';
+            $compareLink = $this->getGitHubUrl($release['compare_url'] ?? null);
+            if ($compareLink !== null) {
+                $html .= ' | <a href="' . esc_url($compareLink) . '">Compare changes</a>';
+            }
+            $html .= '</p>';
+        }
+
+        return $html;
     }
 
     private function buildCompatibilitySection(array $manifest): string

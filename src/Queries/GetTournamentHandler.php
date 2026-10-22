@@ -45,6 +45,29 @@ class GetTournamentHandler
         $day = (int) ($result['day'] ?? 0);
         $date = $result['date'] ?? sprintf('%04d-%02d-%02d', $year, $month, $day);
 
+        [$player_ids, $withdrawn_player_ids] = $this->fetchTournamentPlayerIds($tournament_id);
+
+        return [
+            'id'                   => (int) ($result['id'] ?? 0),
+            'year'                 => $year,
+            'month'                => $month,
+            'day'                  => $day,
+            'mode'                 => (string) ($result['mode'] ?? ''),
+            'round_count'          => (int) ($result['round_count'] ?? 1),
+            'status'               => (string) ($result['status'] ?? 'open'),
+            'date'                 => $date,
+            'date_formatted'       => (string) ($result['date_formatted'] ?? sprintf('%d.%d.%04d', $day, $month, $year)),
+            'player_ids'           => $player_ids,
+            'withdrawn_player_ids' => $withdrawn_player_ids,
+        ];
+    }
+
+    /**
+     * @return array{0: array<int>, 1: array<int>}
+     */
+    private function fetchTournamentPlayerIds(int $tournament_id): array
+    {
+        global $wpdb;
         $players_table = $wpdb->prefix . 'monatsblitz_tournament_players';
         $player_rows = method_exists($wpdb, 'get_results')
             ? $wpdb->get_results(
@@ -71,18 +94,6 @@ class GetTournamentHandler
             }
         }
 
-        return [
-            'id'                   => (int) ($result['id'] ?? 0),
-            'year'                 => $year,
-            'month'                => $month,
-            'day'                  => $day,
-            'mode'                 => (string) ($result['mode'] ?? ''),
-            'round_count'          => (int) ($result['round_count'] ?? 1),
-            'status'               => (string) ($result['status'] ?? 'open'),
-            'date'                 => $date,
-            'date_formatted'       => (string) ($result['date_formatted'] ?? sprintf('%d.%d.%04d', $day, $month, $year)),
-            'player_ids'           => $player_ids,
-            'withdrawn_player_ids' => $withdrawn_player_ids,
-        ];
+        return [$player_ids, $withdrawn_player_ids];
     }
 }

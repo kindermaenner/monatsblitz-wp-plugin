@@ -14,7 +14,7 @@ class CreateModeHandler
     {
         global $wpdb;
 
-        $params = is_array($request) ? $request : (method_exists($request, 'get_json_params') ? ($request->get_json_params() ?? []) : []);
+        $params = $this->extractParams($request);
 
         $name = sanitize_text_field(trim((string)($params['name'] ?? '')));
 
@@ -59,5 +59,18 @@ class CreateModeHandler
             'id'      => (int) $wpdb->insert_id,
             'name'    => $name
         ];
+    }
+
+    private function extractParams($request): array
+    {
+        if (is_array($request)) {
+            return $request;
+        }
+
+        if (is_object($request) && method_exists($request, 'get_json_params')) {
+            return $request->get_json_params() ?? [];
+        }
+
+        return [];
     }
 }

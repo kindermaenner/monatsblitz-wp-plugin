@@ -47,21 +47,7 @@ class FinalizeTournamentService
         $iso_date = sprintf('%04d-%02d-%02d', $tournament['year'], $tournament['month'], $tournament['day']);
         $month_name = $this->getMonthName(intval($tournament['month'] ?? 0));
 
-        $raw_params = $request instanceof \WP_REST_Request ? $request->get_json_params() : (is_array($request) ? $request : []);
-        $withdrawn_ids = $raw_params['withdrawn_player_ids'] ?? [];
-        if (!empty($withdrawn_ids) && is_array($withdrawn_ids)) {
-            global $wpdb;
-            $tp_table = $wpdb->prefix . 'monatsblitz_tournament_players';
-            foreach ($withdrawn_ids as $w_pid) {
-                $wpdb->update(
-                    $tp_table,
-                    ['has_left' => 1],
-                    ['tournament_id' => $tournament_id, 'player_id' => intval($w_pid)],
-                    ['%d'],
-                    ['%d', '%d']
-                );
-            }
-        }
+        $this->saveWithdrawnPlayers($request, $tournament_id);
 
         $results = $this->repository->loadTournamentResults($tournament_id);
         if (is_wp_error($results)) {
@@ -187,5 +173,32 @@ class FinalizeTournamentService
         ];
 
         return $month_names[$month] ?? '';
+    }
+
+    private function saveWithdrawnPlayers($request, int $tournament_id): void
+    {
+        $raw_params = [];
+        if ($request instanceof \WP_REST_Request) {
+            $raw_params = $request->get_json_params() ?? [];
+        } elseif (is_array($request)) {
+            $raw_params = $request;
+        }
+
+        $withdrawn_ids = $raw_params['withdrawn_player_ids'] ?? [];
+        if (!is_array($withdrawn_ids) || empty($withdrawn_ids)) {
+            return;
+        }
+
+        global $wpdb;
+        $tp_table = $wpdb->prefix . 'monatsblitz_tournament_players';
+        foreach ($withdrawn_ids as $w_pid) {
+            $wpdb->update(
+                $tp_table,
+                ['has_left' => 1],
+                ['tournament_id' => $tournament_id, 'player_id' => intval($w_pid)],
+                ['%d'],
+                ['%d', '%d']
+            );
+        }
     }
 }

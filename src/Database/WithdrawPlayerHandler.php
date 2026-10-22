@@ -12,7 +12,10 @@ class WithdrawPlayerHandler
 
         $tournament_id = intval($params['tournament_id'] ?? 0);
         $player_id = intval($params['player_id'] ?? 0);
-        $has_left = isset($params['has_left']) ? (!empty($params['has_left']) ? 1 : 0) : 1;
+        $has_left = 1;
+        if (isset($params['has_left'])) {
+            $has_left = !empty($params['has_left']) ? 1 : 0;
+        }
 
         if ($tournament_id <= 0 || $player_id <= 0) {
             return new \WP_Error('invalid_data', 'Fehlende Daten', ['status' => 400]);
