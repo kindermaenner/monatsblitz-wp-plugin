@@ -122,7 +122,7 @@ class Admin
 
     public static function render_tables_page()
     {
-        self::render_page();
+        static::render_page();
     }
 
     public static function render_page()
