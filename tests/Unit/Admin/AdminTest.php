@@ -39,11 +39,19 @@ it('registers main menu and settings submenu', function () {
     Admin::register_menu();
 
     expect($GLOBALS['mb_test_menu_pages'])->toHaveCount(1);
-    expect($GLOBALS['mb_test_submenu_pages'])->toHaveCount(1);
-
     expect($GLOBALS['mb_test_menu_pages'][0]['menu_slug'])->toBe('monatsblitz');
-    expect($GLOBALS['mb_test_submenu_pages'][0]['menu_slug'])->toBe('monatsblitz-settings');
-    expect($GLOBALS['mb_test_submenu_pages'][0]['parent_slug'])->toBe('monatsblitz');
+    expect($GLOBALS['mb_test_menu_pages'][0]['callback'][1])->toBe('render_settings_page');
+
+    expect($GLOBALS['mb_test_submenu_pages'])->toHaveCount(3);
+    expect($GLOBALS['mb_test_submenu_pages'][0]['menu_slug'])->toBe('monatsblitz');
+    expect($GLOBALS['mb_test_submenu_pages'][0]['menu_title'])->toBe('Einstellungen');
+    expect($GLOBALS['mb_test_submenu_pages'][0]['callback'][1])->toBe('render_settings_page');
+
+    expect($GLOBALS['mb_test_submenu_pages'][1]['menu_slug'])->toBe('monatsblitz-tables');
+    expect($GLOBALS['mb_test_submenu_pages'][1]['menu_title'])->toBe('Tabellen');
+    expect($GLOBALS['mb_test_submenu_pages'][1]['callback'][1])->toBe('render_tables_page');
+
+    expect($GLOBALS['mb_test_submenu_pages'][2]['menu_slug'])->toBe('monatsblitz-settings');
 });
 
 it('renders settings page with stored values', function () {
@@ -117,13 +125,18 @@ it('renders settings page prompt to generate key when api key is missing', funct
 });
 
 it('enqueues qrcode script only on settings page', function () {
-    Admin::enqueue_admin_assets('toplevel_page_monatsblitz');
+    Admin::enqueue_admin_assets('monatsblitz_page_monatsblitz-tables');
     expect($GLOBALS['mb_test_enqueued_scripts'])->toBeEmpty();
 
-    Admin::enqueue_admin_assets('monatsblitz_page_monatsblitz-settings');
+    Admin::enqueue_admin_assets('toplevel_page_monatsblitz');
     expect($GLOBALS['mb_test_enqueued_scripts'])->toHaveCount(1);
     expect($GLOBALS['mb_test_enqueued_scripts'][0]['handle'])->toBe('monatsblitz-qrcode');
     expect($GLOBALS['mb_test_enqueued_scripts'][0]['src'])->toContain('assets/js/qrcode.min.js');
+
+    $GLOBALS['mb_test_enqueued_scripts'] = [];
+    Admin::enqueue_admin_assets('monatsblitz_page_monatsblitz-settings');
+    expect($GLOBALS['mb_test_enqueued_scripts'])->toHaveCount(1);
+    expect($GLOBALS['mb_test_enqueued_scripts'][0]['handle'])->toBe('monatsblitz-qrcode');
 });
 
 it('generates and stores a new api key from settings page', function () {

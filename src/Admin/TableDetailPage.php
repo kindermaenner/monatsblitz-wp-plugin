@@ -17,7 +17,7 @@ class TableDetailPage
     {
         echo "<h2>Detailansicht: $table</h2>";
 
-        $back = admin_url('admin.php?page=monatsblitz');
+        $back = admin_url('admin.php?page=monatsblitz-tables');
         echo "<p><a href='$back'>← Zurück</a></p>";
 
         $filterTournamentId = self::handle_tournament_filter($tableKey);
@@ -75,7 +75,7 @@ class TableDetailPage
     {
         $currentPageUrl = admin_url('admin.php');
         echo '<form method="get" action="' . esc_url($currentPageUrl) . '" style="margin: 15px 0; display:flex; align-items:center; gap:10px;">';
-        echo '<input type="hidden" name="page" value="monatsblitz">';
+        echo '<input type="hidden" name="page" value="monatsblitz-tables">';
         echo '<input type="hidden" name="table" value="' . esc_attr($tableKey) . '">';
         echo '<label for="mb_filter_tournament"><strong>Turnier filtern:</strong></label>';
         echo '<select name="tournament_id" id="mb_filter_tournament" onchange="this.form.submit()">';

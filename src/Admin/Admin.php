@@ -31,7 +31,18 @@ class Admin
 
     public static function enqueue_admin_assets(string $hook = ''): void
     {
-        if (strpos($hook, 'monatsblitz-settings') === false && (!isset($_GET['page']) || $_GET['page'] !== 'monatsblitz-settings')) {
+        $page = $_GET['page'] ?? '';
+        $isTablesPage = strpos($hook, 'monatsblitz-tables') !== false || $page === 'monatsblitz-tables';
+        if ($isTablesPage) {
+            return;
+        }
+
+        $isSettingsPage = strpos($hook, 'monatsblitz-settings') !== false
+            || strpos($hook, 'toplevel_page_monatsblitz') !== false
+            || $page === 'monatsblitz-settings'
+            || $page === 'monatsblitz';
+
+        if (!$isSettingsPage) {
             return;
         }
 
@@ -68,16 +79,36 @@ class Admin
             'Monatsblitz',
             'manage_options',
             'monatsblitz',
-            [self::class, 'render_page'],
+            [self::class, 'render_settings_page'],
             'dashicons-chart-bar',
             26
         );
 
-        // 👉 Unterpunkt: Einstellungen
+        // 👉 Unterpunkt 1: Einstellungen (Standard-Einstieg)
         add_submenu_page(
             'monatsblitz',
             'Monatsblitz Einstellungen',
             'Einstellungen',
+            'manage_options',
+            'monatsblitz',
+            [self::class, 'render_settings_page']
+        );
+
+        // 👉 Unterpunkt 2: Tabellen (Testen & Debuggen)
+        add_submenu_page(
+            'monatsblitz',
+            'Monatsblitz Tabellen & Debug',
+            'Tabellen',
+            'manage_options',
+            'monatsblitz-tables',
+            [self::class, 'render_tables_page']
+        );
+
+        // 👉 Abwärtskompatibilität für alte Links/Bookmarks auf monatsblitz-settings
+        add_submenu_page(
+            'monatsblitz',
+            'Monatsblitz Einstellungen',
+            'Einstellungen (Legacy)',
             'manage_options',
             'monatsblitz-settings',
             [self::class, 'render_settings_page']
@@ -87,6 +118,11 @@ class Admin
     public static function render_settings_page()
     {
         SettingsPage::render();
+    }
+
+    public static function render_tables_page()
+    {
+        self::render_page();
     }
 
     public static function render_page()
@@ -137,7 +173,7 @@ class Admin
                 $count = $wpdb->get_var("SELECT COUNT(*) FROM $table");
                 $status = '✅ vorhanden';
 
-                $link = admin_url('admin.php?page=monatsblitz&table=' . $key);
+                $link = admin_url('admin.php?page=monatsblitz-tables&table=' . $key);
                 $label = "<a href='$link'><strong>$table</strong></a>";
             } else {
                 $count = '-';
