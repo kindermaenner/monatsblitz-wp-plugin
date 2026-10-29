@@ -172,7 +172,7 @@ Base path: `/wp-json/monatsblitz/v1`
     - `player_ids` (optional): array of participating player IDs stored in `monatsblitz_tournament_players`
 
 - `GET /tournaments`
-  - Returns all tournaments.
+  - Returns all tournaments, including assigned `player_ids` and `withdrawn_player_ids` for participant counts.
 
 - `GET /tournament/{id}`
   - Returns tournament details for a given ID, including assigned `player_ids` and `withdrawn_player_ids`.
@@ -203,10 +203,11 @@ Base path: `/wp-json/monatsblitz/v1`
     - `player1_id`
     - `player2_id`
     - `leg_type` (optional): round/leg number, default `1`
-    - `result` (`1:0`, `0:1`, `0.5:0.5`, `=`, `+:-`, `-:+`, `offen` — note: `=` denotes an unplayed draw for early withdrawal)
+    - `result` (`1:0`, `0:1`, `0.5:0.5`, `=:=`, `+:-`, `-:+`, `offen` — note: `=:=` denotes an unplayed draw for early withdrawal; legacy input `=` is also accepted and automatically normalized to `=:=`)
   - Behavior:
     - Player IDs are normalized before storing: `player1_id <= player2_id`.
     - If IDs are swapped during normalization, the result is mirrored (for example `1:0` becomes `0:1`).
+    - Database operations are strictly verified; write failures immediately return `WP_Error` with HTTP 500 instead of false success.
   - Batch format:
     - `tournament_id`
     - `games`: array of objects with `player1_id`, `player2_id`, `result`, `leg_type`
@@ -243,7 +244,7 @@ Base path: `/wp-json/monatsblitz/v1`
 ```
 
 - `GET /games/{tournament_id}`
-  - Returns all games for a tournament.
+  - Returns all games for a tournament. Each item contains both `id` and `game_id` for client compatibility.
 
 ### Results
 
@@ -334,7 +335,7 @@ The database consists of six tables:
 - monatsblitz_players: player management
 - monatsblitz_tournaments: tournament metadata
 - monatsblitz_tournament_players: assigned tournament participants (includes `has_left` flag for early withdrawal)
-- monatsblitz_games: all played games (includes `=` result for unplayed draw upon early exit)
+- monatsblitz_games: all played games (includes `=:=` result for unplayed draw upon early exit)
 - monatsblitz_results: final results per player and tournament
 - monatsblitz_modes: mode catalog for tournament time controls
 
