@@ -15,6 +15,7 @@ it('returns games list', function () {
     $result  = $handler->handle(['tournament_id' => 1]);
 
     expect($result)->toBeArray();
+    expect($result[0]['id'])->toBe(1);
+    expect($result[0]['game_id'])->toBe(1);
     expect($result[0]['leg_type'])->toBe(1);
 });
-

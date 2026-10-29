@@ -44,6 +44,7 @@ class GetGamesHandler
         return array_map(static function (array $row): array {
             return [
                 'id'               => (int) ($row['id'] ?? 0),
+                'game_id'          => (int) ($row['id'] ?? 0),
                 'tournament_id'    => (int) ($row['tournament_id'] ?? 0),
                 'player1_id'       => (int) ($row['player1_id'] ?? 0),
                 'player2_id'       => (int) ($row['player2_id'] ?? 0),

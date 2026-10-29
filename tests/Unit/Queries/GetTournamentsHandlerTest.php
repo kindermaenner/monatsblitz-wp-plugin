@@ -18,4 +18,6 @@ it('returns tournament list', function () {
     expect($result[0]['id'])->toBe(1);
     expect($result[0]['status'])->toBe('open');
     expect($result[0]['date'])->toBe('2024-10-05');
+    expect($result[0]['player_ids'])->toBeArray();
+    expect($result[0]['withdrawn_player_ids'])->toBeArray();
 });

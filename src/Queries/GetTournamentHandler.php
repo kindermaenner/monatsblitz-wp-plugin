@@ -79,44 +79,79 @@ class GetTournamentHandler
             )
             : [];
 
-        $player_ids = [];
-        $withdrawn_player_ids = [];
-        if (is_array($player_rows)) {
-            foreach ($player_rows as $row) {
-                $pid = $this->extractRowField($row, 'player_id');
-                $has_left = $this->extractRowField($row, 'has_left');
-                if ($pid > 0) {
-                    $player_ids[] = $pid;
-                    if ($has_left === 1) {
-                        $withdrawn_player_ids[] = $pid;
-                    }
-                }
-            }
+        [$player_ids, $withdrawn_player_ids] = $this->extractTournamentPlayerIds($player_rows);
+
+        if (empty($player_ids)) {
+            $player_ids = $this->fetchPlayersFromGames($tournament_id);
         }
 
-        if (empty($player_ids) && method_exists($wpdb, 'get_results') && method_exists($wpdb, 'prepare')) {
-            $games_table = $wpdb->prefix . 'monatsblitz_games';
-            $game_players = $wpdb->get_results(
-                $wpdb->prepare(
-                    "SELECT DISTINCT player1_id AS pid FROM {$games_table} WHERE tournament_id = %d
-                     UNION
-                     SELECT DISTINCT player2_id AS pid FROM {$games_table} WHERE tournament_id = %d",
-                    $tournament_id,
-                    $tournament_id
-                ),
-                ARRAY_A
-            );
-            if (is_array($game_players)) {
-                foreach ($game_players as $gp) {
-                    $pid = intval($gp['pid'] ?? 0);
-                    if ($pid > 0 && !in_array($pid, $player_ids, true)) {
-                        $player_ids[] = $pid;
-                    }
-                }
+        return [$player_ids, $withdrawn_player_ids];
+    }
+
+    /**
+     * @return array{0: array<int>, 1: array<int>}
+     */
+    private function extractTournamentPlayerIds(mixed $player_rows): array
+    {
+        $player_ids = [];
+        $withdrawn_player_ids = [];
+
+        if (!is_array($player_rows)) {
+            return [$player_ids, $withdrawn_player_ids];
+        }
+
+        foreach ($player_rows as $row) {
+            $pid = $this->extractRowField($row, 'player_id');
+            $has_left = $this->extractRowField($row, 'has_left');
+            if ($pid <= 0) {
+                continue;
+            }
+
+            $player_ids[] = $pid;
+            if ($has_left === 1) {
+                $withdrawn_player_ids[] = $pid;
             }
         }
 
         return [$player_ids, $withdrawn_player_ids];
+    }
+
+    /**
+     * @return array<int>
+     */
+    private function fetchPlayersFromGames(int $tournament_id): array
+    {
+        global $wpdb;
+
+        if (!method_exists($wpdb, 'get_results') || !method_exists($wpdb, 'prepare')) {
+            return [];
+        }
+
+        $games_table = $wpdb->prefix . 'monatsblitz_games';
+        $game_players = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT DISTINCT player1_id AS pid FROM {$games_table} WHERE tournament_id = %d
+                 UNION
+                 SELECT DISTINCT player2_id AS pid FROM {$games_table} WHERE tournament_id = %d",
+                $tournament_id,
+                $tournament_id
+            ),
+            ARRAY_A
+        );
+
+        if (!is_array($game_players)) {
+            return [];
+        }
+
+        $player_ids = [];
+        foreach ($game_players as $game_player) {
+            $pid = intval($game_player['pid'] ?? 0);
+            if ($pid > 0 && !in_array($pid, $player_ids, true)) {
+                $player_ids[] = $pid;
+            }
+        }
+
+        return $player_ids;
     }
 
     private function extractRowField(mixed $row, string $field): int

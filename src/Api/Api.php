@@ -131,17 +131,20 @@ class Api
         $client_api_version = isset($_SERVER['HTTP_X_MB_API_VERSION']) ? (int) $_SERVER['HTTP_X_MB_API_VERSION'] : 0;
         if ($client_api_version !== self::API_VERSION) {
             $is_client_older = ($client_api_version < self::API_VERSION);
-            $message = $is_client_older
-                ? sprintf(
+            if ($is_client_older) {
+                $client_version = $client_api_version > 0 ? (string) $client_api_version : 'keine';
+                $message = sprintf(
                     'Inkompatible API-Version. Plugin erwartet Version %d (App sendet: %s). Bitte aktualisiere die Monatsblitz-App.',
                     self::API_VERSION,
-                    $client_api_version > 0 ? (string)$client_api_version : 'keine'
-                )
-                : sprintf(
+                    $client_version
+                );
+            } else {
+                $message = sprintf(
                     'Inkompatible API-Version. App verwendet neuere Version %d (Plugin unterstützt: %d). Bitte aktualisiere das WordPress-Plugin.',
                     $client_api_version,
                     self::API_VERSION
                 );
+            }
 
             return new \WP_Error(
                 'rest_api_version_mismatch',
