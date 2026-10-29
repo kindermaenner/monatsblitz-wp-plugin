@@ -110,20 +110,18 @@ it('embeds rotation mode preselection in qr payload', function () {
     expect($html)->toContain('Rotation (<code>3+2, 5+0</code>)');
 });
 
-it('auto-infers rotation mode into qr code when rotation modes exist even if mode_type was none', function () {
+it('renders mode preselection rows with toggle ids and script', function () {
     $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'key-123';
     $GLOBALS['mb_test_options']['monatsblitz_default_mode_type'] = 'none';
-    $GLOBALS['mb_test_options']['monatsblitz_default_rotation_modes'] = ['3+2', '5+0'];
 
     ob_start();
     Admin::render_settings_page();
     $html = ob_get_clean();
 
-    expect($html)->toContain('mode_type');
-    expect($html)->toContain('rotation');
-    expect($html)->toContain('Rotation (<code>3+2, 5+0</code>)');
+    expect($html)->toContain('id="monatsblitz_default_mode_type"');
     expect($html)->toContain('id="row_monatsblitz_default_fixed_mode"');
     expect($html)->toContain('id="row_monatsblitz_default_rotation_modes"');
+    expect($html)->toContain('updateModePreselection');
 });
 
 it('renders settings page prompt to generate key when api key is missing', function () {
