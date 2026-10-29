@@ -12,6 +12,8 @@ if (!defined('ABSPATH')) {
 
 class Api
 {
+    public const API_VERSION = 1;
+
     public static function init()
     {
         add_action('rest_api_init', [self::class, 'register_routes']);
@@ -124,6 +126,37 @@ class Api
                 'Unauthorized',
                 ['status' => 401]
             );
+        }
+
+        $client_api_version = isset($_SERVER['HTTP_X_MB_API_VERSION']) ? (int) $_SERVER['HTTP_X_MB_API_VERSION'] : 0;
+        if ($client_api_version !== self::API_VERSION) {
+            $is_client_older = ($client_api_version < self::API_VERSION);
+            $message = $is_client_older
+                ? sprintf(
+                    'Inkompatible API-Version. Plugin erwartet Version %d (App sendet: %s). Bitte aktualisiere die Monatsblitz-App.',
+                    self::API_VERSION,
+                    $client_api_version > 0 ? (string)$client_api_version : 'keine'
+                )
+                : sprintf(
+                    'Inkompatible API-Version. App verwendet neuere Version %d (Plugin unterstützt: %d). Bitte aktualisiere das WordPress-Plugin.',
+                    $client_api_version,
+                    self::API_VERSION
+                );
+
+            return new \WP_Error(
+                'rest_api_version_mismatch',
+                $message,
+                [
+                    'status' => 426,
+                    'expected_api_version' => self::API_VERSION,
+                    'received_api_version' => $client_api_version,
+                    'reason' => $is_client_older ? 'app_upgrade_required' : 'plugin_upgrade_required',
+                ]
+            );
+        }
+
+        if (!headers_sent()) {
+            header('X-MB-Api-Version: ' . self::API_VERSION);
         }
 
         return true;

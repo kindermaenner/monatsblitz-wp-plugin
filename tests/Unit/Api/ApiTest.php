@@ -8,6 +8,7 @@ use Monatsblitz\Service\MainService;
 beforeEach(function () {
     $GLOBALS['mb_test_options']['monatsblitz_api_key'] = '';
     unset($_SERVER['HTTP_X_MB_KEY']);
+    unset($_SERVER['HTTP_X_MB_API_VERSION']);
     $GLOBALS['mb_test_actions'] = [];
     $GLOBALS['mb_test_routes'] = [];
 });
@@ -53,6 +54,7 @@ it('registers all REST routes with API key permission callback', function () {
 it('verifies api key successfully', function () {
     $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'secret';
     $_SERVER['HTTP_X_MB_KEY'] = 'secret';
+    $_SERVER['HTTP_X_MB_API_VERSION'] = (string) Api::API_VERSION;
 
     $result = Api::verify_api_key();
 
@@ -62,6 +64,7 @@ it('verifies api key successfully', function () {
 it('fails api key verification when configured key does not match request header', function () {
     $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'secret';
     $_SERVER['HTTP_X_MB_KEY'] = 'wrong';
+    $_SERVER['HTTP_X_MB_API_VERSION'] = (string) Api::API_VERSION;
 
     $result = Api::verify_api_key();
 
@@ -72,12 +75,55 @@ it('fails api key verification when configured key does not match request header
 
 it('fails api key verification when no key is configured', function () {
     $_SERVER['HTTP_X_MB_KEY'] = 'secret';
+    $_SERVER['HTTP_X_MB_API_VERSION'] = (string) Api::API_VERSION;
 
     $result = Api::verify_api_key();
 
     expect($result)->toBeInstanceOf(WP_Error::class)
         ->and($result->code)->toBe('rest_forbidden')
         ->and($result->data['status'])->toBe(401);
+});
+
+it('fails verification when API version header is missing', function () {
+    $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'secret';
+    $_SERVER['HTTP_X_MB_KEY'] = 'secret';
+    // No HTTP_X_MB_API_VERSION set
+
+    $result = Api::verify_api_key();
+
+    expect($result)->toBeInstanceOf(WP_Error::class)
+        ->and($result->code)->toBe('rest_api_version_mismatch')
+        ->and($result->data['status'])->toBe(426)
+        ->and($result->data['reason'])->toBe('app_upgrade_required')
+        ->and($result->message)->toContain('Monatsblitz-App');
+});
+
+it('fails verification when client API version is older than plugin API version', function () {
+    $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'secret';
+    $_SERVER['HTTP_X_MB_KEY'] = 'secret';
+    $_SERVER['HTTP_X_MB_API_VERSION'] = (string) (Api::API_VERSION - 1);
+
+    $result = Api::verify_api_key();
+
+    expect($result)->toBeInstanceOf(WP_Error::class)
+        ->and($result->code)->toBe('rest_api_version_mismatch')
+        ->and($result->data['status'])->toBe(426)
+        ->and($result->data['reason'])->toBe('app_upgrade_required')
+        ->and($result->message)->toContain('Monatsblitz-App');
+});
+
+it('fails verification when client API version is newer than plugin API version', function () {
+    $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'secret';
+    $_SERVER['HTTP_X_MB_KEY'] = 'secret';
+    $_SERVER['HTTP_X_MB_API_VERSION'] = (string) (Api::API_VERSION + 1);
+
+    $result = Api::verify_api_key();
+
+    expect($result)->toBeInstanceOf(WP_Error::class)
+        ->and($result->code)->toBe('rest_api_version_mismatch')
+        ->and($result->data['status'])->toBe(426)
+        ->and($result->data['reason'])->toBe('plugin_upgrade_required')
+        ->and($result->message)->toContain('WordPress-Plugin');
 });
 
 
