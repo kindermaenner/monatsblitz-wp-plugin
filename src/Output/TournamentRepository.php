@@ -20,6 +20,10 @@ class TournamentRepository
             ARRAY_A
         );
 
+        if (!empty($wpdb->last_error)) {
+            return new \WP_Error('db_error', 'Datenbankfehler beim Laden des Turniers: ' . $wpdb->last_error, ['status' => 500]);
+        }
+
         if (!$t) {
             return new \WP_Error('not_found', 'Turnier nicht gefunden', ['status' => 404]);
         }
@@ -43,6 +47,10 @@ class TournamentRepository
             ),
             ARRAY_A
         );
+
+        if (!empty($wpdb->last_error)) {
+            return new \WP_Error('db_error', 'Datenbankfehler beim Laden der Ergebnisse: ' . $wpdb->last_error, ['status' => 500]);
+        }
 
         if (empty($results)) {
             return new \WP_Error('no_results', 'Keine Ergebnisse vorhanden', ['status' => 400]);
