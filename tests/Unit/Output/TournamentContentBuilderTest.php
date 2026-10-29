@@ -67,6 +67,8 @@ it('normalizes common result cells with and without inversion', function () {
     expect(TournamentContentBuilder::normalizeResultCell('1:0', true))->toBe('0');
     expect(TournamentContentBuilder::normalizeResultCell('+:-', false))->toBe('+');
     expect(TournamentContentBuilder::normalizeResultCell('+:-', true))->toBe('-');
+    expect(TournamentContentBuilder::normalizeResultCell('=:=' , false))->toBe('=');
+    expect(TournamentContentBuilder::normalizeResultCell('=:=' , true))->toBe('=');
     expect(TournamentContentBuilder::normalizeResultCell('=', false))->toBe('=');
     expect(TournamentContentBuilder::normalizeResultCell('=', true))->toBe('=');
     expect(TournamentContentBuilder::normalizeResultCell('0.5-0.5', false))->toBe('½');

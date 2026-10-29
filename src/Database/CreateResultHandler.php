@@ -112,7 +112,7 @@ class CreateResultHandler
 
         if ($existing) {
             // Update
-            $wpdb->update(
+            $updated = $wpdb->update(
                 $wpdb->prefix . 'monatsblitz_results',
                 [
                     'points' => $points,
@@ -123,6 +123,11 @@ class CreateResultHandler
                     'player_id'     => $player_id
                 ]
             );
+
+            if ($updated === false) {
+                $errorMsg = !empty($wpdb->last_error) ? $wpdb->last_error : 'Fehler beim Aktualisieren des Ergebnisses in der Datenbank';
+                return new \WP_Error('db_error', $errorMsg, ['status' => 500]);
+            }
 
             return [
                 'success'   => true,
@@ -135,7 +140,7 @@ class CreateResultHandler
         }
 
         // Neu einfügen
-        $wpdb->insert(
+        $inserted = $wpdb->insert(
             $wpdb->prefix . 'monatsblitz_results',
             [
                 'tournament_id' => $tournament_id,
@@ -144,6 +149,11 @@ class CreateResultHandler
                 'rank'          => $rank
             ]
         );
+
+        if ($inserted === false || (int) $wpdb->insert_id <= 0) {
+            $errorMsg = !empty($wpdb->last_error) ? $wpdb->last_error : 'Fehler beim Speichern des Ergebnisses in der Datenbank';
+            return new \WP_Error('db_error', $errorMsg, ['status' => 500]);
+        }
 
         return [
             'success'   => true,

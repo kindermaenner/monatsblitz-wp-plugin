@@ -115,7 +115,7 @@ class CreateGameHandler
             return $this->updateSingle($wpdb, $params);
         }
 
-        $wpdb->insert(
+        $inserted = $wpdb->insert(
             $wpdb->prefix . 'monatsblitz_games',
             [
                 'tournament_id' => $tournament_id,
@@ -126,6 +126,11 @@ class CreateGameHandler
             ],
             ['%d', '%d', '%d', '%d', '%s']
         );
+
+        if ($inserted === false || (int) $wpdb->insert_id <= 0) {
+            $errorMsg = !empty($wpdb->last_error) ? $wpdb->last_error : 'Fehler beim Speichern der Partie in der Datenbank';
+            return new \WP_Error('db_error', $errorMsg, ['status' => 500]);
+        }
 
         return [
             'success' => true,
@@ -194,7 +199,7 @@ class CreateGameHandler
             return new \WP_Error('duplicate_game', 'Spiel mit derselben Paarung und Runde existiert bereits', ['status' => 409]);
         }
 
-        $wpdb->update(
+        $updated = $wpdb->update(
             $wpdb->prefix . 'monatsblitz_games',
             [
                 'tournament_id' => $tournament_id,
@@ -208,6 +213,11 @@ class CreateGameHandler
             ]
         );
 
+        if ($updated === false) {
+            $errorMsg = !empty($wpdb->last_error) ? $wpdb->last_error : 'Fehler beim Aktualisieren der Partie in der Datenbank';
+            return new \WP_Error('db_error', $errorMsg, ['status' => 500]);
+        }
+
         return [
             'success' => true,
             'game_id' => $game_id,
@@ -217,6 +227,10 @@ class CreateGameHandler
 
     private function normalizePlayers(int $player1_id, int $player2_id, string $result): array
     {
+        if ($result === '=') {
+            $result = '=:=' ;
+        }
+
         if ($player1_id <= $player2_id) {
             return [$player1_id, $player2_id, $result];
         }
@@ -227,13 +241,14 @@ class CreateGameHandler
     private function invertResult(string $result): string
     {
         $inverseMap = [
-            '1:0' => '0:1',
-            '0:1' => '1:0',
+            '1:0'     => '0:1',
+            '0:1'     => '1:0',
             '0.5:0.5' => '0.5:0.5',
-            '+:-' => '-:+',
-            '-:+' => '+:-',
-            '=' => '=',
-            'offen' => 'offen',
+            '+:-'     => '-:+',
+            '-:+'     => '+:-',
+            '=:='     => '=:=' ,
+            '='       => '=:=' ,
+            'offen'   => 'offen',
         ];
 
         return $inverseMap[$result] ?? $result;

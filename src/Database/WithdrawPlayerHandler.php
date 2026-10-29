@@ -22,13 +22,18 @@ class WithdrawPlayerHandler
         }
 
         $table = $wpdb->prefix . 'monatsblitz_tournament_players';
-        $wpdb->update(
+        $updated = $wpdb->update(
             $table,
             ['has_left' => $has_left],
             ['tournament_id' => $tournament_id, 'player_id' => $player_id],
             ['%d'],
             ['%d', '%d']
         );
+
+        if ($updated === false) {
+            $errorMsg = !empty($wpdb->last_error) ? $wpdb->last_error : 'Fehler beim Aktualisieren des Spielers in der Datenbank';
+            return new \WP_Error('db_error', $errorMsg, ['status' => 500]);
+        }
 
         return [
             'success'       => true,

@@ -94,6 +94,28 @@ class GetTournamentHandler
             }
         }
 
+        if (empty($player_ids) && method_exists($wpdb, 'get_results') && method_exists($wpdb, 'prepare')) {
+            $games_table = $wpdb->prefix . 'monatsblitz_games';
+            $game_players = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT DISTINCT player1_id AS pid FROM {$games_table} WHERE tournament_id = %d
+                     UNION
+                     SELECT DISTINCT player2_id AS pid FROM {$games_table} WHERE tournament_id = %d",
+                    $tournament_id,
+                    $tournament_id
+                ),
+                ARRAY_A
+            );
+            if (is_array($game_players)) {
+                foreach ($game_players as $gp) {
+                    $pid = intval($gp['pid'] ?? 0);
+                    if ($pid > 0 && !in_array($pid, $player_ids, true)) {
+                        $player_ids[] = $pid;
+                    }
+                }
+            }
+        }
+
         return [$player_ids, $withdrawn_player_ids];
     }
 

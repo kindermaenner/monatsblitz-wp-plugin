@@ -99,13 +99,18 @@ class CreatePlayerHandler
             ];
         }
 
-        $wpdb->insert(
+        $inserted = $wpdb->insert(
             $wpdb->prefix . 'monatsblitz_players',
             [
                 'forename' => $forename,
                 'surname'  => $surname
             ]
         );
+
+        if ($inserted === false || (int) $wpdb->insert_id <= 0) {
+            $errorMsg = !empty($wpdb->last_error) ? $wpdb->last_error : 'Fehler beim Speichern des Spielers in der Datenbank';
+            return new \WP_Error('db_error', $errorMsg, ['status' => 500]);
+        }
 
         return [
             'success'   => true,

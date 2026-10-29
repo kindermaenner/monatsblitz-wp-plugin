@@ -283,3 +283,52 @@ it('automatically updates existing game without game_id if pairing already exist
     expect($wpdb->last_update_data['result'])->toBe('0:1');
     expect($wpdb->last_update_where['id'])->toBe(77);
 });
+it('handles unplayed draw =:= and maps = to =:=', function () {
+    global $wpdb;
+
+    $wpdb->get_var_result = 1;
+    $wpdb->insert_id = 15;
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'tournament_id' => 9,
+                'player1_id' => 1,
+                'player2_id' => 2,
+                'result' => '=:='
+            ];
+        }
+    };
+
+    $handler = new CreateGameHandler();
+    $result  = $handler->handle($request);
+
+    expect($result['success'])->toBeTrue();
+    expect($wpdb->last_insert_data['result'])->toBe('=:=' );
+});
+
+it('fails with db_error when insert produces no insert_id', function () {
+    global $wpdb;
+
+    $wpdb->get_var_result = 1;
+    $wpdb->insert_id = 0;
+    $wpdb->last_error = 'Insert error';
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'tournament_id' => 9,
+                'player1_id' => 1,
+                'player2_id' => 2,
+                'result' => '1:0'
+            ];
+        }
+    };
+
+    $handler = new CreateGameHandler();
+    $result  = $handler->handle($request);
+
+    expect($result)->toBeInstanceOf(WP_Error::class);
+    expect($result->get_error_code())->toBe('db_error');
+    expect($result->get_error_data()['status'])->toBe(500);
+});
