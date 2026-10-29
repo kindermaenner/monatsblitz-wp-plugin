@@ -16,6 +16,10 @@ class Admin
     {
         add_action('admin_menu', [self::class, 'register_menu']);
         add_action('admin_init', function () {
+            if (isset($_GET['page']) && $_GET['page'] === 'monatsblitz-settings') {
+                wp_safe_redirect(admin_url('admin.php?page=monatsblitz'));
+                exit;
+            }
             register_setting('monatsblitz_settings', 'monatsblitz_author');
             register_setting('monatsblitz_settings', 'monatsblitz_template');
             register_setting('monatsblitz_settings', 'monatsblitz_template_static_page');
@@ -102,16 +106,6 @@ class Admin
             'manage_options',
             'monatsblitz-tables',
             [self::class, 'render_tables_page']
-        );
-
-        // 👉 Abwärtskompatibilität für alte Links/Bookmarks auf monatsblitz-settings
-        add_submenu_page(
-            'monatsblitz',
-            'Monatsblitz Einstellungen',
-            'Einstellungen (Legacy)',
-            'manage_options',
-            'monatsblitz-settings',
-            [self::class, 'render_settings_page']
         );
     }
 

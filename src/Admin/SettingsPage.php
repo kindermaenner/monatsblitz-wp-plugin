@@ -26,9 +26,19 @@ class SettingsPage
         $templateStaticPage = (string)get_option('monatsblitz_template_static_page', '');
         $blitzModes = (string)get_option('monatsblitz_blitz_modes', '');
         $hideJanuaryOverview = (bool)get_option('monatsblitz_hide_january_overview', false);
-        $defaultModeType = (string)get_option('monatsblitz_default_mode_type', 'none');
+        $rawModeType = get_option('monatsblitz_default_mode_type', null);
         $defaultFixedMode = (string)get_option('monatsblitz_default_fixed_mode', '');
         $defaultRotationModes = self::get_default_rotation_modes();
+
+        if (($rawModeType === null || $rawModeType === '' || $rawModeType === 'none') && !empty($defaultRotationModes) && empty($defaultFixedMode)) {
+            $defaultModeType = 'rotation';
+        } elseif (($rawModeType === null || $rawModeType === '' || $rawModeType === 'none') && !empty($defaultFixedMode) && empty($defaultRotationModes)) {
+            $defaultModeType = 'fixed';
+        } elseif ($rawModeType === null || $rawModeType === '') {
+            $defaultModeType = 'none';
+        } else {
+            $defaultModeType = (string)$rawModeType;
+        }
 
         $modes = (new \Monatsblitz\Queries\GetModesHandler())->handle();
         $users = get_users(['fields' => ['ID', 'user_login']]);

@@ -113,7 +113,7 @@ class SettingsFormRenderer
         array $modes
     ): void {
         echo '<tr><th scope="row">Standard-Turniermodus</th><td>';
-        echo '<select name="monatsblitz_default_mode_type">';
+        echo '<select name="monatsblitz_default_mode_type" id="monatsblitz_default_mode_type">';
         echo '<option value="none" ' . selected($defaultModeType, 'none', false) . '>Keine automatische Vorauswahl</option>';
         echo '<option value="fixed" ' . selected($defaultModeType, 'fixed', false) . '>Fester Modus</option>';
         echo '<option value="rotation" ' . selected($defaultModeType, 'rotation', false) . '>Rotierender Modus</option>';
@@ -121,7 +121,7 @@ class SettingsFormRenderer
         echo '<p class="description">Steuert die Vorauswahl bei neuen Turnieren in der App (wird auch im QR-Code übermittelt).</p>';
         echo self::TAG_ROW_CLOSE;
 
-        echo '<tr><th scope="row">Fester Standardmodus</th><td>';
+        echo '<tr id="row_monatsblitz_default_fixed_mode"><th scope="row">Fester Standardmodus</th><td>';
         echo '<select name="monatsblitz_default_fixed_mode">';
         echo '<option value="">— Bitte wählen —</option>';
         foreach ($modes as $m) {
@@ -132,7 +132,7 @@ class SettingsFormRenderer
         echo '<p class="description">Wird verwendet, wenn oben <em>Fester Modus</em> gewählt ist.</p>';
         echo self::TAG_ROW_CLOSE;
 
-        echo '<tr><th scope="row">Modus-Rotation</th><td>';
+        echo '<tr id="row_monatsblitz_default_rotation_modes"><th scope="row">Modus-Rotation</th><td>';
         echo '<input type="hidden" name="monatsblitz_default_rotation_modes[]" value="">';
         if (empty($modes)) {
             echo '<p class="description">Keine Modi im Katalog vorhanden. Bitte lege weiter unten Modi an.</p>';
@@ -147,6 +147,29 @@ class SettingsFormRenderer
             echo '<p class="description">Wird verwendet, wenn oben <em>Rotierender Modus</em> gewählt ist. Die App wählt dann basierend auf den vergangenen Turnieren den nächsten Modus dieser Reihenfolge.</p>';
         }
         echo self::TAG_ROW_CLOSE;
+
+        echo '<script type="text/javascript">
+        (function() {
+            function updateModePreselection() {
+                var select = document.getElementById("monatsblitz_default_mode_type");
+                var fixedRow = document.getElementById("row_monatsblitz_default_fixed_mode");
+                var rotRow = document.getElementById("row_monatsblitz_default_rotation_modes");
+                if (!select || !fixedRow || !rotRow) return;
+                var mode = select.value;
+                fixedRow.style.display = (mode === "fixed") ? "" : "none";
+                rotRow.style.display = (mode === "rotation") ? "" : "none";
+            }
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", updateModePreselection);
+            } else {
+                updateModePreselection();
+            }
+            var select = document.getElementById("monatsblitz_default_mode_type");
+            if (select) {
+                select.addEventListener("change", updateModePreselection);
+            }
+        })();
+        </script>';
     }
 
     private static function render_modes_catalog(array $modes): void

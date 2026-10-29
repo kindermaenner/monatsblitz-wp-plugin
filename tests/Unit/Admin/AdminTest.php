@@ -42,7 +42,7 @@ it('registers main menu and settings submenu', function () {
     expect($GLOBALS['mb_test_menu_pages'][0]['menu_slug'])->toBe('monatsblitz');
     expect($GLOBALS['mb_test_menu_pages'][0]['callback'][1])->toBe('render_settings_page');
 
-    expect($GLOBALS['mb_test_submenu_pages'])->toHaveCount(3);
+    expect($GLOBALS['mb_test_submenu_pages'])->toHaveCount(2);
     expect($GLOBALS['mb_test_submenu_pages'][0]['menu_slug'])->toBe('monatsblitz');
     expect($GLOBALS['mb_test_submenu_pages'][0]['menu_title'])->toBe('Einstellungen');
     expect($GLOBALS['mb_test_submenu_pages'][0]['callback'][1])->toBe('render_settings_page');
@@ -50,8 +50,6 @@ it('registers main menu and settings submenu', function () {
     expect($GLOBALS['mb_test_submenu_pages'][1]['menu_slug'])->toBe('monatsblitz-tables');
     expect($GLOBALS['mb_test_submenu_pages'][1]['menu_title'])->toBe('Tabellen');
     expect($GLOBALS['mb_test_submenu_pages'][1]['callback'][1])->toBe('render_tables_page');
-
-    expect($GLOBALS['mb_test_submenu_pages'][2]['menu_slug'])->toBe('monatsblitz-settings');
 });
 
 it('renders settings page with stored values', function () {
@@ -110,6 +108,22 @@ it('embeds rotation mode preselection in qr payload', function () {
     expect($html)->toContain('3+2');
     expect($html)->toContain('5+0');
     expect($html)->toContain('Rotation (<code>3+2, 5+0</code>)');
+});
+
+it('auto-infers rotation mode into qr code when rotation modes exist even if mode_type was none', function () {
+    $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'key-123';
+    $GLOBALS['mb_test_options']['monatsblitz_default_mode_type'] = 'none';
+    $GLOBALS['mb_test_options']['monatsblitz_default_rotation_modes'] = ['3+2', '5+0'];
+
+    ob_start();
+    Admin::render_settings_page();
+    $html = ob_get_clean();
+
+    expect($html)->toContain('mode_type');
+    expect($html)->toContain('rotation');
+    expect($html)->toContain('Rotation (<code>3+2, 5+0</code>)');
+    expect($html)->toContain('id="row_monatsblitz_default_fixed_mode"');
+    expect($html)->toContain('id="row_monatsblitz_default_rotation_modes"');
 });
 
 it('renders settings page prompt to generate key when api key is missing', function () {
