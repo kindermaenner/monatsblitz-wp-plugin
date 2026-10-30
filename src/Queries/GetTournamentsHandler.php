@@ -32,6 +32,23 @@ class GetTournamentsHandler
             return [];
         }
 
+        [$players_by_tournament, $withdrawn_by_tournament] = $this->fetchTournamentPlayerData();
+
+        $formatted = [];
+        foreach ($results as $row) {
+            $formatted[] = $this->formatTournament($row, $players_by_tournament, $withdrawn_by_tournament);
+        }
+
+        return $formatted;
+    }
+
+    /**
+     * @return array{array<int, array<int>>, array<int, array<int>>}
+     */
+    private function fetchTournamentPlayerData(): array
+    {
+        global $wpdb;
+
         $tp_table = $wpdb->prefix . 'monatsblitz_tournament_players';
         $players_by_tournament = [];
         $withdrawn_by_tournament = [];
@@ -43,19 +60,7 @@ class GetTournamentsHandler
             )
             : [];
 
-        if (is_array($tp_rows)) {
-            foreach ($tp_rows as $row) {
-                $tid = (int) ($row['tournament_id'] ?? 0);
-                $pid = (int) ($row['player_id'] ?? 0);
-                $left = (int) ($row['has_left'] ?? 0);
-                if ($tid > 0 && $pid > 0) {
-                    $players_by_tournament[$tid][] = $pid;
-                    if ($left === 1) {
-                        $withdrawn_by_tournament[$tid][] = $pid;
-                    }
-                }
-            }
-        }
+        $this->addRegisteredPlayers($tp_rows, $players_by_tournament, $withdrawn_by_tournament);
 
         $games_table = $wpdb->prefix . 'monatsblitz_games';
         $game_players = method_exists($wpdb, 'get_results')
@@ -67,44 +72,74 @@ class GetTournamentsHandler
             )
             : [];
 
-        if (is_array($game_players)) {
-            foreach ($game_players as $gp) {
-                $tid = (int) ($gp['tournament_id'] ?? 0);
-                $pid = (int) ($gp['pid'] ?? 0);
-                if ($tid > 0 && $pid > 0) {
-                    if (!isset($players_by_tournament[$tid])) {
-                        $players_by_tournament[$tid] = [];
-                    }
-                    if (!in_array($pid, $players_by_tournament[$tid], true)) {
-                        $players_by_tournament[$tid][] = $pid;
-                    }
-                }
+        $this->addGamePlayers($game_players, $players_by_tournament);
+
+        return [$players_by_tournament, $withdrawn_by_tournament];
+    }
+
+    private function addRegisteredPlayers(mixed $rows, array &$players_by_tournament, array &$withdrawn_by_tournament): void
+    {
+        if (!is_array($rows)) {
+            return;
+        }
+
+        foreach ($rows as $row) {
+            $tid = (int) ($row['tournament_id'] ?? 0);
+            $pid = (int) ($row['player_id'] ?? 0);
+            $left = (int) ($row['has_left'] ?? 0);
+            if ($tid <= 0 || $pid <= 0) {
+                continue;
+            }
+
+            $players_by_tournament[$tid][] = $pid;
+            if ($left === 1) {
+                $withdrawn_by_tournament[$tid][] = $pid;
             }
         }
+    }
 
-        $formatted = [];
-        foreach ($results as $row) {
-            $id = (int) $row['id'];
-            $year = (int) $row['year'];
-            $month = (int) $row['month'];
-            $day = (int) $row['day'];
-            $date = $row['date'] ?? sprintf('%04d-%02d-%02d', $year, $month, $day);
-
-            $formatted[] = [
-                'id'                   => $id,
-                'year'                 => $year,
-                'month'                => $month,
-                'day'                  => $day,
-                'mode'                 => (string) ($row['mode'] ?? ''),
-                'round_count'          => (int) ($row['round_count'] ?? 1),
-                'status'               => (string) ($row['status'] ?? 'open'),
-                'date'                 => $date,
-                'date_formatted'       => (string) ($row['date_formatted'] ?? sprintf('%d.%d.%04d', $day, $month, $year)),
-                'player_ids'           => $players_by_tournament[$id] ?? [],
-                'withdrawn_player_ids' => $withdrawn_by_tournament[$id] ?? [],
-            ];
+    private function addGamePlayers(mixed $game_players, array &$players_by_tournament): void
+    {
+        if (!is_array($game_players)) {
+            return;
         }
 
-        return $formatted;
+        foreach ($game_players as $game_player) {
+            $tid = (int) ($game_player['tournament_id'] ?? 0);
+            $pid = (int) ($game_player['pid'] ?? 0);
+            if ($tid <= 0 || $pid <= 0) {
+                continue;
+            }
+
+            if (!isset($players_by_tournament[$tid])) {
+                $players_by_tournament[$tid] = [];
+            }
+            if (!in_array($pid, $players_by_tournament[$tid], true)) {
+                $players_by_tournament[$tid][] = $pid;
+            }
+        }
+    }
+
+    private function formatTournament(array $row, array $players_by_tournament, array $withdrawn_by_tournament): array
+    {
+        $id = (int) $row['id'];
+        $year = (int) $row['year'];
+        $month = (int) $row['month'];
+        $day = (int) $row['day'];
+        $date = $row['date'] ?? sprintf('%04d-%02d-%02d', $year, $month, $day);
+
+        return [
+            'id'                   => $id,
+            'year'                 => $year,
+            'month'                => $month,
+            'day'                  => $day,
+            'mode'                 => (string) ($row['mode'] ?? ''),
+            'round_count'          => (int) ($row['round_count'] ?? 1),
+            'status'               => (string) ($row['status'] ?? 'open'),
+            'date'                 => $date,
+            'date_formatted'       => (string) ($row['date_formatted'] ?? sprintf('%d.%d.%04d', $day, $month, $year)),
+            'player_ids'           => $players_by_tournament[$id] ?? [],
+            'withdrawn_player_ids' => $withdrawn_by_tournament[$id] ?? [],
+        ];
     }
 }
