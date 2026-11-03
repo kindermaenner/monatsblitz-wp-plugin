@@ -49,6 +49,22 @@ class FinalizeTournamentService
 
         $this->saveWithdrawnPlayers($request, $tournament_id);
 
+        $raw_params = [];
+        if ($request instanceof \WP_REST_Request) {
+            $raw_params = $request->get_json_params() ?? [];
+        } elseif (is_array($request)) {
+            $raw_params = $request;
+        }
+
+        if (isset($raw_params['round_count'])) {
+            $round_count_override = max(1, intval($raw_params['round_count']));
+            $this->repository->updateRoundCount($tournament_id, $round_count_override);
+            $tournament['round_count'] = $round_count_override;
+        }
+
+        $round_count = max(1, intval($tournament['round_count'] ?? 1));
+        $this->repository->deleteGamesExceedingRoundCount($tournament_id, $round_count);
+
         $results = $this->repository->loadTournamentResults($tournament_id);
         if (is_wp_error($results)) {
             return $results;

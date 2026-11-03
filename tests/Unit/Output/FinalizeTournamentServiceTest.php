@@ -87,3 +87,51 @@ it('finalizes a tournament successfully using the service', function () {
     expect($wpdb->last_update_data['status'])->toBe('finalized');
     expect($wpdb->last_update_where['id'])->toBe(15);
 });
+
+it('updates round_count and cleans up exceeding games when round_count is supplied in finalize request', function () {
+    global $wpdb;
+
+    $GLOBALS['mb_test_options']['monatsblitz_author'] = 1;
+    $GLOBALS['mb_test_options']['monatsblitz_template'] = 'TemplateSuccess';
+    $GLOBALS['mb_test_template_post'] = (object) [
+        'ID' => 15,
+        'post_title' => 'TemplateSuccess',
+        'post_content' => '<article>{{table}}</article>',
+    ];
+    $GLOBALS['mb_test_next_post_id'] = 811;
+    $GLOBALS['mb_test_get_posts_queue'] = [[], [], [], []];
+
+    $wpdb->get_row_result = [
+        'id' => 15,
+        'year' => 2026,
+        'month' => 8,
+        'day' => 12,
+        'mode' => 'schweizer',
+        'round_count' => 2,
+    ];
+
+    $wpdb->get_results_queue = [
+        [
+            ['player_id' => 1, 'points' => 1.0, 'rank' => 1, 'forename' => 'Max', 'surname' => 'Muster'],
+        ],
+        [
+            ['player1_id' => 1, 'player2_id' => 2, 'leg_type' => 1, 'result' => '1:0', 'p1_forename' => 'Max', 'p1_surname' => 'Muster', 'p2_forename' => 'Erika', 'p2_surname' => 'Beispiel'],
+        ],
+    ];
+    $wpdb->get_var_result = 1;
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'tournament_id' => 15,
+                'round_count' => 1,
+            ];
+        }
+    };
+
+    $service = new FinalizeTournamentService();
+    $result = $service->handle($request);
+
+    expect($result['success'])->toBeTrue();
+    expect($wpdb->queries)->toContain('DELETE FROM wp_monatsblitz_games WHERE tournament_id = %d AND leg_type > %d');
+});

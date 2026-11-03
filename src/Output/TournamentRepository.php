@@ -112,4 +112,31 @@ class TournamentRepository
             ['%d']
         );
     }
+
+    public function updateRoundCount(int $tournament_id, int $round_count): void
+    {
+        global $wpdb;
+
+        $wpdb->update(
+            $wpdb->prefix . 'monatsblitz_tournaments',
+            ['round_count' => $round_count],
+            ['id' => $tournament_id],
+            ['%d'],
+            ['%d']
+        );
+    }
+
+    public function deleteGamesExceedingRoundCount(int $tournament_id, int $round_count): void
+    {
+        global $wpdb;
+
+        $table = $wpdb->prefix . 'monatsblitz_games';
+        $wpdb->query(
+            $wpdb->prepare(
+                "DELETE FROM {$table} WHERE tournament_id = %d AND leg_type > %d",
+                $tournament_id,
+                $round_count
+            )
+        );
+    }
 }
