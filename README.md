@@ -183,6 +183,12 @@ Base path: `/wp-json/monatsblitz/v1`
     - `tournament_id`: ID of the tournament
     - `player_id`: ID of the player
     - `has_left` (optional): `1` (default) or `0`
+
+- `POST /tournament/player`
+  - Adds a player to an active open tournament (`has_left = 0`).
+  - Body (JSON):
+    - `tournament_id`: ID of the tournament
+    - `player_id`: ID of the player
   - Response (JSON, HTTP 200 OK):
     ```json
     { "success": true }

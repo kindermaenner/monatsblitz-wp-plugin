@@ -289,3 +289,17 @@ it('rebuilds yearly static page through service wrapper', function () {
 		->and($result['page_id'])->toBe(123);
 });
 
+
+it('adds tournament player through service wrapper', function () {
+	global $wpdb;
+	$wpdb->get_var_queue = ['open', 5];
+
+	$result = MainService::addTournamentPlayer(new MainServiceFakeRequest([
+		'tournament_id' => 1,
+		'player_id' => 5,
+	]));
+
+	expect($result['success'])->toBeTrue()
+		->and($result['tournament_id'])->toBe(1)
+		->and($result['player_id'])->toBe(5);
+});

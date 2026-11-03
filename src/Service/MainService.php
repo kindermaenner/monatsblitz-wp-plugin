@@ -142,8 +142,24 @@ class MainService
 
     public static function withdrawPlayer($request)
     {
-        $params = $request instanceof \WP_REST_Request ? $request->get_json_params() : $request;
-        $result = (new \Monatsblitz\Database\WithdrawPlayerHandler())->handle($params ?? []);
+        $params = is_object($request) && method_exists($request, 'get_json_params')
+            ? ($request->get_json_params() ?? [])
+            : (is_array($request) ? $request : []);
+        $result = (new \Monatsblitz\Database\WithdrawPlayerHandler())->handle($params);
+
+        if ($result instanceof \WP_Error) {
+            return $result;
+        }
+
+        return rest_ensure_response($result);
+    }
+
+    public static function addTournamentPlayer($request)
+    {
+        $params = is_object($request) && method_exists($request, 'get_json_params')
+            ? ($request->get_json_params() ?? [])
+            : (is_array($request) ? $request : []);
+        $result = (new \Monatsblitz\Database\AddTournamentPlayerHandler())->handle($params);
 
         if ($result instanceof \WP_Error) {
             return $result;

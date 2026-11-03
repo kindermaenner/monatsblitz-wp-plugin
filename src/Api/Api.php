@@ -113,6 +113,12 @@ class Api
             'callback' => [MainService::class, 'withdrawPlayer'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
+
+        register_rest_route($rest_api_namespace, '/tournament/player', [
+            'methods'  => 'POST',
+            'callback' => [MainService::class, 'addTournamentPlayer'],
+            'permission_callback' => [self::class, 'verify_api_key'],
+        ]);
     }
 
     public static function verify_api_key()
