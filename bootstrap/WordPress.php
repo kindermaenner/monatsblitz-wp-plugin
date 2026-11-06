@@ -273,6 +273,25 @@ if (!function_exists('home_url')) {
     }
 }
 
+if (!function_exists('wp_get_nav_menus')) {
+    function wp_get_nav_menus() {
+        return $GLOBALS['mb_test_nav_menus'] ?? [];
+    }
+}
+
+if (!function_exists('wp_get_nav_menu_items')) {
+    function wp_get_nav_menu_items($menu_id, $args = []) {
+        return $GLOBALS['mb_test_nav_menu_items'][$menu_id] ?? [];
+    }
+}
+
+if (!function_exists('wp_delete_post')) {
+    function wp_delete_post($post_id, $force_delete = false) {
+        $GLOBALS['mb_test_deleted_posts'][] = [$post_id, $force_delete];
+        return true;
+    }
+}
+
 if (!function_exists('plugins_url')) {
     function plugins_url($path = '', $plugin = '') {
         return 'https://example.test/wp-content/plugins/' . ltrim($path, '/');
@@ -463,6 +482,20 @@ if (!class_exists('WP_REST_Response')) {
 
         public function get_data() {
             return $this->data;
+        }
+    }
+}
+
+if (!class_exists('WP_REST_Request')) {
+    class WP_REST_Request {
+        private array $json_params;
+
+        public function __construct(array $json_params = []) {
+            $this->json_params = $json_params;
+        }
+
+        public function get_json_params(): array {
+            return $this->json_params;
         }
     }
 }

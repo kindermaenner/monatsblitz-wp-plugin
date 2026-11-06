@@ -46,6 +46,9 @@ pest()->beforeEach(function () {
     $GLOBALS['mb_test_object_taxonomies'] = [];
     $GLOBALS['mb_test_object_terms'] = [];
     $GLOBALS['mb_test_set_object_terms_calls'] = [];
+    $GLOBALS['mb_test_nav_menus'] = [];
+    $GLOBALS['mb_test_nav_menu_items'] = [];
+    $GLOBALS['mb_test_deleted_posts'] = [];
     $GLOBALS['mb_test_enqueued_scripts'] = [];
     $GLOBALS['mb_test_next_post_id'] = 123;
 
@@ -63,13 +66,18 @@ pest()->beforeEach(function () {
         public ?string $last_update_table = null;
         public array $last_update_data = [];
         public array $last_update_where = [];
+        public array $update_calls = [];
         public ?string $last_delete_table = null;
         public array $last_delete_where = [];
         public array $queries = [];
+        public array $get_results_calls = [];
         public $get_var_callback = null;
         public ?string $last_query = null;
         public ?string $last_prepared_query = null;
         public array $last_prepared_args = [];
+        public $insert_result = true;
+        public $update_result = true;
+        public string $last_error = '';
 
         public function get_var($query = null) {
             $this->last_query = $query;
@@ -93,6 +101,7 @@ pest()->beforeEach(function () {
         }
 
         public function get_results($query = null, ...$args) {
+            $this->get_results_calls[] = [$query, $args];
             if (!empty($this->get_results_queue)) {
                 return array_shift($this->get_results_queue);
             }
@@ -103,14 +112,19 @@ pest()->beforeEach(function () {
             $this->last_insert_table = $table;
             $this->last_insert_data = $data;
             $this->last_insert_format = $format ?? [];
-            return true;
+            return $this->insert_result;
         }
 
         public function update($table, $data, $where) {
             $this->last_update_table = $table;
             $this->last_update_data = $data;
             $this->last_update_where = $where;
-            return true;
+            $this->update_calls[] = [
+                'table' => $table,
+                'data' => $data,
+                'where' => $where,
+            ];
+            return $this->update_result;
         }
 
         public function delete($table, $where, $where_format = null) {

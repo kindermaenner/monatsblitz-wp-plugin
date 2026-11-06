@@ -303,3 +303,30 @@ it('adds tournament player through service wrapper', function () {
 		->and($result['tournament_id'])->toBe(1)
 		->and($result['player_id'])->toBe(5);
 });
+
+it('accepts array requests for tournament player changes', function () {
+	global $wpdb;
+	$wpdb->get_var_queue = ['open', 5];
+
+	$withdrawResult = MainService::withdrawPlayer([
+		'tournament_id' => 1,
+		'player_id' => 5,
+	]);
+	$addResult = MainService::addTournamentPlayer([
+		'tournament_id' => 1,
+		'player_id' => 5,
+	]);
+
+	expect($withdrawResult['success'])->toBeTrue()
+		->and($addResult['success'])->toBeTrue();
+});
+
+it('returns invalid-data errors for unsupported tournament player requests', function () {
+	$withdrawResult = MainService::withdrawPlayer('invalid');
+	$addResult = MainService::addTournamentPlayer('invalid');
+
+	expect($withdrawResult)->toBeInstanceOf(WP_Error::class)
+		->and($withdrawResult->get_error_code())->toBe('invalid_data')
+		->and($addResult)->toBeInstanceOf(WP_Error::class)
+		->and($addResult->get_error_code())->toBe('invalid_data');
+});

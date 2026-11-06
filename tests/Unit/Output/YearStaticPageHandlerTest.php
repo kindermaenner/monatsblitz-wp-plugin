@@ -124,6 +124,36 @@ it('updates existing yearly page and copies only non-blacklisted template meta',
     expect($GLOBALS['mb_test_add_post_meta_calls'][0]['meta_key'])->toBe('copy_me');
 });
 
+it('removes only navigation entries that point to the generated page', function () {
+    global $wpdb;
+
+    $GLOBALS['mb_test_options']['monatsblitz_template_static_page'] = 'TemplateYearMenu';
+    $GLOBALS['mb_test_template_post'] = (object) [
+        'ID' => 205,
+        'post_title' => 'TemplateYearMenu',
+        'post_content' => '{{blitz_monthly_overview}}',
+    ];
+    $GLOBALS['mb_test_nav_menus'] = [
+        (object) ['term_id' => 3],
+        (object) ['term_id' => 0],
+        (object) ['term_id' => 4],
+    ];
+    $GLOBALS['mb_test_nav_menu_items'] = [
+        3 => [
+            (object) ['ID' => 81, 'object_id' => 123, 'object' => 'page'],
+            (object) ['ID' => 82, 'object_id' => 999, 'object' => 'page'],
+            (object) ['ID' => 83, 'object_id' => 123, 'object' => 'post'],
+        ],
+        4 => [],
+    ];
+    $wpdb->get_results_queue = [[]];
+
+    $result = (new YearStaticPageHandler())->createOrUpdate(2026);
+
+    expect($result['success'])->toBeTrue()
+        ->and($GLOBALS['mb_test_deleted_posts'])->toBe([[81, true]]);
+});
+
 it('returns page_error when yearly page insertion does not produce a valid id', function () {
     global $wpdb;
 

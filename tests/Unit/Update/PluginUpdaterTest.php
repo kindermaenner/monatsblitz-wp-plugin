@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Monatsblitz\Update\PluginUpdater;
+use Monatsblitz\Update\ManifestValidator;
+use Monatsblitz\Update\PackageVerifier;
 
 if (!defined('HOUR_IN_SECONDS')) {
     define('HOUR_IN_SECONDS', 3600);
@@ -198,6 +200,39 @@ it('ignores invalid manifests', function () {
         ->and($GLOBALS['mb_test_site_transients'])->toBeEmpty();
 });
 
+it('refreshes an invalid cached manifest before offering an update', function () {
+    monatsblitzCacheManifest(monatsblitzManifest([
+        'download_url' => 'https://attacker.example/plugin.zip',
+    ]));
+    $freshManifest = monatsblitzManifest(['version' => '1.1.0']);
+    $GLOBALS['mb_test_remote_response']['body'] = json_encode($freshManifest);
+    $transient = (object) [
+        'checked' => ['monatsblitz/monatsblitz.php' => '0.9.0'],
+        'response' => [],
+    ];
+
+    $result = $this->updater->checkForUpdate($transient);
+
+    expect($result->response['monatsblitz/monatsblitz.php']->new_version)->toBe('1.1.0')
+        ->and($GLOBALS['mb_test_remote_get_calls'])->toHaveCount(1)
+        ->and($GLOBALS['mb_test_site_transients']['monatsblitz_plugin_update'])->toBe($freshManifest);
+});
+
+it('does not advertise an update when the manifest service is unavailable', function () {
+    $originalResponse = (object) ['unchanged' => true];
+    $GLOBALS['mb_test_remote_response'] = new WP_Error('network_error', 'Unavailable');
+
+    $result = $this->updater->checkForUpdate((object) [
+        'checked' => ['monatsblitz/monatsblitz.php' => '0.9.0'],
+        'response' => [],
+    ]);
+
+    expect($result->response)->toBeEmpty()
+        ->and($this->updater->pluginInformation($originalResponse, 'plugin_information', (object) [
+            'slug' => 'monatsblitz',
+        ]))->toBe($originalResponse);
+});
+
 it('returns plugin information only for this plugin', function () {
     monatsblitzCacheManifest(monatsblitzManifest());
     $otherResult = (object) ['unchanged' => true];
@@ -280,6 +315,68 @@ it('rejects a downloaded package with a checksum mismatch', function () {
     expect($result)->toBeInstanceOf(WP_Error::class)
         ->and($result->code)->toBe('monatsblitz_update_checksum_mismatch')
         ->and(is_file($file))->toBeFalse();
+});
+
+it('does not download packages when their URL or manifest does not match', function () {
+    $manifest = monatsblitzManifest();
+
+    expect(PackageVerifier::verify('original-response', 'not-a-url', $manifest))
+        ->toBe('original-response')
+        ->and(PackageVerifier::verify('original-response', $manifest['download_url'], null))
+        ->toBe('original-response')
+        ->and($GLOBALS['mb_test_download_url_calls'])->toBeEmpty();
+});
+
+it('rejects malformed checksums without downloading the package', function () {
+    $manifest = monatsblitzManifest(['checksum_sha256' => 'not-a-sha256']);
+
+    $result = PackageVerifier::verify(false, $manifest['download_url'], $manifest);
+
+    expect($result)->toBeInstanceOf(WP_Error::class)
+        ->and($result->get_error_code())->toBe('monatsblitz_update_invalid_checksum')
+        ->and($GLOBALS['mb_test_download_url_calls'])->toBeEmpty();
+});
+
+it('returns download errors unchanged when retrieving a verified package fails', function () {
+    $downloadError = new WP_Error('download_failed', 'Download failed');
+    $GLOBALS['mb_test_download_result'] = $downloadError;
+    $manifest = monatsblitzManifest();
+
+    expect(PackageVerifier::verify(false, $manifest['download_url'], $manifest))
+        ->toBe($downloadError)
+        ->and($GLOBALS['mb_test_download_url_calls'])->toBe([[$manifest['download_url'], 300]]);
+});
+
+it('accepts only well-formed same-host https manifests', function () {
+    $valid = monatsblitzManifest();
+    $manifestUrl = 'https://kindermaenner.de/plugin-updates/monatsblitz/manifest.json';
+
+    expect(ManifestValidator::isValid($valid, 'monatsblitz', $manifestUrl))->toBeTrue()
+        ->and(ManifestValidator::isValid(
+            array_merge($valid, ['version' => '1.0']),
+            'monatsblitz',
+            $manifestUrl
+        ))->toBeFalse()
+        ->and(ManifestValidator::isValid(
+            array_merge($valid, ['download_url' => 'not-a-url']),
+            'monatsblitz',
+            $manifestUrl
+        ))->toBeFalse()
+        ->and(ManifestValidator::isValid(
+            array_merge($valid, ['checksum_sha256' => 'invalid']),
+            'monatsblitz',
+            $manifestUrl
+        ))->toBeFalse()
+        ->and(ManifestValidator::isValid(
+            array_merge($valid, ['download_url' => 'https://attacker.example/plugin.zip']),
+            'monatsblitz',
+            $manifestUrl
+        ))->toBeFalse()
+        ->and(ManifestValidator::isValid(
+            array_merge($valid, ['download_url' => 'http://kindermaenner.de/plugin.zip']),
+            'monatsblitz',
+            $manifestUrl
+        ))->toBeFalse();
 });
 
 it('clears manifest cache when clearManifestCache is called', function () {

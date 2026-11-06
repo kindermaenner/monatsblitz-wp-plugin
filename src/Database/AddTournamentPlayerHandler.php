@@ -21,6 +21,31 @@ class AddTournamentPlayerHandler
             return new \WP_Error('invalid_data', 'Fehlende Daten', ['status' => 400]);
         }
 
+        $tournament_error = $this->getTournamentError($tournament_id);
+        if ($tournament_error) {
+            return $tournament_error;
+        }
+
+        if (!$this->playerExists($player_id)) {
+            return new \WP_Error('invalid_player', 'Spieler existiert nicht', ['status' => 404]);
+        }
+
+        $save_error = $this->saveTournamentPlayer($tournament_id, $player_id);
+        if ($save_error) {
+            return $save_error;
+        }
+
+        return [
+            'success'       => true,
+            'tournament_id' => $tournament_id,
+            'player_id'     => $player_id,
+        ];
+    }
+
+    private function getTournamentError(int $tournament_id): ?\WP_Error
+    {
+        global $wpdb;
+
         $tournament_status = $wpdb->get_var(
             $wpdb->prepare(
                 "SELECT status FROM {$wpdb->prefix}monatsblitz_tournaments WHERE id = %d",
@@ -36,6 +61,13 @@ class AddTournamentPlayerHandler
             return new \WP_Error('tournament_finalized', 'Turnier ist bereits finalisiert', ['status' => 403]);
         }
 
+        return null;
+    }
+
+    private function playerExists(int $player_id): bool
+    {
+        global $wpdb;
+
         $player_exists = $wpdb->get_var(
             $wpdb->prepare(
                 "SELECT id FROM {$wpdb->prefix}monatsblitz_players WHERE id = %d",
@@ -43,10 +75,12 @@ class AddTournamentPlayerHandler
             )
         );
 
-        if (!$player_exists) {
-            return new \WP_Error('invalid_player', 'Spieler existiert nicht', ['status' => 404]);
-        }
+        return (bool)$player_exists;
+    }
 
+    private function saveTournamentPlayer(int $tournament_id, int $player_id): ?\WP_Error
+    {
+        global $wpdb;
         $table = $wpdb->prefix . 'monatsblitz_tournament_players';
         $existing = $wpdb->get_row(
             $wpdb->prepare(
@@ -87,10 +121,6 @@ class AddTournamentPlayerHandler
             }
         }
 
-        return [
-            'success'       => true,
-            'tournament_id' => $tournament_id,
-            'player_id'     => $player_id,
-        ];
+        return null;
     }
 }

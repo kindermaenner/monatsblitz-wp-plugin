@@ -42,35 +42,13 @@ class FinalizeTournamentService
 
         $post_author_id = intval(get_option('monatsblitz_author'));
         $counts_for_ranking = !isset($tournament['counts_for_ranking']) || (bool)$tournament['counts_for_ranking'];
-        $template_name = $counts_for_ranking
-            ? (string) sanitize_text_field(get_option('monatsblitz_template'))
-            : (string) sanitize_text_field(get_option('monatsblitz_template_non_ranking'));
-
-        if ($template_name === '' && !$counts_for_ranking) {
-            $template_name = (string) sanitize_text_field(get_option('monatsblitz_template'));
-        }
+        $template_name = $this->getTemplateName($counts_for_ranking);
 
         $date_str = sprintf('%02d.%02d.%04d', $tournament['day'], $tournament['month'], $tournament['year']);
         $iso_date = sprintf('%04d-%02d-%02d', $tournament['year'], $tournament['month'], $tournament['day']);
         $month_name = $this->getMonthName(intval($tournament['month'] ?? 0));
 
-        $this->saveWithdrawnPlayers($request, $tournament_id);
-
-        $raw_params = [];
-        if ($request instanceof \WP_REST_Request) {
-            $raw_params = $request->get_json_params() ?? [];
-        } elseif (is_array($request)) {
-            $raw_params = $request;
-        }
-
-        if (isset($raw_params['round_count'])) {
-            $round_count_override = max(1, intval($raw_params['round_count']));
-            $this->repository->updateRoundCount($tournament_id, $round_count_override);
-            $tournament['round_count'] = $round_count_override;
-        }
-
-        $round_count = max(1, intval($tournament['round_count'] ?? 1));
-        $this->repository->deleteGamesExceedingRoundCount($tournament_id, $round_count);
+        $this->prepareTournament($request, $tournament_id, $tournament);
 
         $results = $this->repository->loadTournamentResults($tournament_id);
         if (is_wp_error($results)) {
@@ -79,48 +57,14 @@ class FinalizeTournamentService
 
         $games = $this->repository->loadTournamentGames($tournament_id);
         $template_data = $this->templateLoader->load($template_name);
-
-        $template_content = $template_data['content'];
-        $template_post = $template_data['post'];
-
-        if ($template_content === '') {
-            $intro_prefix = $counts_for_ranking ? 'unseres Blitz-Abends' : 'unseres freien Turniers';
-            $template_content = "<h1>{{month_name}} {{year}}</h1>
-                                 <p>Die Ergebnisse {$intro_prefix} vom {{date}}.</p>
-                                 {{ranking_rows}}{{games_list}}";
-        }
-
-        $winner_games = $this->repository->countWinnerGames(
-            $tournament_id,
-            intval($results[0]['player_id'] ?? 0)
-        );
-
-        $winner_data = $this->pageBuilder->buildMetadata($results, $winner_games);
-        $ranking_rows = $this->viewBuilder->buildRankingRows($results);
-        $games_list = $this->viewBuilder->buildGamesList($games);
-        $players = $this->viewBuilder->buildPlayersFromResults($results);
-
-        $mode = esc_html((string)($tournament['mode'] ?? ''));
-        $round_count = max(1, intval($tournament['round_count'] ?? 1));
-        $table_html = $this->viewBuilder->buildTableHtml($players, $games, $round_count);
-        if ($table_html === '') {
-            $table_html = TournamentContentBuilder::buildResultsTable($results);
-        }
-
-        $content = $this->pageBuilder->buildContent(
-            $template_content,
-            $this->pageBuilder->buildPlaceholders(
-                $month_name,
-                $date_str,
-                (string)$tournament['year'],
-                $mode,
-                (string)$round_count,
-                $ranking_rows,
-                $games_list,
-                $table_html,
-                $winner_data
-            ),
-            $winner_data
+        $content = $this->buildPostContent(
+            $template_data['content'],
+            $counts_for_ranking,
+            $tournament,
+            $results,
+            $games,
+            $month_name,
+            $date_str
         );
 
         $daily_number = max(1, intval($tournament['daily_number'] ?? 1));
@@ -160,19 +104,8 @@ class FinalizeTournamentService
         update_post_meta($post_id, $meta_key, '1');
         update_post_meta($post_id, $tournament_meta_key, (string)$tournament_id);
 
-        if ($template_post && !is_wp_error($template_post)) {
-            $template_thumbnail_id = get_post_thumbnail_id($template_post->ID);
-            if ($template_thumbnail_id) {
-                set_post_thumbnail($post_id, $template_thumbnail_id);
-            }
-
-            $this->postManager->copyTemplateMetaAndTaxonomies((int)$template_post->ID, $post_id);
-        }
-
-        $year_page = null;
-        if ($counts_for_ranking && BlitzModeService::isBlitzMode((string)($tournament['mode'] ?? ''))) {
-            $year_page = (new YearStaticPageHandler())->createOrUpdate((int)$tournament['year']);
-        }
+        $this->applyTemplateMetadata($template_data['post'], $post_id);
+        $year_page = $this->updateYearPage($counts_for_ranking, $tournament);
 
         $this->repository->markFinalized($tournament_id);
 
@@ -184,6 +117,104 @@ class FinalizeTournamentService
             'year_page'     => is_wp_error($year_page) ? null : $year_page,
             'published'     => true,
         ];
+    }
+
+    private function getTemplateName(bool $counts_for_ranking): string
+    {
+        $option = $counts_for_ranking ? 'monatsblitz_template' : 'monatsblitz_template_non_ranking';
+        $template_name = (string)sanitize_text_field(get_option($option));
+
+        if ($template_name === '' && !$counts_for_ranking) {
+            $template_name = (string)sanitize_text_field(get_option('monatsblitz_template'));
+        }
+
+        return $template_name;
+    }
+
+    private function prepareTournament($request, int $tournament_id, array &$tournament): void
+    {
+        $this->saveWithdrawnPlayers($request, $tournament_id);
+        $raw_params = $this->getRequestParams($request);
+
+        if (isset($raw_params['round_count'])) {
+            $round_count_override = max(1, intval($raw_params['round_count']));
+            $this->repository->updateRoundCount($tournament_id, $round_count_override);
+            $tournament['round_count'] = $round_count_override;
+        }
+
+        $round_count = max(1, intval($tournament['round_count'] ?? 1));
+        $this->repository->deleteGamesExceedingRoundCount($tournament_id, $round_count);
+    }
+
+    private function buildPostContent(
+        string $template_content,
+        bool $counts_for_ranking,
+        array $tournament,
+        array $results,
+        array $games,
+        string $month_name,
+        string $date_str
+    ): string {
+        if ($template_content === '') {
+            $intro_prefix = $counts_for_ranking ? 'unseres Blitz-Abends' : 'unseres freien Turniers';
+            $template_content = "<h1>{{month_name}} {{year}}</h1>
+                                 <p>Die Ergebnisse {$intro_prefix} vom {{date}}.</p>
+                                 {{ranking_rows}}{{games_list}}";
+        }
+
+        $winner_games = $this->repository->countWinnerGames(
+            (int)$tournament['id'],
+            intval($results[0]['player_id'] ?? 0)
+        );
+        $winner_data = $this->pageBuilder->buildMetadata($results, $winner_games);
+        $ranking_rows = $this->viewBuilder->buildRankingRows($results);
+        $games_list = $this->viewBuilder->buildGamesList($games);
+        $players = $this->viewBuilder->buildPlayersFromResults($results);
+        $mode = esc_html((string)($tournament['mode'] ?? ''));
+        $round_count = max(1, intval($tournament['round_count'] ?? 1));
+        $table_html = $this->viewBuilder->buildTableHtml($players, $games, $round_count);
+        if ($table_html === '') {
+            $table_html = TournamentContentBuilder::buildResultsTable($results);
+        }
+
+        return $this->pageBuilder->buildContent(
+            $template_content,
+            $this->pageBuilder->buildPlaceholders(
+                $month_name,
+                $date_str,
+                (string)$tournament['year'],
+                $mode,
+                (string)$round_count,
+                $ranking_rows,
+                $games_list,
+                $table_html,
+                $winner_data
+            ),
+            $winner_data
+        );
+    }
+
+    private function applyTemplateMetadata($template_post, int $post_id): void
+    {
+        if (!$template_post || is_wp_error($template_post)) {
+            return;
+        }
+
+        $template_thumbnail_id = get_post_thumbnail_id($template_post->ID);
+        if ($template_thumbnail_id) {
+            set_post_thumbnail($post_id, $template_thumbnail_id);
+        }
+
+        $this->postManager->copyTemplateMetaAndTaxonomies((int)$template_post->ID, $post_id);
+    }
+
+    private function updateYearPage(bool $counts_for_ranking, array $tournament)
+    {
+        if (!$counts_for_ranking || !BlitzModeService::isBlitzMode((string)($tournament['mode'] ?? ''))) {
+            return null;
+        }
+
+        return (new YearStaticPageHandler())->createOrUpdate((int)$tournament['year']);
     }
 
     private function getTournamentId($request)
@@ -211,13 +242,7 @@ class FinalizeTournamentService
 
     private function saveWithdrawnPlayers($request, int $tournament_id): void
     {
-        $raw_params = [];
-        if ($request instanceof \WP_REST_Request) {
-            $raw_params = $request->get_json_params() ?? [];
-        } elseif (is_array($request)) {
-            $raw_params = $request;
-        }
-
+        $raw_params = $this->getRequestParams($request);
         $withdrawn_ids = $raw_params['withdrawn_player_ids'] ?? [];
         if (!is_array($withdrawn_ids) || empty($withdrawn_ids)) {
             return;
@@ -234,5 +259,18 @@ class FinalizeTournamentService
                 ['%d', '%d']
             );
         }
+    }
+
+    private function getRequestParams($request): array
+    {
+        if ($request instanceof \WP_REST_Request) {
+            return $request->get_json_params() ?? [];
+        }
+
+        if (is_array($request)) {
+            return $request;
+        }
+
+        return [];
     }
 }

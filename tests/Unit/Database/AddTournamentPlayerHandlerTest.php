@@ -81,3 +81,42 @@ it('resets has_left to 0 when player was previously withdrawn', function () {
         ->and($wpdb->last_update_data)->toBe(['has_left' => 0])
         ->and($wpdb->last_update_where)->toBe(['tournament_id' => 10, 'player_id' => 2]);
 });
+
+it('does not update an existing player who has not withdrawn', function () {
+    global $wpdb;
+    $wpdb->get_var_queue = ['open', 2];
+    $wpdb->get_row_result = (object) ['id' => 123, 'has_left' => 0];
+
+    $result = (new AddTournamentPlayerHandler())->handle(['tournament_id' => 10, 'player_id' => 2]);
+
+    expect($result)->toBeArray()
+        ->and($result['success'])->toBeTrue()
+        ->and($wpdb->last_update_table)->toBeNull();
+});
+
+it('returns a database error when reactivating a withdrawn player fails', function () {
+    global $wpdb;
+    $wpdb->get_var_queue = ['open', 2];
+    $wpdb->get_row_result = (object) ['id' => 123, 'has_left' => 1];
+    $wpdb->update_result = false;
+    $wpdb->last_error = 'update failed';
+
+    $result = (new AddTournamentPlayerHandler())->handle(['tournament_id' => 10, 'player_id' => 2]);
+
+    expect($result)->toBeInstanceOf(WP_Error::class)
+        ->and($result->get_error_code())->toBe('db_error')
+        ->and($result->get_error_message())->toBe('update failed');
+});
+
+it('returns a database error when inserting a tournament player fails', function () {
+    global $wpdb;
+    $wpdb->get_var_queue = ['open', 2];
+    $wpdb->insert_result = false;
+    $wpdb->last_error = 'insert failed';
+
+    $result = (new AddTournamentPlayerHandler())->handle(['tournament_id' => 10, 'player_id' => 2]);
+
+    expect($result)->toBeInstanceOf(WP_Error::class)
+        ->and($result->get_error_code())->toBe('db_error')
+        ->and($result->get_error_message())->toBe('insert failed');
+});
