@@ -29,6 +29,7 @@ class Admin
             register_setting('monatsblitz_settings', 'monatsblitz_default_mode_type');
             register_setting('monatsblitz_settings', 'monatsblitz_default_fixed_mode');
             register_setting('monatsblitz_settings', 'monatsblitz_default_rotation_modes');
+            register_setting('monatsblitz_settings', 'monatsblitz_rufname_display');
         });
         add_action('admin_enqueue_scripts', [self::class, 'enqueue_admin_assets']);
     }
@@ -154,6 +155,18 @@ class Admin
         }
 
         // 👉 Übersicht
+        $installedDbVersion = function_exists('get_option')
+            ? get_option(DatabaseSchema::OPTION_DB_VERSION, null)
+            : null;
+        $dbVersionText = $installedDbVersion !== null && $installedDbVersion !== ''
+            ? (string) $installedDbVersion
+            : 'nicht registriert';
+
+        echo '<p style="margin: 10px 0 15px; font-size: 14px;">'
+            . '<strong>Datenbank-Version:</strong> ' . esc_html($dbVersionText)
+            . ' <span style="color:#666;">(Plugin-Schema: ' . esc_html(DatabaseSchema::DB_VERSION) . ')</span>'
+            . '</p>';
+
         echo '<table class="widefat fixed striped">';
         echo '<thead><tr><th>Tabelle</th><th>Status</th><th>Einträge</th></tr></thead>';
         echo '<tbody>';

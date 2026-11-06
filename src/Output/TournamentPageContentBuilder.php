@@ -117,15 +117,21 @@ class TournamentPageContentBuilder
         $winner_points = '';
         $winner_player_ids = [];
 
+        $collisionMap = PlayerNameFormatter::buildCollisionMap($results);
         $winners = $this->extractWinners($results);
         foreach ($winners as $w) {
-            $forename = trim((string)($w['forename'] ?? ''));
-            $surname = trim((string)($w['surname'] ?? ''));
-            $full_name = trim($forename . ' ' . $surname);
-            if ($full_name !== '') {
-                $winner_names[] = esc_html($full_name);
+            $playerId = intval($w['player_id'] ?? 0);
+            $formattedName = PlayerNameFormatter::format(
+                (string)($w['forename'] ?? ''),
+                (string)($w['surname'] ?? ''),
+                (string)($w['rufname'] ?? ''),
+                null,
+                $collisionMap[$playerId] ?? false
+            );
+            if ($formattedName !== '') {
+                $winner_names[] = esc_html($formattedName);
             }
-            $winner_player_ids[] = intval($w['player_id'] ?? 0);
+            $winner_player_ids[] = $playerId;
         }
 
         if (!empty($winners)) {

@@ -124,6 +124,7 @@ class TournamentContentBuilder
 
     public static function buildResultsTable(array $results): string
     {
+        $collisionMap = PlayerNameFormatter::buildCollisionMap($results);
         $html = '<table class="monatsblitz">';
         $html .= '<thead><tr><th>Nr.</th><th>Spieler</th><th>Punkte</th><th>Platz</th></tr></thead><tbody>';
 
@@ -134,7 +135,14 @@ class TournamentContentBuilder
             if ($is_withdrawn) {
                 $has_withdrawn = true;
             }
-            $name = esc_html(trim(((string)($result['forename'] ?? '')) . ' ' . ((string)($result['surname'] ?? ''))));
+            $playerId = intval($result['player_id'] ?? 0);
+            $name = esc_html(PlayerNameFormatter::format(
+                (string)($result['forename'] ?? ''),
+                (string)($result['surname'] ?? ''),
+                (string)($result['rufname'] ?? ''),
+                null,
+                $collisionMap[$playerId] ?? false
+            ));
             if ($is_withdrawn) {
                 $name .= ' (z)';
             }

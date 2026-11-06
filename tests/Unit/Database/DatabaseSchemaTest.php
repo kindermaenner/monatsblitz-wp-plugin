@@ -13,7 +13,9 @@ it('creates tables on init', function () {
         ->toContain('CREATE TABLE wp_monatsblitz_tournament_players')
         ->toContain('UNIQUE KEY unique_tournament_player (tournament_id, player_id)')
         ->toContain('CREATE TABLE wp_monatsblitz_modes')
-        ->toContain('UNIQUE KEY unique_mode_name (name)');
+        ->toContain('UNIQUE KEY unique_mode_name (name)')
+        ->toContain('CREATE TABLE wp_monatsblitz_players')
+        ->toContain('rufname VARCHAR(100) NOT NULL DEFAULT \'\'');
 
     expect($wpdb->queries)->toBeEmpty();
 

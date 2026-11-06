@@ -107,7 +107,7 @@ class TableDetailPage
         $playersTable = $wpdb->prefix . 'monatsblitz_players';
 
         return match ($tableKey) {
-            'players' => (array) $wpdb->get_results("SELECT id, forename, surname FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A),
+            'players' => (array) $wpdb->get_results("SELECT id, forename, surname, rufname FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A),
             'tournaments' => (array) $wpdb->get_results("SELECT id, year, month, day, mode, round_count, status FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A),
             'tournament_players' => self::fetch_tournament_players($table, $playersTable, $filterTournamentId),
             'games' => self::fetch_games($table, $playersTable, $filterTournamentId),
@@ -119,21 +119,27 @@ class TableDetailPage
     private static function fetch_tournament_players(string $table, string $playersTable, int|string|null $filterTournamentId): array
     {
         global $wpdb;
+        $select = "SELECT tp.id, tp.tournament_id, tp.player_id,
+                          COALESCE(
+                              CONCAT(
+                                  p.surname, ', ', p.forename,
+                                  CASE WHEN p.rufname IS NOT NULL AND p.rufname != '' THEN CONCAT(' (', p.rufname, ')') ELSE '' END
+                              ),
+                              '-'
+                          ) AS player_name,
+                          COALESCE(p.rufname, '') AS rufname
+                   FROM {$table} tp
+                   LEFT JOIN {$playersTable} p ON p.id = tp.player_id";
+
         if ($filterTournamentId !== null && $filterTournamentId !== 'all') {
             $query = $wpdb->prepare(
-                "SELECT tp.id, tp.tournament_id, tp.player_id,
-                        COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name
-                 FROM {$table} tp
-                 LEFT JOIN {$playersTable} p ON p.id = tp.player_id
+                "{$select}
                  WHERE tp.tournament_id = %d
                  ORDER BY tp.id DESC",
                 (int)$filterTournamentId
             );
         } else {
-            $query = "SELECT tp.id, tp.tournament_id, tp.player_id,
-                             COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name
-                      FROM {$table} tp
-                      LEFT JOIN {$playersTable} p ON p.id = tp.player_id
+            $query = "{$select}
                       ORDER BY tp.id DESC LIMIT 100";
         }
         return (array) $wpdb->get_results($query, ARRAY_A);
@@ -142,27 +148,39 @@ class TableDetailPage
     private static function fetch_games(string $table, string $playersTable, int|string|null $filterTournamentId): array
     {
         global $wpdb;
+        $select = "SELECT g.id, g.tournament_id,
+                          g.player1_id,
+                          COALESCE(
+                              CONCAT(
+                                  p1.surname, ', ', p1.forename,
+                                  CASE WHEN p1.rufname IS NOT NULL AND p1.rufname != '' THEN CONCAT(' (', p1.rufname, ')') ELSE '' END
+                              ),
+                              '-'
+                          ) AS player1_name,
+                          COALESCE(p1.rufname, '') AS player1_rufname,
+                          g.player2_id,
+                          COALESCE(
+                              CONCAT(
+                                  p2.surname, ', ', p2.forename,
+                                  CASE WHEN p2.rufname IS NOT NULL AND p2.rufname != '' THEN CONCAT(' (', p2.rufname, ')') ELSE '' END
+                              ),
+                              '-'
+                          ) AS player2_name,
+                          COALESCE(p2.rufname, '') AS player2_rufname,
+                          g.leg_type, g.result
+                   FROM {$table} g
+                   LEFT JOIN {$playersTable} p1 ON p1.id = g.player1_id
+                   LEFT JOIN {$playersTable} p2 ON p2.id = g.player2_id";
+
         if ($filterTournamentId !== null && $filterTournamentId !== 'all') {
             $query = $wpdb->prepare(
-                "SELECT g.id, g.tournament_id,
-                        g.player1_id, COALESCE(CONCAT(p1.surname, ', ', p1.forename), '-') AS player1_name,
-                        g.player2_id, COALESCE(CONCAT(p2.surname, ', ', p2.forename), '-') AS player2_name,
-                        g.leg_type, g.result
-                 FROM {$table} g
-                 LEFT JOIN {$playersTable} p1 ON p1.id = g.player1_id
-                 LEFT JOIN {$playersTable} p2 ON p2.id = g.player2_id
+                "{$select}
                  WHERE g.tournament_id = %d
                  ORDER BY g.id DESC",
                 (int)$filterTournamentId
             );
         } else {
-            $query = "SELECT g.id, g.tournament_id,
-                             g.player1_id, COALESCE(CONCAT(p1.surname, ', ', p1.forename), '-') AS player1_name,
-                             g.player2_id, COALESCE(CONCAT(p2.surname, ', ', p2.forename), '-') AS player2_name,
-                             g.leg_type, g.result
-                      FROM {$table} g
-                      LEFT JOIN {$playersTable} p1 ON p1.id = g.player1_id
-                      LEFT JOIN {$playersTable} p2 ON p2.id = g.player2_id
+            $query = "{$select}
                       ORDER BY g.id DESC LIMIT 100";
         }
         return (array) $wpdb->get_results($query, ARRAY_A);
@@ -171,24 +189,30 @@ class TableDetailPage
     private static function fetch_results(string $table, string $playersTable, int|string|null $filterTournamentId): array
     {
         global $wpdb;
+        $select = "SELECT r.id, r.tournament_id,
+                          r.player_id,
+                          COALESCE(
+                              CONCAT(
+                                  p.surname, ', ', p.forename,
+                                  CASE WHEN p.rufname IS NOT NULL AND p.rufname != '' THEN CONCAT(' (', p.rufname, ')') ELSE '' END
+                              ),
+                              '-'
+                          ) AS player_name,
+                          COALESCE(p.rufname, '') AS rufname,
+                          r.points, r.rank
+                   FROM {$table} r
+                   LEFT JOIN {$playersTable} p ON p.id = r.player_id";
+
         if ($filterTournamentId !== null && $filterTournamentId !== 'all') {
             $query = $wpdb->prepare(
-                "SELECT r.id, r.tournament_id,
-                        r.player_id, COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name,
-                        r.points, r.rank
-                 FROM {$table} r
-                 LEFT JOIN {$playersTable} p ON p.id = r.player_id
+                "{$select}
                  WHERE r.tournament_id = %d
                  ORDER BY r.rank ASC, r.id DESC",
                 (int)$filterTournamentId
             );
         } else {
-            $query = "SELECT r.id, r.tournament_id,
-                             r.player_id, COALESCE(CONCAT(p.surname, ', ', p.forename), '-') AS player_name,
-                             r.points, r.rank
-                       FROM {$table} r
-                       LEFT JOIN {$playersTable} p ON p.id = r.player_id
-                       ORDER BY r.rank ASC, r.id DESC LIMIT 100";
+            $query = "{$select}
+                      ORDER BY r.rank ASC, r.id DESC LIMIT 100";
         }
         return (array) $wpdb->get_results($query, ARRAY_A);
     }

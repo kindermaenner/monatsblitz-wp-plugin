@@ -20,6 +20,7 @@ class GetPlayersHandler
                 p.id,
                 p.forename,
                 p.surname,
+                p.rufname,
                 MAX(CONCAT(t.year, '-', LPAD(t.month, 2, '0'), '-', LPAD(t.day, 2, '0'))) AS last_participated
              FROM $players_table p
              LEFT JOIN (
@@ -28,8 +29,8 @@ class GetPlayersHandler
                  SELECT tournament_id, player_id FROM $results_table
              ) tp ON p.id = tp.player_id
              LEFT JOIN $tournaments_table t ON tp.tournament_id = t.id
-             GROUP BY p.id, p.forename, p.surname
-             ORDER BY p.surname, p.forename",
+             GROUP BY p.id, p.forename, p.surname, p.rufname
+             ORDER BY p.surname, p.forename, p.rufname",
             ARRAY_A
         );
 
@@ -42,6 +43,7 @@ class GetPlayersHandler
                 'id'                => (int) $row['id'],
                 'forename'          => (string) ($row['forename'] ?? ''),
                 'surname'           => (string) ($row['surname'] ?? ''),
+                'rufname'           => !empty($row['rufname']) ? (string) $row['rufname'] : null,
                 'last_participated' => !empty($row['last_participated']) ? (string) $row['last_participated'] : null,
             ];
         }, $results);

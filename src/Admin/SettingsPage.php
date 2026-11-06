@@ -29,6 +29,7 @@ class SettingsPage
         $defaultModeType = (string)get_option('monatsblitz_default_mode_type', 'none');
         $defaultFixedMode = (string)get_option('monatsblitz_default_fixed_mode', '');
         $defaultRotationModes = self::get_default_rotation_modes();
+        $rufnameDisplay = (string)get_option('monatsblitz_rufname_display', 'none');
 
         $modes = (new \Monatsblitz\Queries\GetModesHandler())->handle();
         $users = get_users(['fields' => ['ID', 'user_login']]);
@@ -50,6 +51,7 @@ class SettingsPage
                 'defaultModeType' => $defaultModeType,
                 'defaultFixedMode' => $defaultFixedMode,
                 'defaultRotationModes' => $defaultRotationModes,
+                'rufnameDisplay' => $rufnameDisplay,
             ],
             $users,
             $modes

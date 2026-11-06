@@ -77,6 +77,7 @@ class CreatePlayerHandler
     {
         $forename = sanitize_text_field($params['forename'] ?? '');
         $surname  = sanitize_text_field($params['surname'] ?? '');
+        $rufname  = sanitize_text_field($params['rufname'] ?? '');
 
         if (empty($forename) || empty($surname)) {
             return new \WP_Error('invalid_data', 'Vorname und Nachname sind erforderlich', ['status' => 400]);
@@ -85,9 +86,10 @@ class CreatePlayerHandler
         $existing = $wpdb->get_var(
             $wpdb->prepare(
                 "SELECT id FROM {$wpdb->prefix}monatsblitz_players
-                 WHERE forename = %s AND surname = %s",
+                 WHERE forename = %s AND surname = %s AND rufname = %s",
                 $forename,
-                $surname
+                $surname,
+                $rufname
             )
         );
 
@@ -103,7 +105,8 @@ class CreatePlayerHandler
             $wpdb->prefix . 'monatsblitz_players',
             [
                 'forename' => $forename,
-                'surname'  => $surname
+                'surname'  => $surname,
+                'rufname'  => $rufname
             ]
         );
 

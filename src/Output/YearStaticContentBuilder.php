@@ -23,6 +23,8 @@ class YearStaticContentBuilder
             return [$monthly, $pointsPerTournament];
         }
 
+        $collisionMap = PlayerNameFormatter::buildCollisionMap($rows);
+
         foreach ($rows as $row) {
             $mode = (string)($row['mode'] ?? '');
             if (!BlitzModeService::isBlitzMode($mode)) {
@@ -35,7 +37,13 @@ class YearStaticContentBuilder
                 continue;
             }
 
-            $playerName = trim((string)$row['forename'] . ' ' . (string)$row['surname']);
+            $playerName = PlayerNameFormatter::format(
+                (string)($row['forename'] ?? ''),
+                (string)($row['surname'] ?? ''),
+                (string)($row['rufname'] ?? ''),
+                null,
+                $collisionMap[$playerId] ?? false
+            );
             if (!isset($monthly[$playerId])) {
                 $monthly[$playerId] = [
                     'name' => esc_html($playerName),

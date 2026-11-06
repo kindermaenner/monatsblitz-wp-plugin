@@ -25,8 +25,10 @@ class GetGamesHandler
                     g.result,
                     p1.forename AS player1_forename,
                     p1.surname  AS player1_surname,
+                    p1.rufname  AS player1_rufname,
                     p2.forename AS player2_forename,
-                    p2.surname  AS player2_surname
+                    p2.surname  AS player2_surname,
+                    p2.rufname  AS player2_rufname
                 FROM $games_table g
                 LEFT JOIN $players_table p1 ON g.player1_id = p1.id
                 LEFT JOIN $players_table p2 ON g.player2_id = p2.id
@@ -52,8 +54,10 @@ class GetGamesHandler
                 'result'           => (string) ($row['result'] ?? ''),
                 'player1_forename' => (string) ($row['player1_forename'] ?? ''),
                 'player1_surname'  => (string) ($row['player1_surname'] ?? ''),
+                'player1_rufname'  => (string) ($row['player1_rufname'] ?? ''),
                 'player2_forename' => (string) ($row['player2_forename'] ?? ''),
                 'player2_surname'  => (string) ($row['player2_surname'] ?? ''),
+                'player2_rufname'  => (string) ($row['player2_rufname'] ?? ''),
             ];
         }, $results);
     }

@@ -23,7 +23,7 @@ it('registers settings inside admin_init callback', function () {
     $adminInit = $GLOBALS['mb_test_actions'][1]['callback'];
     $adminInit();
 
-    expect($GLOBALS['mb_test_settings'])->toHaveCount(9);
+    expect($GLOBALS['mb_test_settings'])->toHaveCount(10);
     expect($GLOBALS['mb_test_settings'][0])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_author']);
     expect($GLOBALS['mb_test_settings'][1])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_template']);
     expect($GLOBALS['mb_test_settings'][2])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_template_static_page']);
@@ -33,6 +33,7 @@ it('registers settings inside admin_init callback', function () {
     expect($GLOBALS['mb_test_settings'][6])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_default_mode_type']);
     expect($GLOBALS['mb_test_settings'][7])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_default_fixed_mode']);
     expect($GLOBALS['mb_test_settings'][8])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_default_rotation_modes']);
+    expect($GLOBALS['mb_test_settings'][9])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_rufname_display']);
 });
 
 it('registers main menu and settings submenu', function () {
@@ -210,6 +211,7 @@ it('triggers update check and displays version status when updater instance is p
 it('renders dashboard overview table', function () {
     global $wpdb;
 
+    $GLOBALS['mb_test_options']['monatsblitz_db_version'] = '1.3';
     $wpdb->get_var_queue = ['yes', 4, 'yes', 2, 'yes', 12, null, 'yes', 7];
 
     ob_start();
@@ -217,6 +219,9 @@ it('renders dashboard overview table', function () {
     $html = ob_get_clean();
 
     expect($html)->toContain('Monatsblitz Übersicht');
+    expect($html)->toContain('Datenbank-Version:');
+    expect($html)->toContain('1.3');
+    expect($html)->toContain('Plugin-Schema: 1.3');
     expect($html)->toContain('vorhanden');
     expect($html)->toContain('fehlt');
     expect($html)->toContain('wp_monatsblitz_players');

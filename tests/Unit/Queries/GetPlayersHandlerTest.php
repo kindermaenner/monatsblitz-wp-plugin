@@ -21,3 +21,19 @@ it('returns player list with last_participated date', function () {
     expect($result[1]['id'])->toBe(2);
     expect($result[1]['last_participated'])->toBeNull();
 });
+
+
+it('returns rufname in player list when set', function () {
+    global $wpdb;
+
+    $wpdb->results = [
+        ['id' => 1, 'forename' => 'Pham Dai Thien', 'surname' => 'Nguyen', 'rufname' => 'Thien', 'last_participated' => '2026-09-04'],
+        ['id' => 2, 'forename' => 'Erika', 'surname' => 'Musterfrau', 'rufname' => '', 'last_participated' => null],
+    ];
+
+    $handler = new GetPlayersHandler();
+    $result  = $handler->handle();
+
+    expect($result[0]['rufname'])->toBe('Thien');
+    expect($result[1]['rufname'])->toBeNull();
+});

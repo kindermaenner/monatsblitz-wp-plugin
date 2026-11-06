@@ -12,20 +12,21 @@ if (!defined('ABSPATH')) {
 
 class DatabaseSchema
 {
-    public const DB_VERSION = '1.2';
+    public const DB_VERSION = '1.3';
+    public const OPTION_DB_VERSION = 'monatsblitz_db_version';
 
     public static function init()
     {
         self::create_tables();
         if (function_exists('update_option')) {
-            update_option('monatsblitz_db_version', self::DB_VERSION);
+            update_option(self::OPTION_DB_VERSION, self::DB_VERSION);
         }
     }
 
     public static function maybe_upgrade(): void
     {
         $installed_version = function_exists('get_option')
-            ? (string) get_option('monatsblitz_db_version', '')
+            ? (string) get_option(self::OPTION_DB_VERSION, '')
             : '';
 
         if ($installed_version !== self::DB_VERSION) {
@@ -69,9 +70,9 @@ class DatabaseSchema
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 forename VARCHAR(100) NOT NULL,
                 surname VARCHAR(100) NOT NULL,
+                rufname VARCHAR(100) NOT NULL DEFAULT '',
 
-                PRIMARY KEY (id),
-                UNIQUE KEY unique_player_name (forename, surname)
+                PRIMARY KEY (id)
             ) $charset_collate;
 
             CREATE TABLE {$tournaments_table} (

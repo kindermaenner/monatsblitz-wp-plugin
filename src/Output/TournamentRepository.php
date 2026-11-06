@@ -37,7 +37,7 @@ class TournamentRepository
 
         $results = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT r.player_id, r.points, r.rank, p.forename, p.surname, COALESCE(tp.has_left, 0) as has_left
+                "SELECT r.player_id, r.points, r.rank, p.forename, p.surname, p.rufname, COALESCE(tp.has_left, 0) as has_left
                  FROM {$wpdb->prefix}monatsblitz_results r
                  LEFT JOIN {$wpdb->prefix}monatsblitz_players p ON r.player_id = p.id
                  LEFT JOIN {$wpdb->prefix}monatsblitz_tournament_players tp ON tp.tournament_id = r.tournament_id AND tp.player_id = r.player_id
@@ -66,8 +66,8 @@ class TournamentRepository
         $games = $wpdb->get_results(
             $wpdb->prepare(
                 "SELECT g.player1_id, g.player2_id, g.leg_type, g.result,
-                        p1.forename as p1_forename, p1.surname as p1_surname,
-                        p2.forename as p2_forename, p2.surname as p2_surname
+                        p1.forename as p1_forename, p1.surname as p1_surname, p1.rufname as p1_rufname,
+                        p2.forename as p2_forename, p2.surname as p2_surname, p2.rufname as p2_rufname
                  FROM {$wpdb->prefix}monatsblitz_games g
                  LEFT JOIN {$wpdb->prefix}monatsblitz_players p1 ON g.player1_id = p1.id
                  LEFT JOIN {$wpdb->prefix}monatsblitz_players p2 ON g.player2_id = p2.id

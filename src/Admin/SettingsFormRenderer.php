@@ -33,6 +33,7 @@ class SettingsFormRenderer
         $defaultModeType = (string)($config['defaultModeType'] ?? 'none');
         $defaultFixedMode = (string)($config['defaultFixedMode'] ?? '');
         $defaultRotationModes = (array)($config['defaultRotationModes'] ?? []);
+        $rufnameDisplay = (string)($config['rufnameDisplay'] ?? 'none');
 
         echo '<h2 style="margin-top:30px;">⚙️ Einstellungen</h2>';
 
@@ -56,6 +57,7 @@ class SettingsFormRenderer
         echo '<table class="form-table">';
         self::render_author_setting($author, $users);
         self::render_template_settings($template, $templateStaticPage, $hideJanuaryOverview, $blitzModes);
+        self::render_rufname_setting($rufnameDisplay);
         self::render_mode_preselection_settings($defaultModeType, $defaultFixedMode, $defaultRotationModes, $modes);
         echo '</table>';
 
@@ -103,6 +105,18 @@ class SettingsFormRenderer
         echo '<tr><th scope="row">Zusatzliche Blitz-Modi</th><td>';
         echo '<input type="text" name="monatsblitz_blitz_modes" value="' . esc_attr($blitzModes) . self::INPUT_REGULAR_CLASS;
         echo '<p class="description">Komma-Liste, z. B. Handicap, Armageddon. Standardregel bleibt aktiv: alle Modi <= 5+X zahlen als Blitz.</p>';
+        echo self::TAG_ROW_CLOSE;
+    }
+
+    private static function render_rufname_setting(string $rufnameDisplay): void
+    {
+        echo '<tr><th scope="row">Rufnamen in Tabellen</th><td>';
+        echo '<select name="monatsblitz_rufname_display">';
+        echo '<option value="none" ' . selected($rufnameDisplay, 'none', false) . '>Keine Rufnamen (nur offizieller Name: Vorname Nachname)</option>';
+        echo '<option value="collision" ' . selected($rufnameDisplay, 'collision', false) . '>Nur bei Namensgleichheit zur Unterscheidung (z. B. Michael Schmidt (Michi))</option>';
+        echo '<option value="always" ' . selected($rufnameDisplay, 'always', false) . '>Immer wenn vorhanden (z. B. Pham Dai Thien Nguyen (Thien))</option>';
+        echo self::TAG_SELECT_CLOSE;
+        echo '<p class="description">Steuert, wie Spielernamen in den generierten Beiträgen und der Jahreswertung formatiert werden.</p>';
         echo self::TAG_ROW_CLOSE;
     }
 

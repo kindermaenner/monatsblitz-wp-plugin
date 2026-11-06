@@ -154,3 +154,32 @@ it('finds existing player case-insensitively', function () {
     expect($resultNew['success'])->toBeTrue();
     expect($resultNew['player_id'])->toBe(99);
 });
+
+
+it('creates a player with rufname and passes it to insert', function () {
+    global $wpdb;
+
+    $wpdb->get_var_result = null;
+    $wpdb->insert_id = 777;
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'forename' => 'Pham Dai Thien',
+                'surname'  => 'Nguyen',
+                'rufname'  => 'Thien',
+            ];
+        }
+    };
+
+    $handler = new CreatePlayerHandler();
+    $result  = $handler->handle($request);
+
+    expect($result['success'])->toBeTrue();
+    expect($result['player_id'])->toBe(777);
+    expect($wpdb->last_insert_data)->toMatchArray([
+        'forename' => 'Pham Dai Thien',
+        'surname'  => 'Nguyen',
+        'rufname'  => 'Thien',
+    ]);
+});

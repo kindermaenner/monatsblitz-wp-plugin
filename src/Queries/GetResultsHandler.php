@@ -23,7 +23,8 @@ class GetResultsHandler
                     r.points,
                     r.rank,
                     p.forename,
-                    p.surname
+                    p.surname,
+                    p.rufname
                 FROM $results_table r
                 LEFT JOIN $players_table p ON r.player_id = p.id
                 WHERE r.tournament_id = %d
@@ -46,6 +47,7 @@ class GetResultsHandler
                 'rank'          => (int) ($row['rank'] ?? 0),
                 'forename'      => (string) ($row['forename'] ?? ''),
                 'surname'       => (string) ($row['surname'] ?? ''),
+                'rufname'       => (string) ($row['rufname'] ?? ''),
             ];
         }, $results);
     }
