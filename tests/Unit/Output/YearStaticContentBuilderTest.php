@@ -88,3 +88,35 @@ it('includes 0-point tournaments in pointsPerTournament and counts them towards 
     // Charlie: 0 points, 2 counted participations
     expect($rankingHtml)->toContain('<td>Charlie C</td><td>0</td><td>2</td>');
 });
+
+it('ignores tournaments with counts_for_ranking set to false or 0', function () {
+    $builder = new YearStaticContentBuilder();
+    $rows = [
+        [
+            'tournament_id' => 1,
+            'month' => 2,
+            'mode' => '5+0',
+            'counts_for_ranking' => 1,
+            'player_id' => 10,
+            'rank' => 1,
+            'forename' => 'Max',
+            'surname' => 'Mustermann',
+        ],
+        [
+            'tournament_id' => 2,
+            'month' => 2,
+            'mode' => '5+0',
+            'counts_for_ranking' => 0,
+            'player_id' => 10,
+            'rank' => 1,
+            'forename' => 'Max',
+            'surname' => 'Mustermann',
+        ],
+    ];
+
+    [$monthly, $pointsPerTournament] = $builder->aggregateMonthlyStats($rows);
+
+    expect($monthly[10]['months'][2]['points'])->toBe(5);
+    expect($monthly[10]['months'][2]['participations'])->toBe(1);
+    expect($pointsPerTournament[10])->toBe([5]);
+});

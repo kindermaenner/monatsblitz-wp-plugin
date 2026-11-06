@@ -12,7 +12,7 @@ class TournamentRepository
 
         $t = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id, year, month, day, mode, round_count
+                "SELECT id, year, month, day, daily_number, label, counts_for_ranking, start_time, mode, round_count
                  FROM {$wpdb->prefix}monatsblitz_tournaments
                  WHERE id = %d",
                 $tournament_id

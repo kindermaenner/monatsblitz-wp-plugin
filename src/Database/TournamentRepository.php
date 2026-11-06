@@ -14,19 +14,58 @@ class TournamentRepository
      * @param int[] $playerIds
      * @return array|\WP_Error
      */
-    public function create(string $date, array $tournamentData, array $playerIds)
+    public function create(string $date, array $tournamentData, array $playerIds, bool $confirmParallel = false)
     {
         global $wpdb;
 
         $table = $wpdb->prefix . 'monatsblitz_tournaments';
+
+        if (!$confirmParallel && empty($tournamentData['daily_number'])) {
+            $openTournament = $this->findOpenTournament($wpdb, $table, $tournamentData);
+            if ($openTournament !== null) {
+                return new \WP_Error(
+                    'open_tournament_exists',
+                    'An open tournament already exists for this date. Confirm to create a parallel tournament.',
+                    [
+                        'status' => 409,
+                        'open_tournament_id' => (int) $openTournament->id,
+                        'input_date' => $date,
+                    ]
+                );
+            }
+        }
+
+        if (empty($tournamentData['daily_number'])) {
+            $tournamentData['daily_number'] = $this->getNextDailyNumber($wpdb, $table, $tournamentData);
+        }
+
+        if (empty($tournamentData['start_time'])) {
+            $tournamentData['start_time'] = function_exists('current_time')
+                ? current_time('H:i:s')
+                : date('H:i:s');
+        }
+
+        $rowToInsert = [
+            'year'               => (int) $tournamentData['year'],
+            'month'              => (int) $tournamentData['month'],
+            'day'                => (int) $tournamentData['day'],
+            'daily_number'       => (int) $tournamentData['daily_number'],
+            'label'              => (string) ($tournamentData['label'] ?? ''),
+            'counts_for_ranking' => (int) ($tournamentData['counts_for_ranking'] ?? 1),
+            'start_time'         => $tournamentData['start_time'],
+            'mode'               => (string) $tournamentData['mode'],
+            'round_count'        => (int) $tournamentData['round_count'],
+            'status'             => (string) ($tournamentData['status'] ?? 'open'),
+        ];
+
         $insertResult = $wpdb->insert(
             $table,
-            $tournamentData,
-            ['%d', '%d', '%d', '%s', '%d', '%s']
+            $rowToInsert,
+            ['%d', '%d', '%d', '%d', '%s', '%d', '%s', '%s', '%d', '%s']
         );
 
         if ($insertResult === false) {
-            return $this->handleInsertFailure($wpdb, $table, $date, $tournamentData, $playerIds);
+            return $this->handleInsertFailure($wpdb, $table, $date, $rowToInsert, $playerIds);
         }
 
         $insertId = (int) $wpdb->insert_id;
@@ -91,18 +130,60 @@ class TournamentRepository
         );
     }
 
+    private function findOpenTournament($wpdb, string $table, array $tournamentData): ?object
+    {
+        if (!method_exists($wpdb, 'prepare') || !method_exists($wpdb, 'get_row')) {
+            return null;
+        }
+
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT id, daily_number, label, mode, status FROM {$table} WHERE year = %d AND month = %d AND day = %d AND status = 'open' LIMIT 1",
+                $tournamentData['year'],
+                $tournamentData['month'],
+                $tournamentData['day']
+            )
+        );
+
+        if (!$row || !isset($row->id)) {
+            return null;
+        }
+
+        return $row;
+    }
+
+    private function getNextDailyNumber($wpdb, string $table, array $tournamentData): int
+    {
+        if (!method_exists($wpdb, 'prepare') || !method_exists($wpdb, 'get_var')) {
+            return 1;
+        }
+
+        $max = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COALESCE(MAX(daily_number), 0) FROM {$table} WHERE year = %d AND month = %d AND day = %d",
+                $tournamentData['year'],
+                $tournamentData['month'],
+                $tournamentData['day']
+            )
+        );
+
+        return max(1, (int)$max + 1);
+    }
+
     private function findOpenTournamentId($wpdb, string $table, array $tournamentData): ?int
     {
         if (!method_exists($wpdb, 'prepare') || !method_exists($wpdb, 'get_row')) {
             return null;
         }
 
+        $dailyNumber = (int) ($tournamentData['daily_number'] ?? 1);
         $existing = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id, status FROM {$table} WHERE year = %d AND month = %d AND day = %d",
+                "SELECT id, status FROM {$table} WHERE year = %d AND month = %d AND day = %d AND daily_number = %d",
                 $tournamentData['year'],
                 $tournamentData['month'],
-                $tournamentData['day']
+                $tournamentData['day'],
+                $dailyNumber
             )
         );
 
@@ -123,11 +204,13 @@ class TournamentRepository
             $wpdb->update(
                 $table,
                 [
-                    'mode'        => $tournamentData['mode'],
-                    'round_count' => $tournamentData['round_count'],
+                    'mode'               => $tournamentData['mode'],
+                    'round_count'        => $tournamentData['round_count'],
+                    'counts_for_ranking' => (int) ($tournamentData['counts_for_ranking'] ?? 1),
+                    'label'              => (string) ($tournamentData['label'] ?? ''),
                 ],
                 ['id' => $tournamentId],
-                ['%s', '%d'],
+                ['%s', '%d', '%d', '%s'],
                 ['%d']
             );
         }

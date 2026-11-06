@@ -26,6 +26,10 @@ class YearStaticContentBuilder
         $collisionMap = PlayerNameFormatter::buildCollisionMap($rows);
 
         foreach ($rows as $row) {
+            if (isset($row['counts_for_ranking']) && empty($row['counts_for_ranking'])) {
+                continue;
+            }
+
             $mode = (string)($row['mode'] ?? '');
             if (!BlitzModeService::isBlitzMode($mode)) {
                 continue;

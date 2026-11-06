@@ -92,7 +92,7 @@ it('creates tournament with mode and default round_count', function () {
     expect($wpdb->last_insert_data['mode'])->toBe('schweizer');
     expect($wpdb->last_insert_data['round_count'])->toBe(1);
     expect($wpdb->last_insert_data['status'])->toBe('open');
-    expect($wpdb->last_insert_format)->toBe(['%d', '%d', '%d', '%s', '%d', '%s']);
+    expect($wpdb->last_insert_format)->toBe(['%d', '%d', '%d', '%d', '%s', '%d', '%s', '%s', '%d', '%s']);
 });
 
 it('fails when tournament mode is missing', function () {
@@ -262,6 +262,7 @@ it('reuses and resets existing open tournament on same date when duplicate entry
                 'date' => '2026-06-24',
                 'mode' => '5+0',
                 'round_count' => 2,
+                'confirm_parallel' => true,
             ];
         }
     };
@@ -307,7 +308,7 @@ it('reuses and resets existing open tournament on same date when duplicate entry
 
     expect($result['success'])->toBeTrue()
         ->and($result['tournament_id'])->toBe(42)
-        ->and($openDuplicateWpdb->updated['data'])->toBe(['mode' => '5+0', 'round_count' => 2])
+        ->and($openDuplicateWpdb->updated['data'])->toBe(['mode' => '5+0', 'round_count' => 2, 'counts_for_ranking' => 1, 'label' => ''])
         ->and($openDuplicateWpdb->deletedTables)->toContain(
             'wp_monatsblitz_tournament_players',
             'wp_monatsblitz_games',
@@ -380,4 +381,4 @@ it('does not insert tournament or player entries when validation fails before st
 
     expect($result)->toBeInstanceOf(WP_Error::class)
         ->and($wpdb->last_insert_table)->toBeNull();
-});
+});

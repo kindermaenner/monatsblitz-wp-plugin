@@ -41,7 +41,7 @@ class YearStaticPageHandler
         $tablePrefix = $wpdb->prefix . 'monatsblitz_';
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT t.id AS tournament_id, t.month, t.mode, r.player_id, r.rank, p.forename, p.surname, p.rufname
+                "SELECT t.id AS tournament_id, t.month, t.mode, t.counts_for_ranking, r.player_id, r.rank, p.forename, p.surname, p.rufname
                  FROM {$tablePrefix}tournaments t
                  INNER JOIN {$tablePrefix}results r ON r.tournament_id = t.id
                  INNER JOIN {$tablePrefix}players p ON p.id = r.player_id

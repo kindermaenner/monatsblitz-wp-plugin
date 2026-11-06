@@ -23,6 +23,7 @@ class SettingsPage
 
         $author = get_option('monatsblitz_author', '');
         $template = (string)get_option('monatsblitz_template', '');
+        $templateNonRanking = (string)get_option('monatsblitz_template_non_ranking', '');
         $templateStaticPage = (string)get_option('monatsblitz_template_static_page', '');
         $blitzModes = (string)get_option('monatsblitz_blitz_modes', '');
         $hideJanuaryOverview = (bool)get_option('monatsblitz_hide_january_overview', false);
@@ -45,6 +46,7 @@ class SettingsPage
                 'apiKey' => $apiKey,
                 'author' => $author,
                 'template' => $template,
+                'templateNonRanking' => $templateNonRanking,
                 'templateStaticPage' => $templateStaticPage,
                 'hideJanuaryOverview' => $hideJanuaryOverview,
                 'blitzModes' => $blitzModes,

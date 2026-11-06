@@ -25,3 +25,27 @@ it('builds post data for regular mode', function () {
     expect($data['postarr']['post_author'])->toBe(3);
     expect($data['postarr']['post_content'])->toBe('ok');
 });
+
+it('builds post data for non-ranking blitz tournament', function () {
+    $iso = '2026-06-24';
+    $data = TournamentPostFactory::buildPostData('5+0', $iso, 5, '<p>content</p>', false);
+
+    expect($data['slug'])->toBe('turnier-' . $iso);
+    expect($data['postarr']['post_title'])->toBe('Turnier ' . $iso);
+});
+
+it('builds post data with label', function () {
+    $iso = '2026-06-24';
+    $data = TournamentPostFactory::buildPostData('5+0', $iso, 5, '<p>content</p>', true, 1, 'Gruppe A');
+
+    expect($data['slug'])->toBe('blitz-' . $iso . '-gruppe-a');
+    expect($data['postarr']['post_title'])->toBe('Monatsblitz ' . $iso . ' - Gruppe A');
+});
+
+it('builds post data for daily_number > 1 without label', function () {
+    $iso = '2026-06-24';
+    $data = TournamentPostFactory::buildPostData('5+0', $iso, 5, '<p>content</p>', true, 2);
+
+    expect($data['slug'])->toBe('blitz-' . $iso . '-2');
+    expect($data['postarr']['post_title'])->toBe('Monatsblitz ' . $iso . ' (#2)');
+});

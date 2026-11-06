@@ -30,12 +30,21 @@ class CreateTournamentHandler
         }
 
         $tournamentData = array_merge($dateParts, [
-            'mode'        => $settings['mode'],
-            'round_count' => $settings['round_count'],
-            'status'      => 'open',
+            'mode'               => $settings['mode'],
+            'round_count'        => $settings['round_count'],
+            'status'             => 'open',
+            'counts_for_ranking' => $settings['counts_for_ranking'] ? 1 : 0,
+            'label'              => $settings['label'],
+            'daily_number'       => $settings['daily_number'],
+            'start_time'         => $settings['start_time'],
         ]);
 
-        return (new TournamentRepository())->create($date, $tournamentData, $settings['player_ids']);
+        return (new TournamentRepository())->create(
+            $date,
+            $tournamentData,
+            $settings['player_ids'],
+            $settings['confirm_parallel']
+        );
     }
 
     private function parseDate($date)
@@ -96,10 +105,30 @@ class CreateTournamentHandler
             return new \WP_Error('invalid_data', 'round_count must be >= 1', ['status' => 400]);
         }
 
+        $countsForRanking = true;
+        if (isset($params['counts_for_ranking'])) {
+            $filtered = filter_var($params['counts_for_ranking'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            $countsForRanking = $filtered !== null ? $filtered : !empty($params['counts_for_ranking']);
+        }
+
+        $label = sanitize_text_field((string)($params['label'] ?? ''));
+        $dailyNumber = isset($params['daily_number']) && intval($params['daily_number']) > 0
+            ? intval($params['daily_number'])
+            : null;
+        $startTime = isset($params['start_time']) && is_string($params['start_time'])
+            ? sanitize_text_field($params['start_time'])
+            : null;
+        $confirmParallel = !empty($params['confirm_parallel']);
+
         return [
-            'mode'        => $mode,
-            'round_count' => $roundCount,
-            'player_ids'  => $this->extractPlayerIds($params['player_ids'] ?? []),
+            'mode'               => $mode,
+            'round_count'        => $roundCount,
+            'player_ids'         => $this->extractPlayerIds($params['player_ids'] ?? []),
+            'counts_for_ranking' => $countsForRanking,
+            'label'              => $label,
+            'daily_number'       => $dailyNumber,
+            'start_time'         => $startTime,
+            'confirm_parallel'   => $confirmParallel,
         ];
     }
 

@@ -22,6 +22,7 @@ class Admin
             }
             register_setting('monatsblitz_settings', 'monatsblitz_author');
             register_setting('monatsblitz_settings', 'monatsblitz_template');
+            register_setting('monatsblitz_settings', 'monatsblitz_template_non_ranking');
             register_setting('monatsblitz_settings', 'monatsblitz_template_static_page');
             register_setting('monatsblitz_settings', 'monatsblitz_blitz_modes');
             register_setting('monatsblitz_settings', 'monatsblitz_api_key');

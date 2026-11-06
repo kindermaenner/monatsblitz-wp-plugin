@@ -27,6 +27,7 @@ class SettingsFormRenderer
         $apiKey = (string)($config['apiKey'] ?? '');
         $author = $config['author'] ?? '';
         $template = (string)($config['template'] ?? '');
+        $templateNonRanking = (string)($config['templateNonRanking'] ?? '');
         $templateStaticPage = (string)($config['templateStaticPage'] ?? '');
         $hideJanuaryOverview = (bool)($config['hideJanuaryOverview'] ?? false);
         $blitzModes = (string)($config['blitzModes'] ?? '');
@@ -56,7 +57,7 @@ class SettingsFormRenderer
 
         echo '<table class="form-table">';
         self::render_author_setting($author, $users);
-        self::render_template_settings($template, $templateStaticPage, $hideJanuaryOverview, $blitzModes);
+        self::render_template_settings($template, $templateNonRanking, $templateStaticPage, $hideJanuaryOverview, $blitzModes);
         self::render_rufname_setting($rufnameDisplay);
         self::render_mode_preselection_settings($defaultModeType, $defaultFixedMode, $defaultRotationModes, $modes);
         echo '</table>';
@@ -80,13 +81,19 @@ class SettingsFormRenderer
 
     private static function render_template_settings(
         string $template,
+        string $templateNonRanking,
         string $templateStaticPage,
         bool $hideJanuaryOverview,
         string $blitzModes
     ): void {
-        echo '<tr><th scope="row">Template-Name</th><td>';
+        echo '<tr><th scope="row">Template (Jahreswertung)</th><td>';
         echo '<input type="text" name="monatsblitz_template" value="' . esc_attr($template) . self::INPUT_REGULAR_CLASS;
-        echo '<p class="description">Platzhalter: <code>{{month_name}}</code>, <code>{{year}}</code>, <code>{{date}}</code>, <code>{{mode}}</code>, <code>{{round_count}}</code>, <code>{{table}}</code>, <code>{{winner_name}}</code>, <code>{{winner_points}}</code>, <code>{{winner_games}}</code>, <code>{{winner_verb}}</code>, <code>{{winner_text}}</code>.<br>Singular/Plural: <code>{{plural:siegt|siegen}}</code> oder <code>{{#singular}}...{{/singular}}</code> / <code>{{#plural}}...{{/plural}}</code>.</p>';
+        echo '<p class="description">Wird für offizielle Monatsblitz-Turniere (Jahreswertung) verwendet.<br>Platzhalter: <code>{{month_name}}</code>, <code>{{year}}</code>, <code>{{date}}</code>, <code>{{mode}}</code>, <code>{{round_count}}</code>, <code>{{table}}</code>, <code>{{winner_name}}</code>, <code>{{winner_points}}</code>, <code>{{winner_games}}</code>, <code>{{winner_verb}}</code>, <code>{{winner_text}}</code>.<br>Singular/Plural: <code>{{plural:siegt|siegen}}</code> oder <code>{{#singular}}...{{/singular}}</code> / <code>{{#plural}}...{{/plural}}</code>.</p>';
+        echo self::TAG_ROW_CLOSE;
+
+        echo '<tr><th scope="row">Template: Freie Turniere</th><td>';
+        echo '<input type="text" name="monatsblitz_template_non_ranking" value="' . esc_attr($templateNonRanking) . self::INPUT_REGULAR_CLASS;
+        echo '<p class="description">Wird für Turniere verwendet, die nicht für die Jahreswertung gewertet werden (z. B. Nachblitz / Rahmenturniere). Bleibt das Feld leer, wird das Haupt-Template verwendet.</p>';
         echo self::TAG_ROW_CLOSE;
 
         echo '<tr><th scope="row">Template: Statische Jahresseite</th><td>';

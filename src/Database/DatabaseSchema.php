@@ -12,12 +12,13 @@ if (!defined('ABSPATH')) {
 
 class DatabaseSchema
 {
-    public const DB_VERSION = '1.3';
+    public const DB_VERSION = '1.4';
     public const OPTION_DB_VERSION = 'monatsblitz_db_version';
 
     public static function init()
     {
         self::create_tables();
+        self::migrate_columns_and_indices();
         if (function_exists('update_option')) {
             update_option(self::OPTION_DB_VERSION, self::DB_VERSION);
         }
@@ -37,6 +38,35 @@ class DatabaseSchema
     public static function reset_tables()
     {
         self::create_tables();
+        self::migrate_columns_and_indices();
+    }
+
+    private static function migrate_columns_and_indices(): void
+    {
+        global $wpdb;
+
+        if (!$wpdb || !method_exists($wpdb, 'query')) {
+            return;
+        }
+
+        $tournaments_table = $wpdb->prefix . 'monatsblitz_tournaments';
+
+        if (method_exists($wpdb, 'get_var')) {
+            $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $tournaments_table));
+            if ($table_exists !== $tournaments_table) {
+                return;
+            }
+        }
+
+        if (method_exists($wpdb, 'get_results')) {
+            $indices = $wpdb->get_results("SHOW INDEX FROM {$tournaments_table} WHERE Key_name = 'unique_tournament_date'");
+            if (!empty($indices)) {
+                $wpdb->query("ALTER TABLE {$tournaments_table} DROP INDEX unique_tournament_date");
+            }
+        }
+
+        $wpdb->query("UPDATE {$tournaments_table} SET daily_number = 1 WHERE daily_number IS NULL OR daily_number = 0");
+        $wpdb->query("UPDATE {$tournaments_table} SET counts_for_ranking = 1 WHERE counts_for_ranking IS NULL");
     }
 
     private static function create_tables()
@@ -80,12 +110,16 @@ class DatabaseSchema
                 year SMALLINT NOT NULL,
                 month TINYINT NOT NULL,
                 day TINYINT NOT NULL,
+                daily_number TINYINT UNSIGNED NOT NULL DEFAULT 1,
+                label VARCHAR(100) NOT NULL DEFAULT '',
+                counts_for_ranking TINYINT(1) NOT NULL DEFAULT 1,
+                start_time TIME NULL,
                 mode VARCHAR(30) NOT NULL,
                 round_count TINYINT(1) NOT NULL DEFAULT 1,
                 status ENUM('open','finalized') NOT NULL DEFAULT 'open',
 
                 PRIMARY KEY (id),
-                UNIQUE KEY unique_tournament_date (year, month, day)
+                UNIQUE KEY unique_tournament_day_counter (year, month, day, daily_number)
             ) $charset_collate;
 
             CREATE TABLE {$tournament_players_table} (

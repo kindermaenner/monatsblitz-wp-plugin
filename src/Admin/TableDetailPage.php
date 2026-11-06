@@ -40,7 +40,7 @@ class TableDetailPage
         global $wpdb;
         $tournamentsTable = $wpdb->prefix . 'monatsblitz_tournaments';
         $tournaments = $wpdb->get_results(
-            "SELECT id, year, month, day, mode, status FROM {$tournamentsTable} ORDER BY id DESC"
+            "SELECT id, year, month, day, daily_number, label, mode, status FROM {$tournamentsTable} ORDER BY id DESC"
         );
         $tournamentsList = is_array($tournaments) ? $tournaments : [];
 
@@ -94,10 +94,20 @@ class TableDetailPage
         $tYear = is_object($t) ? (int)$t->year : (int)$t['year'];
         $tMonth = is_object($t) ? (int)$t->month : (int)$t['month'];
         $tDay = is_object($t) ? (int)$t->day : (int)$t['day'];
+        $tDaily = is_object($t) ? (int)($t->daily_number ?? 1) : (int)($t['daily_number'] ?? 1);
+        $tCustomLabel = is_object($t) ? (string)($t->label ?? '') : (string)($t['label'] ?? '');
         $tMode = is_object($t) ? ($t->mode ?? '') : ($t['mode'] ?? '');
         $tStatus = is_object($t) ? ($t->status ?? '') : ($t['status'] ?? '');
         $isOpen = $tStatus === 'open';
-        $label = sprintf('%04d-%02d-%02d (%s)%s', $tYear, $tMonth, $tDay, $tMode, $isOpen ? ' [OFFEN]' : '');
+
+        $suffix = '';
+        if ($tCustomLabel !== '') {
+            $suffix = ' – ' . $tCustomLabel;
+        } elseif ($tDaily > 1) {
+            $suffix = " (#{$tDaily})";
+        }
+
+        $label = sprintf('%04d-%02d-%02d (%s)%s%s', $tYear, $tMonth, $tDay, $tMode, $suffix, $isOpen ? ' [OFFEN]' : '');
         echo '<option value="' . $tId . '"' . selected($filterTournamentId, $tId, false) . '>' . esc_html($label) . '</option>';
     }
 
@@ -108,7 +118,7 @@ class TableDetailPage
 
         return match ($tableKey) {
             'players' => (array) $wpdb->get_results("SELECT id, forename, surname, rufname FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A),
-            'tournaments' => (array) $wpdb->get_results("SELECT id, year, month, day, mode, round_count, status FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A),
+            'tournaments' => (array) $wpdb->get_results("SELECT id, year, month, day, daily_number, label, counts_for_ranking, start_time, mode, round_count, status FROM {$table} ORDER BY id DESC LIMIT 100", ARRAY_A),
             'tournament_players' => self::fetch_tournament_players($table, $playersTable, $filterTournamentId),
             'games' => self::fetch_games($table, $playersTable, $filterTournamentId),
             'results' => self::fetch_results($table, $playersTable, $filterTournamentId),

@@ -135,3 +135,51 @@ it('updates round_count and cleans up exceeding games when round_count is suppli
     expect($result['success'])->toBeTrue();
     expect($wpdb->queries)->toContain('DELETE FROM wp_monatsblitz_games WHERE tournament_id = %d AND leg_type > %d');
 });
+
+it('uses monatsblitz_template_non_ranking when counts_for_ranking is 0', function () {
+    global $wpdb;
+
+    $GLOBALS['mb_test_options']['monatsblitz_author'] = 1;
+    $GLOBALS['mb_test_options']['monatsblitz_template'] = 'TemplateRanking';
+    $GLOBALS['mb_test_options']['monatsblitz_template_non_ranking'] = 'TemplateNonRanking';
+    $GLOBALS['mb_test_template_post'] = (object) [
+        'ID' => 20,
+        'post_title' => 'TemplateNonRanking',
+        'post_content' => '<section>{{table}}</section>',
+    ];
+    $GLOBALS['mb_test_next_post_id'] = 820;
+    $GLOBALS['mb_test_get_posts_queue'] = [[], [], [], []];
+
+    $wpdb->get_row_result = [
+        'id' => 16,
+        'year' => 2026,
+        'month' => 8,
+        'day' => 12,
+        'mode' => '5+0',
+        'round_count' => 1,
+        'counts_for_ranking' => 0,
+        'daily_number' => 2,
+        'label' => 'Nachblitz',
+    ];
+
+    $wpdb->get_results_queue = [
+        [
+            ['player_id' => 1, 'points' => 3.0, 'rank' => 1, 'forename' => 'Max', 'surname' => 'Muster'],
+        ],
+        [],
+    ];
+    $wpdb->get_var_result = 0;
+
+    $request = new class {
+        public function get_json_params() {
+            return ['tournament_id' => 16];
+        }
+    };
+
+    $service = new FinalizeTournamentService();
+    $result = $service->handle($request);
+
+    expect($result['success'])->toBeTrue();
+    expect($GLOBALS['mb_test_last_inserted_post']['post_title'])->toBe('Turnier 2026-08-12 - Nachblitz');
+    expect($GLOBALS['mb_test_last_inserted_post']['post_content'])->toContain('<section>');
+});

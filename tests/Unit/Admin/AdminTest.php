@@ -23,17 +23,18 @@ it('registers settings inside admin_init callback', function () {
     $adminInit = $GLOBALS['mb_test_actions'][1]['callback'];
     $adminInit();
 
-    expect($GLOBALS['mb_test_settings'])->toHaveCount(10);
+    expect($GLOBALS['mb_test_settings'])->toHaveCount(11);
     expect($GLOBALS['mb_test_settings'][0])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_author']);
     expect($GLOBALS['mb_test_settings'][1])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_template']);
-    expect($GLOBALS['mb_test_settings'][2])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_template_static_page']);
-    expect($GLOBALS['mb_test_settings'][3])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_blitz_modes']);
-    expect($GLOBALS['mb_test_settings'][4])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_api_key']);
-    expect($GLOBALS['mb_test_settings'][5])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_hide_january_overview']);
-    expect($GLOBALS['mb_test_settings'][6])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_default_mode_type']);
-    expect($GLOBALS['mb_test_settings'][7])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_default_fixed_mode']);
-    expect($GLOBALS['mb_test_settings'][8])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_default_rotation_modes']);
-    expect($GLOBALS['mb_test_settings'][9])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_rufname_display']);
+    expect($GLOBALS['mb_test_settings'][2])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_template_non_ranking']);
+    expect($GLOBALS['mb_test_settings'][3])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_template_static_page']);
+    expect($GLOBALS['mb_test_settings'][4])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_blitz_modes']);
+    expect($GLOBALS['mb_test_settings'][5])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_api_key']);
+    expect($GLOBALS['mb_test_settings'][6])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_hide_january_overview']);
+    expect($GLOBALS['mb_test_settings'][7])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_default_mode_type']);
+    expect($GLOBALS['mb_test_settings'][8])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_default_fixed_mode']);
+    expect($GLOBALS['mb_test_settings'][9])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_default_rotation_modes']);
+    expect($GLOBALS['mb_test_settings'][10])->toBe(['group' => 'monatsblitz_settings', 'name' => 'monatsblitz_rufname_display']);
 });
 
 it('registers main menu and settings submenu', function () {
@@ -221,7 +222,7 @@ it('renders dashboard overview table', function () {
     expect($html)->toContain('Monatsblitz Übersicht');
     expect($html)->toContain('Datenbank-Version:');
     expect($html)->toContain('1.3');
-    expect($html)->toContain('Plugin-Schema: 1.3');
+    expect($html)->toContain('Plugin-Schema: 1.4');
     expect($html)->toContain('vorhanden');
     expect($html)->toContain('fehlt');
     expect($html)->toContain('wp_monatsblitz_players');

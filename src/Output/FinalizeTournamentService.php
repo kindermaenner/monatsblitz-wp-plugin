@@ -41,7 +41,14 @@ class FinalizeTournamentService
         }
 
         $post_author_id = intval(get_option('monatsblitz_author'));
-        $template_name = (string) sanitize_text_field(get_option('monatsblitz_template'));
+        $counts_for_ranking = !isset($tournament['counts_for_ranking']) || (bool)$tournament['counts_for_ranking'];
+        $template_name = $counts_for_ranking
+            ? (string) sanitize_text_field(get_option('monatsblitz_template'))
+            : (string) sanitize_text_field(get_option('monatsblitz_template_non_ranking'));
+
+        if ($template_name === '' && !$counts_for_ranking) {
+            $template_name = (string) sanitize_text_field(get_option('monatsblitz_template'));
+        }
 
         $date_str = sprintf('%02d.%02d.%04d', $tournament['day'], $tournament['month'], $tournament['year']);
         $iso_date = sprintf('%04d-%02d-%02d', $tournament['year'], $tournament['month'], $tournament['day']);
@@ -77,8 +84,9 @@ class FinalizeTournamentService
         $template_post = $template_data['post'];
 
         if ($template_content === '') {
+            $intro_prefix = $counts_for_ranking ? 'unseres Blitz-Abends' : 'unseres freien Turniers';
             $template_content = "<h1>{{month_name}} {{year}}</h1>
-                                 <p>Die Ergebnisse unseres Blitz-Abends vom {{date}}.</p>
+                                 <p>Die Ergebnisse {$intro_prefix} vom {{date}}.</p>
                                  {{ranking_rows}}{{games_list}}";
         }
 
@@ -115,7 +123,17 @@ class FinalizeTournamentService
             $winner_data
         );
 
-        $post_data = TournamentPostFactory::buildPostData((string)($tournament['mode'] ?? ''), $iso_date, $post_author_id, $content);
+        $daily_number = max(1, intval($tournament['daily_number'] ?? 1));
+        $label = (string)($tournament['label'] ?? '');
+        $post_data = TournamentPostFactory::buildPostData(
+            (string)($tournament['mode'] ?? ''),
+            $iso_date,
+            $post_author_id,
+            $content,
+            $counts_for_ranking,
+            $daily_number,
+            $label
+        );
 
         $postarr = $post_data['postarr'];
         $slug = $post_data['slug'];
@@ -152,7 +170,7 @@ class FinalizeTournamentService
         }
 
         $year_page = null;
-        if (BlitzModeService::isBlitzMode((string)($tournament['mode'] ?? ''))) {
+        if ($counts_for_ranking && BlitzModeService::isBlitzMode((string)($tournament['mode'] ?? ''))) {
             $year_page = (new YearStaticPageHandler())->createOrUpdate((int)$tournament['year']);
         }
 

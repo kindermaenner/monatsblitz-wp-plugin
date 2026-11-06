@@ -6,11 +6,20 @@ namespace Monatsblitz\Queries;
 
 class GetTournamentsHandler
 {
-    public function handle(): array
+    public function handle($request = null): array
     {
         global $wpdb;
 
         $table = $wpdb->prefix . 'monatsblitz_tournaments';
+
+        $whereClause = '';
+        if ($request instanceof \WP_REST_Request) {
+            $rankingFilter = $request->get_param('counts_for_ranking');
+            if ($rankingFilter !== null) {
+                $val = filter_var($rankingFilter, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+                $whereClause = $wpdb->prepare(" WHERE counts_for_ranking = %d", $val);
+            }
+        }
 
         $results = $wpdb->get_results(
             "SELECT
@@ -18,13 +27,17 @@ class GetTournamentsHandler
                 year,
                 month,
                 day,
+                daily_number,
+                label,
+                counts_for_ranking,
+                start_time,
                 mode,
                 round_count,
                 status,
                 CONCAT(year, '-', LPAD(month, 2, '0'), '-', LPAD(day, 2, '0')) AS date,
                 CONCAT(day, '.', month, '.', year) AS date_formatted
-             FROM $table
-             ORDER BY year DESC, month DESC, day DESC",
+             FROM $table{$whereClause}
+             ORDER BY year DESC, month DESC, day DESC, daily_number DESC, id DESC",
             ARRAY_A
         );
 
@@ -133,6 +146,10 @@ class GetTournamentsHandler
             'year'                 => $year,
             'month'                => $month,
             'day'                  => $day,
+            'daily_number'         => (int) ($row['daily_number'] ?? 1),
+            'label'                => (string) ($row['label'] ?? ''),
+            'counts_for_ranking'   => !isset($row['counts_for_ranking']) || (bool) $row['counts_for_ranking'],
+            'start_time'           => $row['start_time'] ?? null,
             'mode'                 => (string) ($row['mode'] ?? ''),
             'round_count'          => (int) ($row['round_count'] ?? 1),
             'status'               => (string) ($row['status'] ?? 'open'),
