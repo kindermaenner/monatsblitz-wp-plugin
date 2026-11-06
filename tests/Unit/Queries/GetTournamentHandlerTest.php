@@ -39,6 +39,55 @@ it('falls back to game players when no tournament players are assigned', functio
         ->and($result['withdrawn_player_ids'])->toBe([]);
 });
 
+it('uses the registered roster as authoritative when it contains players', function () {
+    global $wpdb;
+
+    $wpdb->get_row_result = [
+        'id' => 7,
+        'year' => 2026,
+        'month' => 6,
+        'day' => 24,
+    ];
+    $wpdb->get_results_queue = [
+        [
+            ['player_id' => 12, 'has_left' => 1],
+            ['player_id' => 0, 'has_left' => 0],
+        ],
+    ];
+
+    $result = (new GetTournamentHandler())->handle(['id' => 7]);
+
+    expect($result['player_ids'])->toBe([12])
+        ->and($result['withdrawn_player_ids'])->toBe([12])
+        ->and($wpdb->get_results_calls)->toHaveCount(1);
+});
+
+it('deduplicates and ignores invalid player ids when falling back to game participants', function () {
+    global $wpdb;
+
+    $wpdb->get_row_result = [
+        'id' => 7,
+        'year' => 2026,
+        'month' => 6,
+        'day' => 24,
+    ];
+    $wpdb->get_results_queue = [
+        [],
+        [
+            ['pid' => '12'],
+            ['pid' => 12],
+            ['pid' => '0'],
+            [],
+            ['pid' => '34'],
+        ],
+    ];
+
+    $result = (new GetTournamentHandler())->handle(['id' => 7]);
+
+    expect($result['player_ids'])->toBe([12, 34])
+        ->and($result['withdrawn_player_ids'])->toBe([]);
+});
+
 it('fails when tournament id is unknown', function () {
     global $wpdb;
 

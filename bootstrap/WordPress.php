@@ -497,6 +497,10 @@ if (!class_exists('WP_REST_Request')) {
         public function get_json_params(): array {
             return $this->json_params;
         }
+
+        public function get_param(string $key) {
+            return $this->json_params[$key] ?? null;
+        }
     }
 }
 

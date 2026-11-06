@@ -42,3 +42,48 @@ it('includes registered and game-only players in tournament list', function () {
     expect($result[0]['player_ids'])->toBe([12, 13, 14]);
     expect($result[0]['withdrawn_player_ids'])->toBe([13]);
 });
+
+it('filters tournaments by whether they count for ranking', function () {
+    global $wpdb;
+    $wpdb->get_results_queue = [
+        [
+            ['id' => 2, 'year' => 2026, 'month' => 11, 'day' => 6, 'counts_for_ranking' => 0],
+        ],
+        [],
+        [],
+    ];
+
+    $result = (new GetTournamentsHandler())->handle(
+        new WP_REST_Request(['counts_for_ranking' => 'false'])
+    );
+
+    expect($result)->toHaveCount(1)
+        ->and($result[0]['counts_for_ranking'])->toBeFalse()
+        ->and($wpdb->get_results_calls[0][0])->toContain('WHERE counts_for_ranking = %d')
+        ->and($wpdb->last_prepared_args)->toBe([0]);
+});
+
+it('ignores malformed and duplicate player ids while combining registrations with game participants', function () {
+    global $wpdb;
+    $wpdb->get_results_queue = [
+        [
+            ['id' => 3, 'year' => 2026, 'month' => 11, 'day' => 6],
+        ],
+        [
+            ['tournament_id' => 3, 'player_id' => 15, 'has_left' => 0],
+            ['tournament_id' => 0, 'player_id' => 16, 'has_left' => 1],
+            ['tournament_id' => 3, 'player_id' => 0, 'has_left' => 1],
+        ],
+        [
+            ['tournament_id' => 3, 'pid' => 15],
+            ['tournament_id' => 3, 'pid' => 17],
+            ['tournament_id' => 0, 'pid' => 18],
+            ['tournament_id' => 3, 'pid' => 0],
+        ],
+    ];
+
+    $result = (new GetTournamentsHandler())->handle();
+
+    expect($result[0]['player_ids'])->toBe([15, 17])
+        ->and($result[0]['withdrawn_player_ids'])->toBe([]);
+});

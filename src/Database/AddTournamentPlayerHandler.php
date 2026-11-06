@@ -91,34 +91,51 @@ class AddTournamentPlayerHandler
         );
 
         if ($existing) {
-            if (!empty($existing->has_left)) {
-                $updated = $wpdb->update(
-                    $table,
-                    ['has_left' => 0],
-                    ['tournament_id' => $tournament_id, 'player_id' => $player_id],
-                    ['%d'],
-                    ['%d', '%d']
-                );
-                if ($updated === false) {
-                    $errorMsg = !empty($wpdb->last_error) ? $wpdb->last_error : 'Fehler beim Aktualisieren des Spielers in der Datenbank';
-                    return new \WP_Error('db_error', $errorMsg, ['status' => 500]);
-                }
-            }
-        } else {
-            $inserted = $wpdb->insert(
-                $table,
-                [
-                    'tournament_id' => $tournament_id,
-                    'player_id'     => $player_id,
-                    'has_left'      => 0,
-                ],
-                ['%d', '%d', '%d']
-            );
+            return $this->reactivatePlayerIfWithdrawn($table, $tournament_id, $player_id, $existing);
+        }
 
-            if ($inserted === false) {
-                $errorMsg = !empty($wpdb->last_error) ? $wpdb->last_error : 'Fehler beim Hinzufügen des Spielers zum Turnier';
-                return new \WP_Error('db_error', $errorMsg, ['status' => 500]);
-            }
+        return $this->insertTournamentPlayer($table, $tournament_id, $player_id);
+    }
+
+    private function reactivatePlayerIfWithdrawn(string $table, int $tournament_id, int $player_id, $existing): ?\WP_Error
+    {
+        if (empty($existing->has_left)) {
+            return null;
+        }
+
+        global $wpdb;
+        $updated = $wpdb->update(
+            $table,
+            ['has_left' => 0],
+            ['tournament_id' => $tournament_id, 'player_id' => $player_id],
+            ['%d'],
+            ['%d', '%d']
+        );
+
+        if ($updated === false) {
+            $errorMsg = !empty($wpdb->last_error) ? $wpdb->last_error : 'Fehler beim Aktualisieren des Spielers in der Datenbank';
+            return new \WP_Error('db_error', $errorMsg, ['status' => 500]);
+        }
+
+        return null;
+    }
+
+    private function insertTournamentPlayer(string $table, int $tournament_id, int $player_id): ?\WP_Error
+    {
+        global $wpdb;
+        $inserted = $wpdb->insert(
+            $table,
+            [
+                'tournament_id' => $tournament_id,
+                'player_id'     => $player_id,
+                'has_left'      => 0,
+            ],
+            ['%d', '%d', '%d']
+        );
+
+        if ($inserted === false) {
+            $errorMsg = !empty($wpdb->last_error) ? $wpdb->last_error : 'Fehler beim Hinzufügen des Spielers zum Turnier';
+            return new \WP_Error('db_error', $errorMsg, ['status' => 500]);
         }
 
         return null;
