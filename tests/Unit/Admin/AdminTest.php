@@ -332,6 +332,62 @@ it('resets tables when action is valid', function () {
     expect($wpdb->queries)->toContain('SET FOREIGN_KEY_CHECKS=1');
 });
 
+it('does not reopen tournament when user lacks capability', function () {
+    global $wpdb;
+
+    $_POST['monatsblitz_action'] = 'reopen_tournament';
+    $_POST['monatsblitz_tournament_id'] = '42';
+    $_POST['_wpnonce'] = 'nonce';
+    $GLOBALS['mb_test_current_user_can'] = false;
+
+    ob_start();
+    Admin::render_page();
+    ob_end_clean();
+
+    expect($wpdb->last_update_table)->toBeNull();
+});
+
+it('shows security error when reopen nonce is invalid', function () {
+    global $wpdb;
+
+    $_POST['monatsblitz_action'] = 'reopen_tournament';
+    $_POST['monatsblitz_tournament_id'] = '42';
+    $_POST['_wpnonce'] = 'nonce';
+    $GLOBALS['mb_test_nonce_valid'] = false;
+
+    ob_start();
+    Admin::render_page();
+    $html = ob_get_clean();
+
+    expect($html)->toContain('Security check failed');
+    expect($wpdb->last_update_table)->toBeNull();
+});
+
+it('reopens tournament when admin action is valid', function () {
+    global $wpdb;
+
+    $_POST['monatsblitz_action'] = 'reopen_tournament';
+    $_POST['monatsblitz_tournament_id'] = '42';
+    $_POST['_wpnonce'] = 'nonce';
+    $GLOBALS['mb_test_current_user_can'] = true;
+    $GLOBALS['mb_test_nonce_valid'] = true;
+
+    $wpdb->get_row_result = (object) [
+        'id' => 42,
+        'status' => 'finalized',
+    ];
+
+    ob_start();
+    Admin::render_page();
+    $html = ob_get_clean();
+
+    expect($html)->toContain('Turnier #42');
+    expect($wpdb->last_update_table)->toBe('wp_monatsblitz_tournaments');
+    expect($wpdb->last_update_data)->toBe(['status' => 'open']);
+    expect($wpdb->last_update_where)->toBe(['id' => 42]);
+});
+
+
 
 it('adds mode when submitted from settings page', function () {
     global $wpdb;

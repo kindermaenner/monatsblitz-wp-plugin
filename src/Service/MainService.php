@@ -164,6 +164,28 @@ class MainService
         return rest_ensure_response($result);
     }
 
+    public static function reopenTournament($request)
+    {
+        $result = (new \Monatsblitz\Database\ReopenTournamentHandler())->handle($request);
+
+        if ($result instanceof \WP_Error) {
+            return $result;
+        }
+
+        return rest_ensure_response($result);
+    }
+
+    public static function verifyMaintenanceAuth($request)
+    {
+        return rest_ensure_response([
+            'valid'        => true,
+            'role'         => 'admin',
+            'api_version'  => \Monatsblitz\Api\Api::API_VERSION,
+            'capabilities' => ['reopen_tournament', 'recreate_posts'],
+        ]);
+    }
+
+
     private static function getRequestParams($request): array
     {
         if (is_object($request) && method_exists($request, 'get_json_params')) {

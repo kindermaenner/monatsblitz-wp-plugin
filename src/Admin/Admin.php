@@ -206,6 +206,34 @@ class Admin
     {
         if (
             isset($_POST['monatsblitz_action']) &&
+            $_POST['monatsblitz_action'] === 'reopen_tournament'
+        ) {
+            if (!current_user_can('manage_options')) {
+                return;
+            }
+
+            if (
+                !isset($_POST['_wpnonce']) ||
+                !wp_verify_nonce($_POST['_wpnonce'], 'monatsblitz_reopen_tournament_action')
+            ) {
+                echo '<div class="error"><p>Security check failed</p></div>';
+                return;
+            }
+
+            $tournamentId = intval($_POST['monatsblitz_tournament_id'] ?? 0);
+            if ($tournamentId > 0) {
+                $handler = new \Monatsblitz\Database\ReopenTournamentHandler();
+                $result = $handler->reopen($tournamentId);
+                if (is_wp_error($result)) {
+                    echo '<div class="error"><p>' . esc_html($result->get_error_message()) . '</p></div>';
+                } else {
+                    echo '<div class="updated"><p>' . esc_html($result['message']) . ' (Turnier #' . $tournamentId . ')</p></div>';
+                }
+            }
+        }
+
+        if (
+            isset($_POST['monatsblitz_action']) &&
             $_POST['monatsblitz_action'] === 'reset_tables'
         ) {
             if (!current_user_can('manage_options')) {

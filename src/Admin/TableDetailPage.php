@@ -28,7 +28,7 @@ class TableDetailPage
             return;
         }
 
-        self::render_rows_table($rows);
+        self::render_rows_table($rows, $tableKey);
     }
 
     private static function handle_tournament_filter(string $tableKey): int|string|null
@@ -227,7 +227,7 @@ class TableDetailPage
         return (array) $wpdb->get_results($query, ARRAY_A);
     }
 
-    private static function render_rows_table(array $rows): void
+    private static function render_rows_table(array $rows, string $tableKey = ''): void
     {
         echo '<p style="color:#666; font-size:13px; margin: 10px 0;">Einträge: ' . count($rows) . '</p>';
 
@@ -238,6 +238,10 @@ class TableDetailPage
             echo '<th>' . esc_html($column) . '</th>';
         }
 
+        if ($tableKey === 'tournaments') {
+            echo '<th style="width:140px;">Aktionen</th>';
+        }
+
         echo '</tr></thead><tbody>';
 
         foreach ($rows as $row) {
@@ -245,6 +249,24 @@ class TableDetailPage
             foreach ($row as $value) {
                 echo '<td>' . esc_html((string)($value ?? '')) . self::TAG_TD_CLOSE;
             }
+
+            if ($tableKey === 'tournaments') {
+                echo '<td>';
+                $status = (string)($row['status'] ?? '');
+                $id = (int)($row['id'] ?? 0);
+                if ($status === 'finalized' && $id > 0) {
+                    echo '<form method="post" style="display:inline;" onsubmit="return confirm(\'Turnier wirklich wieder öffnen? Es kann danach in der App erneut bearbeitet und synchronisiert werden.\');">';
+                    wp_nonce_field('monatsblitz_reopen_tournament_action');
+                    echo '<input type="hidden" name="monatsblitz_action" value="reopen_tournament">';
+                    echo '<input type="hidden" name="monatsblitz_tournament_id" value="' . esc_attr((string)$id) . '">';
+                    echo '<input type="submit" class="button button-small" value="🔓 Wieder öffnen">';
+                    echo '</form>';
+                } else {
+                    echo '<span style="color:#46b450; font-weight:600;">Aktiv</span>';
+                }
+                echo self::TAG_TD_CLOSE;
+            }
+
             echo '</tr>';
         }
 

@@ -134,3 +134,34 @@ it('filters tournament participants by the selected tournament', function () {
         ->and($dataQuery)->toContain('ORDER BY tp.id DESC')
         ->and($wpdb->last_prepared_args)->toBe([12]);
 });
+
+it('renders reopen action button for finalized tournaments in tournaments detail view', function () {
+    global $wpdb;
+
+    $wpdb->results = [
+        [
+            'id' => 15,
+            'year' => 2026,
+            'month' => 11,
+            'day' => 8,
+            'status' => 'finalized',
+        ],
+        [
+            'id' => 16,
+            'year' => 2026,
+            'month' => 11,
+            'day' => 9,
+            'status' => 'open',
+        ],
+    ];
+
+    ob_start();
+    TableDetailPage::render('tournaments', 'wp_monatsblitz_tournaments');
+    $html = ob_get_clean();
+
+    expect($html)->toContain('Aktionen');
+    expect($html)->toContain('value="🔓 Wieder öffnen"');
+    expect($html)->toContain('value="15"');
+    expect($html)->toContain('Aktiv');
+});
+

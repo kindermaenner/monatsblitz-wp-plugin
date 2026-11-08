@@ -315,6 +315,26 @@ Base path: `/wp-json/monatsblitz/v1`
   - Body (JSON):
     - `year`
 
+### Maintenance & Administration (Header: `X-MB-Maintenance-Key`)
+
+- `GET /auth/verify`
+  - Validates the provided maintenance API key without performing any mutations.
+  - Response (JSON):
+    - `valid`: `true`
+    - `role`: `"admin"`
+    - `api_version`: `1`
+    - `capabilities`: `["reopen_tournament", "recreate_posts"]`
+
+- `POST /tournament/reopen` or `POST /tournament/{id}/reopen`
+  - Reopens a finalized tournament by resetting its status to `open`.
+  - Body (JSON): `tournament_id` (or in route URL).
+  - Allows corrections, game/result updates, and re-finalization.
+  - Response (JSON):
+    - `success`: `true`
+    - `tournament_id`: ID of the reopened tournament
+    - `status`: `"open"`
+    - `already_open`: boolean indicating if it was already open
+
 - `POST /recreatePosts`
   - Recreates all tournament posts by iterating over all stored tournaments.
   - For each tournament, it triggers the same finalize logic as `POST /finalize`.

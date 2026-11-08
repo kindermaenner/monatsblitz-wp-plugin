@@ -119,15 +119,33 @@ class Api
             'callback' => [MainService::class, 'addTournamentPlayer'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
+
+        register_rest_route($rest_api_namespace, '/auth/verify', [
+            'methods'  => 'GET',
+            'callback' => [MainService::class, 'verifyMaintenanceAuth'],
+            'permission_callback' => [self::class, 'verify_maintenance_key'],
+        ]);
+
+        register_rest_route($rest_api_namespace, '/tournament/reopen', [
+            'methods'  => 'POST',
+            'callback' => [MainService::class, 'reopenTournament'],
+            'permission_callback' => [self::class, 'verify_maintenance_key'],
+        ]);
+
+        register_rest_route($rest_api_namespace, '/tournament/(?P<id>\d+)/reopen', [
+            'methods'  => 'POST',
+            'callback' => [MainService::class, 'reopenTournament'],
+            'permission_callback' => [self::class, 'verify_maintenance_key'],
+        ]);
     }
 
     public static function verify_maintenance_key()
     {
-        $maintenance_api_key = get_option('monatsblitz_maintenance_api_key');
-        $regular_api_key = get_option('monatsblitz_api_key');
-        $header_key = $_SERVER['HTTP_X_MB_MAINTENANCE_KEY'] ?? '';
+        $maintenance_api_key = (string) get_option('monatsblitz_maintenance_api_key', '');
+        $regular_api_key = (string) get_option('monatsblitz_api_key', '');
+        $header_key = (string) ($_SERVER['HTTP_X_MB_MAINTENANCE_KEY'] ?? '');
 
-        if (!$maintenance_api_key || $header_key !== $maintenance_api_key) {
+        if ($maintenance_api_key === '' || $header_key === '' || !hash_equals($maintenance_api_key, $header_key)) {
             return new \WP_Error(
                 'rest_forbidden',
                 'Unauthorized',
@@ -135,7 +153,7 @@ class Api
             );
         }
 
-        if ($regular_api_key && $maintenance_api_key === $regular_api_key) {
+        if ($regular_api_key !== '' && hash_equals($regular_api_key, $maintenance_api_key)) {
             return new \WP_Error(
                 'rest_forbidden',
                 'Wartungs-API-Key darf nicht identisch mit dem App-API-Key sein.',
@@ -152,10 +170,10 @@ class Api
 
     public static function verify_api_key()
     {
-        $api_key = get_option('monatsblitz_api_key');
-        $header_key = $_SERVER['HTTP_X_MB_KEY'] ?? '';
+        $api_key = (string) get_option('monatsblitz_api_key', '');
+        $header_key = (string) ($_SERVER['HTTP_X_MB_KEY'] ?? '');
 
-        if (!$api_key || $header_key !== $api_key) {
+        if ($api_key === '' || $header_key === '' || !hash_equals($api_key, $header_key)) {
             return new \WP_Error(
                 'rest_forbidden',
                 'Unauthorized',

@@ -26,7 +26,7 @@ it('registers rest_api_init action on init', function () {
 it('registers all REST routes with API key permission callback', function () {
     Api::register_routes();
 
-    expect($GLOBALS['mb_test_routes'])->toHaveCount(16);
+    expect($GLOBALS['mb_test_routes'])->toHaveCount(19);
 
     $expectedRoutes = [
         '/player' => [MainService::class, 'createPlayer'],
@@ -45,10 +45,20 @@ it('registers all REST routes with API key permission callback', function () {
         '/recreatePosts' => [MainService::class, 'recreatePosts'],
         '/tournament/withdraw' => [MainService::class, 'withdrawPlayer'],
         '/tournament/player' => [MainService::class, 'addTournamentPlayer'],
+        '/auth/verify' => [MainService::class, 'verifyMaintenanceAuth'],
+        '/tournament/reopen' => [MainService::class, 'reopenTournament'],
+        '/tournament/(?P<id>\d+)/reopen' => [MainService::class, 'reopenTournament'],
+    ];
+
+    $maintenanceRoutes = [
+        '/recreatePosts',
+        '/auth/verify',
+        '/tournament/reopen',
+        '/tournament/(?P<id>\d+)/reopen',
     ];
 
     foreach ($GLOBALS['mb_test_routes'] as $route) {
-        $expectedCallback = $route['route'] === '/recreatePosts'
+        $expectedCallback = in_array($route['route'], $maintenanceRoutes, true)
             ? [Api::class, 'verify_maintenance_key']
             : [Api::class, 'verify_api_key'];
 
@@ -188,6 +198,17 @@ it('fails maintenance key verification when caller sends standard X-MB-Key inste
     expect($result)->toBeInstanceOf(WP_Error::class)
         ->and($result->code)->toBe('rest_forbidden')
         ->and($result->data['status'])->toBe(401);
+});
+
+it('returns valid auth info when verifyMaintenanceAuth is called', function () {
+    $result = MainService::verifyMaintenanceAuth([]);
+
+    expect($result)->toBeArray()
+        ->and($result['valid'])->toBeTrue()
+        ->and($result['role'])->toBe('admin')
+        ->and($result['api_version'])->toBe(Api::API_VERSION)
+        ->and($result['capabilities'])->toContain('reopen_tournament')
+        ->and($result['capabilities'])->toContain('recreate_posts');
 });
 
 
