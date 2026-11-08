@@ -202,56 +202,62 @@ class Admin
         echo '</div>';
     }
 
-    private static function handle_actions()
+    private static function handle_actions(): void
     {
-        if (
-            isset($_POST['monatsblitz_action']) &&
-            $_POST['monatsblitz_action'] === 'reopen_tournament'
-        ) {
-            if (!current_user_can('manage_options')) {
-                return;
-            }
+        $action = $_POST['monatsblitz_action'] ?? null;
+        if ($action === 'reopen_tournament') {
+            self::handle_reopen_tournament_action();
+        } elseif ($action === 'reset_tables') {
+            self::handle_reset_tables_action();
+        }
+    }
 
-            if (
-                !isset($_POST['_wpnonce']) ||
-                !wp_verify_nonce($_POST['_wpnonce'], 'monatsblitz_reopen_tournament_action')
-            ) {
-                echo '<div class="error"><p>Security check failed</p></div>';
-                return;
-            }
-
-            $tournamentId = intval($_POST['monatsblitz_tournament_id'] ?? 0);
-            if ($tournamentId > 0) {
-                $handler = new \Monatsblitz\Database\ReopenTournamentHandler();
-                $result = $handler->reopen($tournamentId);
-                if (is_wp_error($result)) {
-                    echo '<div class="error"><p>' . esc_html($result->get_error_message()) . '</p></div>';
-                } else {
-                    echo '<div class="updated"><p>' . esc_html($result['message']) . ' (Turnier #' . $tournamentId . ')</p></div>';
-                }
-            }
+    private static function handle_reopen_tournament_action(): void
+    {
+        if (!current_user_can('manage_options')) {
+            return;
         }
 
         if (
-            isset($_POST['monatsblitz_action']) &&
-            $_POST['monatsblitz_action'] === 'reset_tables'
+            !isset($_POST['_wpnonce']) ||
+            !wp_verify_nonce($_POST['_wpnonce'], 'monatsblitz_reopen_tournament_action')
         ) {
-            if (!current_user_can('manage_options')) {
-                return;
-            }
-
-            if (
-                !isset($_POST['_wpnonce']) ||
-                !wp_verify_nonce($_POST['_wpnonce'], 'monatsblitz_reset_tables')
-            ) {
-                echo '<div class="error"><p>Security check failed</p></div>';
-                return;
-            }
-
-            self::reset_tables();
-
-            echo '<div class="updated"><p>Tabellen wurden neu erstellt</p></div>';
+            echo '<div class="error"><p>Security check failed</p></div>';
+            return;
         }
+
+        $tournamentId = intval($_POST['monatsblitz_tournament_id'] ?? 0);
+        if ($tournamentId <= 0) {
+            return;
+        }
+
+        $handler = new \Monatsblitz\Database\ReopenTournamentHandler();
+        $result = $handler->reopen($tournamentId);
+        if (is_wp_error($result)) {
+            echo '<div class="error"><p>' . esc_html($result->get_error_message()) . '</p></div>';
+            return;
+        }
+
+        echo '<div class="updated"><p>' . esc_html($result['message']) . ' (Turnier #' . $tournamentId . ')</p></div>';
+    }
+
+    private static function handle_reset_tables_action(): void
+    {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        if (
+            !isset($_POST['_wpnonce']) ||
+            !wp_verify_nonce($_POST['_wpnonce'], 'monatsblitz_reset_tables')
+        ) {
+            echo '<div class="error"><p>Security check failed</p></div>';
+            return;
+        }
+
+        self::reset_tables();
+
+        echo '<div class="updated"><p>Tabellen wurden neu erstellt</p></div>';
     }
 
     private static function reset_tables()

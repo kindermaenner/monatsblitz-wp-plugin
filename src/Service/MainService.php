@@ -79,14 +79,14 @@ class MainService
         return rest_ensure_response($result);
     }
 
-    public static function getPlayers($request)
+    public static function getPlayers()
     {
         return (new GetPlayersHandler())->handle();
     }
 
-    public static function getTournaments($request)
+    public static function getTournaments($request = null)
     {
-        return (new GetTournamentsHandler())->handle();
+        return (new GetTournamentsHandler())->handle($request);
     }
 
     public static function getTournament($request)
@@ -129,7 +129,7 @@ class MainService
         return rest_ensure_response($result);
     }
 
-    public static function recreatePosts($request)
+    public static function recreatePosts()
     {
         $result = (new RecreatePostsHandler())->handle();
 
@@ -175,7 +175,7 @@ class MainService
         return rest_ensure_response($result);
     }
 
-    public static function verifyMaintenanceAuth($request)
+    public static function verifyMaintenanceAuth()
     {
         return rest_ensure_response([
             'valid'        => true,
