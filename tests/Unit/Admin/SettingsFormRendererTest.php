@@ -33,6 +33,15 @@ it('explains that rotation cannot be configured without tournament modes', funct
     SettingsFormRenderer::render([], [], []);
     $html = ob_get_clean();
 
-    expect($html)->toContain('Keine Modi im Katalog vorhanden. Bitte lege weiter unten Modi an.')
+    expect($html)->toContain('Keine Modi im Katalog vorhanden.')
         ->and($html)->not->toContain('Die App wählt dann basierend auf den vergangenen Turnieren');
+});
+
+it('renders link to template documentation in readme', function () {
+    ob_start();
+    SettingsFormRenderer::render([], [], []);
+    $html = ob_get_clean();
+
+    expect($html)->toContain('https://github.com/kindermaenner/monatsblitz-wp-plugin#template-placeholders')
+        ->and($html)->toContain('Template-Dokumentation im GitHub Readme');
 });

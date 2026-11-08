@@ -542,4 +542,42 @@ if (!function_exists('wp_update_plugins')) {
     }
 }
 
+if (!function_exists('add_filter')) {
+    function add_filter($hook, $callback, $priority = 10, $acceptedArgs = 1) {
+        $GLOBALS['mb_test_filters'][] = compact('hook', 'callback', 'priority', 'acceptedArgs');
+        return true;
+    }
+}
+
+if (!function_exists('esc_url')) {
+    function esc_url($url) {
+        return (string) $url;
+    }
+}
+
+if (!function_exists('plugin_basename')) {
+    function plugin_basename($file) {
+        return basename(dirname($file)) . '/' . basename($file);
+    }
+}
+
+if (!function_exists('wp_safe_remote_get')) {
+    function wp_safe_remote_get($url, $args = []) {
+        $GLOBALS['mb_test_remote_get_calls'][] = [$url, $args];
+        return $GLOBALS['mb_test_remote_response'] ?? ['code' => 200, 'body' => ''];
+    }
+}
+
+if (!function_exists('wp_remote_retrieve_response_code')) {
+    function wp_remote_retrieve_response_code($response) {
+        return $response['code'] ?? 0;
+    }
+}
+
+if (!function_exists('wp_remote_retrieve_body')) {
+    function wp_remote_retrieve_body($response) {
+        return $response['body'] ?? '';
+    }
+}
+
 define('MONATSBLITZ_PLUGIN_PATH', plugin_dir_path(__FILE__));

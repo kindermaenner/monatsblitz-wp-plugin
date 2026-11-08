@@ -10,6 +10,7 @@ if (!defined('ABSPATH')) {
 
 class SettingsFormRenderer
 {
+    private const TAG_DIV_CLOSE = '</div>';
     private const TAG_SELECT_CLOSE = '</select>';
     private const TAG_TD_CLOSE = '</td>';
     private const TAG_ROW_CLOSE = '</td></tr>';
@@ -18,11 +19,80 @@ class SettingsFormRenderer
 
     public static function render(array $config, array $users, array $modes): void
     {
-        self::render_settings_form($config, $users, $modes);
+        self::render_api_keys_card($config);
         self::render_modes_catalog($modes);
+        self::render_options_form($config, $users, $modes);
     }
 
-    private static function render_settings_form(array $config, array $users, array $modes): void
+    private static function render_api_keys_card(array $config): void
+    {
+        $apiKey = (string)($config['apiKey'] ?? '');
+        $maintenanceApiKey = (string)($config['maintenanceApiKey'] ?? '');
+
+        echo '<div class="card" style="max-width:100%; margin-top:20px; padding:20px;">';
+        echo '<h2 style="margin-top:0;">🔑 API-Schlüsselverwaltung</h2>';
+
+        echo '<form method="post" style="margin-bottom:0;">';
+        wp_nonce_field('monatsblitz_generate_key_action');
+        echo '<table class="form-table" style="margin-bottom:0;">';
+
+        echo '<tr><th scope="row">App-API-Key</th><td>';
+        echo '<input type="text" value="' . esc_attr($apiKey) . '" class="regular-text" style="width:350px;" readonly> ';
+        echo '<input type="submit" name="monatsblitz_generate_key" class="button" value="Neuen API-Key generieren">';
+        echo '<p class="description">Diesen Key muss die Monatsblitz-App im Header <code>X-MB-Key</code> mitsenden (wird im QR-Code oben codiert).</p>';
+        echo self::TAG_ROW_CLOSE;
+
+        echo '<tr><th scope="row">Wartungs-API-Key</th><td>';
+        echo '<input type="text" value="' . esc_attr($maintenanceApiKey) . '" class="regular-text" style="width:350px;" readonly> ';
+        echo '<input type="submit" name="monatsblitz_generate_maintenance_key" class="button" value="Neuen Wartungs-Key generieren">';
+        echo '<p class="description">Diesen Key für Wartungs-Endpunkte (z. B. <code>/recreatePosts</code>) im Header <code>X-MB-Maintenance-Key</code> mitsenden. <strong>Nicht an App-Nutzer weitergeben</strong>; darf nicht identisch mit dem App-Key sein.</p>';
+        echo self::TAG_ROW_CLOSE;
+
+        echo '</table>';
+        echo self::TAG_FORM_CLOSE;
+        echo self::TAG_DIV_CLOSE;
+    }
+
+    private static function render_modes_catalog(array $modes): void
+    {
+        echo '<div class="card" style="max-width:100%; margin-top:20px; padding:20px;">';
+        echo '<h2 style="margin-top:0;">⏱️ Turniermodi (Katalog)</h2>';
+        echo '<p class="description">Diese Modi stehen in der App bei der Turniererstellung zur Auswahl und können für feste Vorgaben oder Rotationen verwendet werden.</p>';
+
+        echo '<table class="widefat fixed striped" style="max-width:600px; margin:15px 0;">';
+        echo '<thead><tr><th style="width:60px;">ID</th><th>Modus-Name</th><th style="width:100px;">Aktion</th></tr></thead>';
+        echo '<tbody>';
+
+        if (empty($modes)) {
+            echo '<tr><td colspan="3">Keine Modi hinterlegt.' . self::TAG_ROW_CLOSE;
+        } else {
+            foreach ($modes as $m) {
+                echo '<tr>';
+                echo '<td>' . esc_html((string)$m['id']) . self::TAG_TD_CLOSE;
+                echo '<td><strong>' . esc_html($m['name']) . '</strong>' . self::TAG_TD_CLOSE;
+                echo '<td>';
+                echo '<form method="post" style="display:inline;" onsubmit="return confirm(\'Modus wirklich l&ouml;schen?\');">';
+                wp_nonce_field('monatsblitz_delete_mode_action');
+                echo '<input type="hidden" name="monatsblitz_delete_mode" value="1">';
+                echo '<input type="hidden" name="monatsblitz_delete_mode_id" value="' . esc_attr((string)$m['id']) . '">';
+                echo '<input type="submit" class="button button-small button-link-delete" value="Löschen">';
+                echo self::TAG_FORM_CLOSE;
+                echo self::TAG_TD_CLOSE;
+                echo '</tr>';
+            }
+        }
+
+        echo '</tbody></table>';
+
+        echo '<form method="post" style="display:flex; align-items:center; gap:10px; max-width:600px;">';
+        wp_nonce_field('monatsblitz_add_mode_action');
+        echo '<input type="text" name="monatsblitz_new_mode_name" placeholder="z. B. 10+0 oder 3+0" class="regular-text" style="width:250px;" required>';
+        echo '<input type="submit" name="monatsblitz_add_mode" class="button" value="Modus hinzufügen">';
+        echo self::TAG_FORM_CLOSE;
+        echo self::TAG_DIV_CLOSE;
+    }
+
+    private static function render_options_form(array $config, array $users, array $modes): void
     {
         $apiKey = (string)($config['apiKey'] ?? '');
         $maintenanceApiKey = (string)($config['maintenanceApiKey'] ?? '');
@@ -37,41 +107,45 @@ class SettingsFormRenderer
         $defaultRotationModes = (array)($config['defaultRotationModes'] ?? []);
         $rufnameDisplay = (string)($config['rufnameDisplay'] ?? 'none');
 
-        echo '<h2 style="margin-top:30px;">⚙️ Einstellungen</h2>';
-
-        // Formular 1: API-Keys generieren
-        echo '<form method="post" style="margin-bottom:0;">';
-        wp_nonce_field('monatsblitz_generate_key_action');
-        echo '<table class="form-table" style="margin-bottom:0;">';
-        echo '<tr><th scope="row">App-API-Key</th><td>';
-        echo '<input type="text" value="' . esc_attr($apiKey) . '" class="regular-text" style="width:350px;" readonly> ';
-        echo '<input type="submit" name="monatsblitz_generate_key" class="button" value="Neuen API-Key generieren">';
-        echo '<p class="description">Diesen Key muss die Monatsblitz-App im Header <code>X-MB-Key</code> mitsenden.</p>';
-        echo self::TAG_ROW_CLOSE;
-
-        echo '<tr><th scope="row">Wartungs-API-Key</th><td>';
-        echo '<input type="text" value="' . esc_attr($maintenanceApiKey) . '" class="regular-text" style="width:350px;" readonly> ';
-        echo '<input type="submit" name="monatsblitz_generate_maintenance_key" class="button" value="Neuen Wartungs-Key generieren">';
-        echo '<p class="description">Diesen Key für Wartungs-Endpunkte (z. B. <code>/recreatePosts</code>) im Header <code>X-MB-Maintenance-Key</code> mitsenden. <strong>Nicht an App-Nutzer weitergeben</strong>; darf nicht identisch mit dem App-Key sein.</p>';
-        echo self::TAG_ROW_CLOSE;
-        echo '</table>';
-        echo self::TAG_FORM_CLOSE;
-
-        // Formular 2: Normale Einstellungen (läuft über options.php)
         echo '<form method="post" action="options.php">';
         settings_fields('monatsblitz_settings');
         echo '<input type="hidden" name="monatsblitz_api_key" value="' . esc_attr($apiKey) . '">';
         echo '<input type="hidden" name="monatsblitz_maintenance_api_key" value="' . esc_attr($maintenanceApiKey) . '">';
 
+        // Card 1: Spielmodus-Vorauswahl & Wertung
+        echo '<div class="card" style="max-width:100%; margin-top:20px; padding:20px;">';
+        echo '<h2 style="margin-top:0;">♟️ Spielmodus-Vorauswahl (App) &amp; Wertung</h2>';
+        echo '<table class="form-table">';
+        self::render_mode_preselection_settings($defaultModeType, $defaultFixedMode, $defaultRotationModes, $modes);
+        self::render_blitz_modes_setting($blitzModes);
+        echo '</table>';
+        echo self::TAG_DIV_CLOSE;
+
+        // Card 2: Beitrags-Templates & Darstellung
+        echo '<div class="card" style="max-width:100%; margin-top:20px; padding:20px;">';
+        echo '<h2 style="margin-top:0;">📝 Beitrags-Templates &amp; Darstellung</h2>';
+        echo '<div class="notice notice-info inline" style="margin:12px 0 20px 0; padding:10px 15px;">';
+        echo '<p>ℹ️ Eine Übersicht aller verfügbaren Template-Platzhalter (z.&nbsp;B. <code>{{winner_name}}</code>, <code>{{table}}</code>, Singular/Plural-Filter) und Beispiele findest du in der <a href="https://github.com/kindermaenner/monatsblitz-wp-plugin#template-placeholders" target="_blank" rel="noopener noreferrer"><strong>Template-Dokumentation im GitHub Readme ↗</strong></a>.</p>';
+        echo self::TAG_DIV_CLOSE;
+
         echo '<table class="form-table">';
         self::render_author_setting($author, $users);
-        self::render_template_settings($template, $templateNonRanking, $templateStaticPage, $hideJanuaryOverview, $blitzModes);
         self::render_rufname_setting($rufnameDisplay);
-        self::render_mode_preselection_settings($defaultModeType, $defaultFixedMode, $defaultRotationModes, $modes);
+        self::render_template_settings($template, $templateNonRanking, $templateStaticPage, $hideJanuaryOverview);
         echo '</table>';
 
-        submit_button();
+        submit_button('Einstellungen speichern');
+        echo self::TAG_DIV_CLOSE;
+
         echo self::TAG_FORM_CLOSE;
+    }
+
+    private static function render_blitz_modes_setting(string $blitzModes): void
+    {
+        echo '<tr><th scope="row">Zusätzliche Blitz-Modi</th><td>';
+        echo '<input type="text" name="monatsblitz_blitz_modes" value="' . esc_attr($blitzModes) . self::INPUT_REGULAR_CLASS;
+        echo '<p class="description">Komma-Liste, z. B. Handicap, Armageddon. Standardregel bleibt aktiv: alle Modi &le; 5+X zählen automatisch als Blitz für die Jahreswertung.</p>';
+        echo self::TAG_ROW_CLOSE;
     }
 
     private static function render_author_setting($author, array $users): void
@@ -91,12 +165,11 @@ class SettingsFormRenderer
         string $template,
         string $templateNonRanking,
         string $templateStaticPage,
-        bool $hideJanuaryOverview,
-        string $blitzModes
+        bool $hideJanuaryOverview
     ): void {
         echo '<tr><th scope="row">Template (Jahreswertung)</th><td>';
         echo '<input type="text" name="monatsblitz_template" value="' . esc_attr($template) . self::INPUT_REGULAR_CLASS;
-        echo '<p class="description">Wird für offizielle Monatsblitz-Turniere (Jahreswertung) verwendet.<br>Platzhalter: <code>{{month_name}}</code>, <code>{{year}}</code>, <code>{{date}}</code>, <code>{{mode}}</code>, <code>{{round_count}}</code>, <code>{{table}}</code>, <code>{{winner_name}}</code>, <code>{{winner_points}}</code>, <code>{{winner_games}}</code>, <code>{{winner_verb}}</code>, <code>{{winner_text}}</code>.<br>Singular/Plural: <code>{{plural:siegt|siegen}}</code> oder <code>{{#singular}}...{{/singular}}</code> / <code>{{#plural}}...{{/plural}}</code>.</p>';
+        echo '<p class="description">Wird für offizielle Monatsblitz-Turniere (Jahreswertung) verwendet.</p>';
         echo self::TAG_ROW_CLOSE;
 
         echo '<tr><th scope="row">Template: Freie Turniere</th><td>';
@@ -106,20 +179,15 @@ class SettingsFormRenderer
 
         echo '<tr><th scope="row">Template: Statische Jahresseite</th><td>';
         echo '<input type="text" name="monatsblitz_template_static_page" value="' . esc_attr($templateStaticPage) . self::INPUT_REGULAR_CLASS;
-        echo '<p class="description">Enthalt Platzhalter {{blitz_monthly_overview}} und {{blitz_ranking_year}}.</p>';
+        echo '<p class="description">Template für die jährliche Übersichtsseite (Slug: <code>blitz-YYYY</code>).</p>';
         echo self::TAG_ROW_CLOSE;
 
-        echo '<tr><th scope="row">Teilnehmer-Ubersicht: Januar ausblenden</th><td>';
+        echo '<tr><th scope="row">Teilnehmer-Übersicht: Januar ausblenden</th><td>';
         echo '<label>';
         echo '<input type="checkbox" name="monatsblitz_hide_january_overview" value="1" ' . ($hideJanuaryOverview ? 'checked="checked"' : '') . '>';
-        echo ' Januar-Spalte in {{blitz_monthly_overview}} ausblenden';
+        echo ' Januar-Spalte in <code>{{blitz_monthly_overview}}</code> ausblenden';
         echo '</label>';
-        echo '<p class="description">Empfohlen, wenn im Januar grundsatzlich kein Monatsblitz stattfindet.</p>';
-        echo self::TAG_ROW_CLOSE;
-
-        echo '<tr><th scope="row">Zusatzliche Blitz-Modi</th><td>';
-        echo '<input type="text" name="monatsblitz_blitz_modes" value="' . esc_attr($blitzModes) . self::INPUT_REGULAR_CLASS;
-        echo '<p class="description">Komma-Liste, z. B. Handicap, Armageddon. Standardregel bleibt aktiv: alle Modi <= 5+X zahlen als Blitz.</p>';
+        echo '<p class="description">Empfohlen, wenn im Januar grundsätzlich kein Monatsblitz stattfindet.</p>';
         echo self::TAG_ROW_CLOSE;
     }
 
@@ -164,7 +232,7 @@ class SettingsFormRenderer
         echo '<tr id="row_monatsblitz_default_rotation_modes"><th scope="row">Modus-Rotation</th><td>';
         echo '<input type="hidden" name="monatsblitz_default_rotation_modes[]" value="">';
         if (empty($modes)) {
-            echo '<p class="description">Keine Modi im Katalog vorhanden. Bitte lege weiter unten Modi an.</p>';
+            echo '<p class="description">Keine Modi im Katalog vorhanden. Bitte lege im Turniermodi-Katalog oben Modi an.</p>';
         } else {
             foreach ($modes as $m) {
                 $checked = in_array($m['name'], $defaultRotationModes, true) ? 'checked="checked"' : '';
@@ -199,42 +267,5 @@ class SettingsFormRenderer
             }
         })();
         </script>';
-    }
-
-    private static function render_modes_catalog(array $modes): void
-    {
-        echo '<h2 style="margin-top:30px;">⏱️ Turniermodi (Katalog)</h2>';
-        echo '<p class="description">Diese Modi stehen in der App bei der Turniererstellung zur Auswahl und können für feste Vorgaben oder Rotationen verwendet werden.</p>';
-
-        echo '<table class="widefat fixed striped" style="max-width:600px; margin-bottom:15px;">';
-        echo '<thead><tr><th style="width:60px;">ID</th><th>Modus-Name</th><th style="width:100px;">Aktion</th></tr></thead>';
-        echo '<tbody>';
-
-        if (empty($modes)) {
-            echo '<tr><td colspan="3">Keine Modi hinterlegt.' . self::TAG_ROW_CLOSE;
-        } else {
-            foreach ($modes as $m) {
-                echo '<tr>';
-                echo '<td>' . esc_html((string)$m['id']) . self::TAG_TD_CLOSE;
-                echo '<td><strong>' . esc_html($m['name']) . '</strong>' . self::TAG_TD_CLOSE;
-                echo '<td>';
-                echo '<form method="post" style="display:inline;" onsubmit="return confirm(\'Modus wirklich l&ouml;schen?\');">';
-                wp_nonce_field('monatsblitz_delete_mode_action');
-                echo '<input type="hidden" name="monatsblitz_delete_mode" value="1">';
-                echo '<input type="hidden" name="monatsblitz_delete_mode_id" value="' . esc_attr((string)$m['id']) . '">';
-                echo '<input type="submit" class="button button-small button-link-delete" value="Löschen">';
-                echo self::TAG_FORM_CLOSE;
-                echo self::TAG_TD_CLOSE;
-                echo '</tr>';
-            }
-        }
-
-        echo '</tbody></table>';
-
-        echo '<form method="post" style="display:flex; align-items:center; gap:10px; max-width:600px;">';
-        wp_nonce_field('monatsblitz_add_mode_action');
-        echo '<input type="text" name="monatsblitz_new_mode_name" placeholder="z. B. 10+0 oder 3+0" class="regular-text" style="width:250px;" required>';
-        echo '<input type="submit" name="monatsblitz_add_mode" class="button" value="Modus hinzufügen">';
-        echo self::TAG_FORM_CLOSE;
     }
 }

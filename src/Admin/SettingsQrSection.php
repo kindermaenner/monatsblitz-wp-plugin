@@ -18,7 +18,7 @@ class SettingsQrSection
         string $defaultFixedMode,
         array $defaultRotationModes
     ): void {
-        echo '<div class="card" style="max-width:600px; margin:20px 0; padding:16px 20px;">';
+        echo '<div class="card" style="max-width:100%; margin:20px 0; padding:20px;">';
         echo '<h2 style="margin-top:0;">📱 App-Einrichtung per QR-Code</h2>';
         if (empty($apiKey)) {
             echo '<p style="color:#d63638;"><em>Bitte generiere zuerst unten unter Einstellungen einen API-Key, damit der QR-Code für die App erzeugt werden kann.</em></p>';
