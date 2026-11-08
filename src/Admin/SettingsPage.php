@@ -16,10 +16,11 @@ class SettingsPage
     public static function render(): void
     {
         $apiKey = (string)get_option('monatsblitz_api_key', '');
+        $maintenanceApiKey = (string)get_option('monatsblitz_maintenance_api_key', '');
         $updateResult = null;
         $cachePurgedNotice = false;
 
-        self::handle_settings_actions($apiKey, $updateResult, $cachePurgedNotice);
+        self::handle_settings_actions($apiKey, $maintenanceApiKey, $updateResult, $cachePurgedNotice);
 
         $author = get_option('monatsblitz_author', '');
         $template = (string)get_option('monatsblitz_template', '');
@@ -44,6 +45,7 @@ class SettingsPage
         SettingsFormRenderer::render(
             [
                 'apiKey' => $apiKey,
+                'maintenanceApiKey' => $maintenanceApiKey,
                 'author' => $author,
                 'template' => $template,
                 'templateNonRanking' => $templateNonRanking,
@@ -71,11 +73,11 @@ class SettingsPage
         return array_values(array_filter($modes, fn($v) => !empty($v)));
     }
 
-    private static function handle_settings_actions(string &$apiKey, ?array &$updateResult, bool &$cachePurgedNotice): void
+    private static function handle_settings_actions(string &$apiKey, string &$maintenanceApiKey, ?array &$updateResult, bool &$cachePurgedNotice): void
     {
         self::handle_add_mode_action();
         self::handle_delete_mode_action();
-        self::handle_generate_key_action($apiKey);
+        self::handle_generate_key_action($apiKey, $maintenanceApiKey);
         self::handle_check_update_action($updateResult, $cachePurgedNotice);
     }
 
@@ -115,18 +117,39 @@ class SettingsPage
         }
     }
 
-    private static function handle_generate_key_action(string &$apiKey): void
+    private static function handle_generate_key_action(string &$apiKey, string &$maintenanceApiKey): void
     {
-        if (!isset($_POST['monatsblitz_generate_key'])) {
-            return;
+        if (isset($_POST['monatsblitz_generate_key'])) {
+            check_admin_referer('monatsblitz_generate_key_action');
+
+            $newKey = self::generate_unique_key($maintenanceApiKey);
+            update_option('monatsblitz_api_key', $newKey);
+            $apiKey = $newKey;
+
+            echo '<div class="updated"><p>Neuer API-Key wurde generiert.</p>' . self::TAG_DIV_CLOSE;
         }
-        check_admin_referer('monatsblitz_generate_key_action');
 
+        if (isset($_POST['monatsblitz_generate_maintenance_key'])) {
+            check_admin_referer('monatsblitz_generate_key_action');
+
+            $newKey = self::generate_unique_key($apiKey);
+            update_option('monatsblitz_maintenance_api_key', $newKey);
+            $maintenanceApiKey = $newKey;
+
+            echo '<div class="updated"><p>Neuer Wartungs-API-Key wurde generiert.</p>' . self::TAG_DIV_CLOSE;
+        }
+    }
+
+    private static function generate_unique_key(string $otherKey): string
+    {
         $newKey = wp_generate_password(32, false, false);
-        update_option('monatsblitz_api_key', $newKey);
-        $apiKey = $newKey;
-
-        echo '<div class="updated"><p>Neuer API-Key wurde generiert.</p>' . self::TAG_DIV_CLOSE;
+        if ($otherKey !== '' && $newKey === $otherKey) {
+            $newKey = wp_generate_password(32, false, false);
+            if ($newKey === $otherKey) {
+                $newKey = substr(md5($newKey . 'alt' . microtime()), 0, 32);
+            }
+        }
+        return $newKey;
     }
 
     private static function handle_check_update_action(?array &$updateResult, bool &$cachePurgedNotice): void

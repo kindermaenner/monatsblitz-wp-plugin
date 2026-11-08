@@ -7,8 +7,10 @@ use Monatsblitz\Service\MainService;
 
 beforeEach(function () {
     $GLOBALS['mb_test_options']['monatsblitz_api_key'] = '';
+    $GLOBALS['mb_test_options']['monatsblitz_maintenance_api_key'] = '';
     unset($_SERVER['HTTP_X_MB_KEY']);
     unset($_SERVER['HTTP_X_MB_API_VERSION']);
+    unset($_SERVER['HTTP_X_MB_MAINTENANCE_KEY']);
     $GLOBALS['mb_test_actions'] = [];
     $GLOBALS['mb_test_routes'] = [];
 });
@@ -46,8 +48,12 @@ it('registers all REST routes with API key permission callback', function () {
     ];
 
     foreach ($GLOBALS['mb_test_routes'] as $route) {
+        $expectedCallback = $route['route'] === '/recreatePosts'
+            ? [Api::class, 'verify_maintenance_key']
+            : [Api::class, 'verify_api_key'];
+
         expect($route['namespace'])->toBe('monatsblitz/v1')
-            ->and($route['args']['permission_callback'])->toBe([Api::class, 'verify_api_key'])
+            ->and($route['args']['permission_callback'])->toBe($expectedCallback)
             ->and($route['args']['callback'])->toBe($expectedRoutes[$route['route']]);
     }
 });
@@ -126,6 +132,64 @@ it('fails verification when client API version is newer than plugin API version'
         ->and($result->data['reason'])->toBe('plugin_upgrade_required')
         ->and($result->message)->toContain('WordPress-Plugin');
 });
+
+it('verifies maintenance key successfully with X-MB-Maintenance-Key header', function () {
+    $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'app-secret';
+    $GLOBALS['mb_test_options']['monatsblitz_maintenance_api_key'] = 'maint-secret';
+    $_SERVER['HTTP_X_MB_MAINTENANCE_KEY'] = 'maint-secret';
+
+    $result = Api::verify_maintenance_key();
+
+    expect($result)->toBeTrue();
+});
+
+it('fails maintenance key verification when key does not match', function () {
+    $GLOBALS['mb_test_options']['monatsblitz_maintenance_api_key'] = 'maint-secret';
+    $_SERVER['HTTP_X_MB_MAINTENANCE_KEY'] = 'wrong';
+
+    $result = Api::verify_maintenance_key();
+
+    expect($result)->toBeInstanceOf(WP_Error::class)
+        ->and($result->code)->toBe('rest_forbidden')
+        ->and($result->data['status'])->toBe(401);
+});
+
+it('fails maintenance key verification when no maintenance key is configured', function () {
+    $_SERVER['HTTP_X_MB_MAINTENANCE_KEY'] = 'maint-secret';
+
+    $result = Api::verify_maintenance_key();
+
+    expect($result)->toBeInstanceOf(WP_Error::class)
+        ->and($result->code)->toBe('rest_forbidden')
+        ->and($result->data['status'])->toBe(401);
+});
+
+it('fails maintenance key verification when maintenance key is identical to app api key', function () {
+    $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'same-secret';
+    $GLOBALS['mb_test_options']['monatsblitz_maintenance_api_key'] = 'same-secret';
+    $_SERVER['HTTP_X_MB_MAINTENANCE_KEY'] = 'same-secret';
+
+    $result = Api::verify_maintenance_key();
+
+    expect($result)->toBeInstanceOf(WP_Error::class)
+        ->and($result->code)->toBe('rest_forbidden')
+        ->and($result->data['status'])->toBe(403)
+        ->and($result->message)->toContain('nicht identisch');
+});
+
+it('fails maintenance key verification when caller sends standard X-MB-Key instead of X-MB-Maintenance-Key', function () {
+    $GLOBALS['mb_test_options']['monatsblitz_api_key'] = 'app-secret';
+    $GLOBALS['mb_test_options']['monatsblitz_maintenance_api_key'] = 'maint-secret';
+    $_SERVER['HTTP_X_MB_KEY'] = 'app-secret';
+    // No HTTP_X_MB_MAINTENANCE_KEY
+
+    $result = Api::verify_maintenance_key();
+
+    expect($result)->toBeInstanceOf(WP_Error::class)
+        ->and($result->code)->toBe('rest_forbidden')
+        ->and($result->data['status'])->toBe(401);
+});
+
 
 
 

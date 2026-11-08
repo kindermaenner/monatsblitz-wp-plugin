@@ -26,6 +26,7 @@ class Admin
             register_setting('monatsblitz_settings', 'monatsblitz_template_static_page');
             register_setting('monatsblitz_settings', 'monatsblitz_blitz_modes');
             register_setting('monatsblitz_settings', 'monatsblitz_api_key');
+            register_setting('monatsblitz_settings', 'monatsblitz_maintenance_api_key');
             register_setting('monatsblitz_settings', 'monatsblitz_hide_january_overview');
             register_setting('monatsblitz_settings', 'monatsblitz_default_mode_type');
             register_setting('monatsblitz_settings', 'monatsblitz_default_fixed_mode');

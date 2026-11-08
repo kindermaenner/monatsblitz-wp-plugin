@@ -206,7 +206,10 @@ if (!function_exists('check_admin_referer')) {
 
 if (!function_exists('wp_generate_password')) {
     function wp_generate_password($length = 12, $special_chars = true, $extra_special_chars = false) {
-        return str_repeat('x', $length);
+        static $counter = 0;
+        $counter++;
+        $val = 'testkey_' . $counter . '_' . bin2hex(random_bytes(8));
+        return substr(str_pad($val, $length, 'x'), 0, $length);
     }
 }
 

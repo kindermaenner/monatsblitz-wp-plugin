@@ -25,6 +25,7 @@ class SettingsFormRenderer
     private static function render_settings_form(array $config, array $users, array $modes): void
     {
         $apiKey = (string)($config['apiKey'] ?? '');
+        $maintenanceApiKey = (string)($config['maintenanceApiKey'] ?? '');
         $author = $config['author'] ?? '';
         $template = (string)($config['template'] ?? '');
         $templateNonRanking = (string)($config['templateNonRanking'] ?? '');
@@ -38,14 +39,20 @@ class SettingsFormRenderer
 
         echo '<h2 style="margin-top:30px;">⚙️ Einstellungen</h2>';
 
-        // Formular 1: API-Key generieren
+        // Formular 1: API-Keys generieren
         echo '<form method="post" style="margin-bottom:0;">';
         wp_nonce_field('monatsblitz_generate_key_action');
         echo '<table class="form-table" style="margin-bottom:0;">';
-        echo '<tr><th scope="row">API-Key</th><td>';
+        echo '<tr><th scope="row">App-API-Key</th><td>';
         echo '<input type="text" value="' . esc_attr($apiKey) . '" class="regular-text" style="width:350px;" readonly> ';
         echo '<input type="submit" name="monatsblitz_generate_key" class="button" value="Neuen API-Key generieren">';
         echo '<p class="description">Diesen Key muss die Monatsblitz-App im Header <code>X-MB-Key</code> mitsenden.</p>';
+        echo self::TAG_ROW_CLOSE;
+
+        echo '<tr><th scope="row">Wartungs-API-Key</th><td>';
+        echo '<input type="text" value="' . esc_attr($maintenanceApiKey) . '" class="regular-text" style="width:350px;" readonly> ';
+        echo '<input type="submit" name="monatsblitz_generate_maintenance_key" class="button" value="Neuen Wartungs-Key generieren">';
+        echo '<p class="description">Diesen Key für Wartungs-Endpunkte (z. B. <code>/recreatePosts</code>) im Header <code>X-MB-Maintenance-Key</code> mitsenden. <strong>Nicht an App-Nutzer weitergeben</strong>; darf nicht identisch mit dem App-Key sein.</p>';
         echo self::TAG_ROW_CLOSE;
         echo '</table>';
         echo self::TAG_FORM_CLOSE;
@@ -54,6 +61,7 @@ class SettingsFormRenderer
         echo '<form method="post" action="options.php">';
         settings_fields('monatsblitz_settings');
         echo '<input type="hidden" name="monatsblitz_api_key" value="' . esc_attr($apiKey) . '">';
+        echo '<input type="hidden" name="monatsblitz_maintenance_api_key" value="' . esc_attr($maintenanceApiKey) . '">';
 
         echo '<table class="form-table">';
         self::render_author_setting($author, $users);

@@ -105,7 +105,7 @@ class Api
         register_rest_route($rest_api_namespace, '/recreatePosts', [
             'methods'  => 'POST',
             'callback' => [MainService::class, 'recreatePosts'],
-            'permission_callback' => [self::class, 'verify_api_key'],
+            'permission_callback' => [self::class, 'verify_maintenance_key'],
         ]);
 
         register_rest_route($rest_api_namespace, '/tournament/withdraw', [
@@ -119,6 +119,35 @@ class Api
             'callback' => [MainService::class, 'addTournamentPlayer'],
             'permission_callback' => [self::class, 'verify_api_key'],
         ]);
+    }
+
+    public static function verify_maintenance_key()
+    {
+        $maintenance_api_key = get_option('monatsblitz_maintenance_api_key');
+        $regular_api_key = get_option('monatsblitz_api_key');
+        $header_key = $_SERVER['HTTP_X_MB_MAINTENANCE_KEY'] ?? '';
+
+        if (!$maintenance_api_key || $header_key !== $maintenance_api_key) {
+            return new \WP_Error(
+                'rest_forbidden',
+                'Unauthorized',
+                ['status' => 401]
+            );
+        }
+
+        if ($regular_api_key && $maintenance_api_key === $regular_api_key) {
+            return new \WP_Error(
+                'rest_forbidden',
+                'Wartungs-API-Key darf nicht identisch mit dem App-API-Key sein.',
+                ['status' => 403]
+            );
+        }
+
+        if (!headers_sent()) {
+            header('X-MB-Api-Version: ' . self::API_VERSION);
+        }
+
+        return true;
     }
 
     public static function verify_api_key()
