@@ -200,12 +200,14 @@ class TournamentRepository
      */
     private function resetExistingTournament($wpdb, string $table, int $tournamentId, array $tournamentData, array $playerIds): void
     {
+        $roundCount = max(1, intval($tournamentData['round_count'] ?? 1));
+
         if (method_exists($wpdb, 'update')) {
             $wpdb->update(
                 $table,
                 [
                     'mode'               => $tournamentData['mode'],
-                    'round_count'        => $tournamentData['round_count'],
+                    'round_count'        => $roundCount,
                     'counts_for_ranking' => (int) ($tournamentData['counts_for_ranking'] ?? 1),
                     'label'              => (string) ($tournamentData['label'] ?? ''),
                 ],
@@ -215,13 +217,24 @@ class TournamentRepository
             );
         }
 
-        if (method_exists($wpdb, 'delete')) {
-            $wpdb->delete($wpdb->prefix . 'monatsblitz_tournament_players', ['tournament_id' => $tournamentId], ['%d']);
-            $wpdb->delete($wpdb->prefix . 'monatsblitz_games', ['tournament_id' => $tournamentId], ['%d']);
-            $wpdb->delete($wpdb->prefix . 'monatsblitz_results', ['tournament_id' => $tournamentId], ['%d']);
+        // Delete only games exceeding the new round count (if round count was reduced)
+        if (method_exists($wpdb, 'query') && method_exists($wpdb, 'prepare')) {
+            $gamesTable = $wpdb->prefix . 'monatsblitz_games';
+            $wpdb->query(
+                $wpdb->prepare(
+                    "DELETE FROM {$gamesTable} WHERE tournament_id = %d AND leg_type > %d",
+                    $tournamentId,
+                    $roundCount
+                )
+            );
         }
 
-        $this->insertTournamentPlayers($wpdb, $tournamentId, $playerIds);
+        if (!empty($playerIds)) {
+            if (method_exists($wpdb, 'delete')) {
+                $wpdb->delete($wpdb->prefix . 'monatsblitz_tournament_players', ['tournament_id' => $tournamentId], ['%d']);
+            }
+            $this->insertTournamentPlayers($wpdb, $tournamentId, $playerIds);
+        }
     }
 
     /**

@@ -9,7 +9,7 @@ A lightweight WordPress plugin to manage blitz chess tournaments through a REST 
 
 ## Motivation
 
-We are both board members in different clubs. Balancing work, family, and volunteering means one thing: time is our most limited resource.
+We are both board members in different clubs. Balancing work, family and volunteering means one thing: time is our most limited resource.
 At the same time, a well-maintained website is a key factor for attracting members and creating a strong public presence. In a chess club, activity is most visible through regular results and tournament reports.
 
 This is exactly where the problem starts:

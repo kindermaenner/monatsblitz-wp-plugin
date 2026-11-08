@@ -44,7 +44,7 @@ class SettingsFormRenderer
 
         echo '<tr><th scope="row">Wartungs-API-Key</th><td>';
         echo '<input type="text" value="' . esc_attr($maintenanceApiKey) . '" class="regular-text" style="width:350px;" readonly> ';
-        echo '<input type="submit" name="monatsblitz_generate_maintenance_key" class="button" value="Neuen Wartungs-Key generieren">';
+        echo '<input type="submit" name="monatsblitz_generate_maintenance_key" class="button" value="Neuen API-Key generieren">';
         echo '<p class="description">Diesen Key für Wartungs-Endpunkte (z. B. <code>/recreatePosts</code>) im Header <code>X-MB-Maintenance-Key</code> mitsenden. <strong>Nicht an App-Nutzer weitergeben</strong>; darf nicht identisch mit dem App-Key sein.</p>';
         echo self::TAG_ROW_CLOSE;
 
@@ -167,25 +167,29 @@ class SettingsFormRenderer
         string $templateStaticPage,
         bool $hideJanuaryOverview
     ): void {
-        echo '<tr><th scope="row">Template (Jahreswertung)</th><td>';
+        echo '<tr><th colspan="2" style="padding-top:20px; padding-bottom:5px;"><h3 style="margin:0;">📰 Templates für News-Beiträge (Turnierberichte)</h3><p class="description">Wird beim Finalisieren eines Turniers kopiert und als neuer, veröffentlichter WordPress-<strong>Beitrag</strong> angelegt.</p></th></tr>';
+
+        echo '<tr><th scope="row">Beitrags-Template<br><small style="font-weight:normal;color:#666;">Offizielles Monatsblitz</small></th><td>';
         echo '<input type="text" name="monatsblitz_template" value="' . esc_attr($template) . self::INPUT_REGULAR_CLASS;
-        echo '<p class="description">Wird für offizielle Monatsblitz-Turniere (Jahreswertung) verwendet.</p>';
+        echo '<p class="description">Titel des WordPress-<strong>Beitrags</strong> für Turniere mit Jahreswertung (z.&nbsp;B. <code>Template_Monatsblitz</code>).</p>';
         echo self::TAG_ROW_CLOSE;
 
-        echo '<tr><th scope="row">Template: Freie Turniere</th><td>';
+        echo '<tr><th scope="row">Beitrags-Template<br><small style="font-weight:normal;color:#666;">Freie Turniere (optional)</small></th><td>';
         echo '<input type="text" name="monatsblitz_template_non_ranking" value="' . esc_attr($templateNonRanking) . self::INPUT_REGULAR_CLASS;
-        echo '<p class="description">Wird für Turniere verwendet, die nicht für die Jahreswertung gewertet werden (z. B. Nachblitz / Rahmenturniere). Bleibt das Feld leer, wird das Haupt-Template verwendet.</p>';
+        echo '<p class="description">Titel des WordPress-<strong>Beitrags</strong> für Turniere ohne Jahreswertung (z.&nbsp;B. Nachblitz). Bleibt das Feld leer, wird das obige Monatsblitz-Template verwendet.</p>';
         echo self::TAG_ROW_CLOSE;
 
-        echo '<tr><th scope="row">Template: Statische Jahresseite</th><td>';
+        echo '<tr><th colspan="2" style="padding-top:25px; padding-bottom:5px;"><h3 style="margin:0;">📄 Template für statische Jahresseite (Gesamtwertung)</h3><p class="description">Aktualisiert beim Finalisieren automatisch die Jahres-Übersichtsseite (Slug: <code>blitz-YYYY</code>).</p></th></tr>';
+
+        echo '<tr><th scope="row">Seiten-Template<br><small style="font-weight:normal;color:#666;">Jahres-Gesamtwertung</small></th><td>';
         echo '<input type="text" name="monatsblitz_template_static_page" value="' . esc_attr($templateStaticPage) . self::INPUT_REGULAR_CLASS;
-        echo '<p class="description">Template für die jährliche Übersichtsseite (Slug: <code>blitz-YYYY</code>).</p>';
+        echo '<p class="description">Titel einer WordPress-<strong>Seite</strong> (nicht Beitrag!), die als Vorlage dient und die Tabellen <code>{{blitz_monthly_overview}}</code> und <code>{{blitz_ranking_year}}</code> enthält.</p>';
         echo self::TAG_ROW_CLOSE;
 
-        echo '<tr><th scope="row">Teilnehmer-Übersicht: Januar ausblenden</th><td>';
+        echo '<tr><th scope="row">Teilnehmer-Übersicht:<br><small style="font-weight:normal;color:#666;">Januar ausblenden</small></th><td>';
         echo '<label>';
         echo '<input type="checkbox" name="monatsblitz_hide_january_overview" value="1" ' . ($hideJanuaryOverview ? 'checked="checked"' : '') . '>';
-        echo ' Januar-Spalte in <code>{{blitz_monthly_overview}}</code> ausblenden';
+        echo ' Januar-Spalte in <code>{{blitz_monthly_overview}}</code> auf der Jahresseite ausblenden';
         echo '</label>';
         echo '<p class="description">Empfohlen, wenn im Januar grundsätzlich kein Monatsblitz stattfindet.</p>';
         echo self::TAG_ROW_CLOSE;

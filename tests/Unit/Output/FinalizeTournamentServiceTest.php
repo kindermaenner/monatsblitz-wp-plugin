@@ -310,3 +310,62 @@ it('does not mark a tournament finalized when publishing fails', function () {
         ->and($wpdb->update_calls)->toBeEmpty()
         ->and($GLOBALS['mb_test_post_meta_updates'])->toBeEmpty();
 });
+
+it('executes deleteGamesExceedingRoundCount with default round_count during finalize and never wipes all games', function () {
+    global $wpdb;
+
+    $GLOBALS['mb_test_options']['monatsblitz_author'] = 1;
+    $GLOBALS['mb_test_options']['monatsblitz_template'] = 'TemplateSuccess';
+    $GLOBALS['mb_test_template_post'] = (object) [
+        'ID' => 24,
+        'post_title' => 'TemplateSuccess',
+        'post_content' => '<article>{{table}}</article>',
+    ];
+    $GLOBALS['mb_test_next_post_id'] = 824;
+    $GLOBALS['mb_test_get_posts_queue'] = [[], [], [], []];
+
+    $wpdb->get_row_result = [
+        'id' => 24,
+        'year' => 2026,
+        'month' => 8,
+        'day' => 12,
+        'mode' => 'schweizer',
+        'round_count' => 1,
+    ];
+
+    $wpdb->get_results_queue = [
+        [
+            ['player_id' => 1, 'points' => 1.0, 'rank' => 1, 'forename' => 'Max', 'surname' => 'Muster'],
+        ],
+        [
+            ['player1_id' => 1, 'player2_id' => 2, 'leg_type' => 1, 'result' => '1:0', 'p1_forename' => 'Max', 'p1_surname' => 'Muster', 'p2_forename' => 'Erika', 'p2_surname' => 'Beispiel'],
+        ],
+    ];
+    $wpdb->get_var_result = 1;
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'tournament_id' => 24,
+                // no round_count override: should use tournament's round_count (1)
+            ];
+        }
+    };
+
+    $service = new FinalizeTournamentService();
+    $result = $service->handle($request);
+
+    expect($result['success'])->toBeTrue();
+    expect($wpdb->queries)->toContain('DELETE FROM wp_monatsblitz_games WHERE tournament_id = %d AND leg_type > %d');
+    expect($wpdb->last_delete_table)->toBeNull();
+
+    // Verify no unqualified delete exists for games or results
+    foreach ($wpdb->queries as $q) {
+        if (str_contains($q, 'DELETE FROM wp_monatsblitz_games')) {
+            expect($q)->toContain('leg_type > %d');
+        }
+        expect($q)->not->toContain('DELETE FROM wp_monatsblitz_results');
+        expect($q)->not->toContain('DELETE FROM wp_monatsblitz_tournament_players');
+    }
+});
+

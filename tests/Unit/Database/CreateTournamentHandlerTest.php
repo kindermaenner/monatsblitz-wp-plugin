@@ -263,6 +263,7 @@ it('reuses and resets existing open tournament on same date when duplicate entry
                 'mode' => '5+0',
                 'round_count' => 2,
                 'confirm_parallel' => true,
+                'player_ids' => [101, 102],
             ];
         }
     };
@@ -273,6 +274,12 @@ it('reuses and resets existing open tournament on same date when duplicate entry
         public string $last_error = "Duplicate entry '2026-6-24' for key 'unique_tournament_date'";
         public array $updated = [];
         public array $deletedTables = [];
+        public array $queries = [];
+
+        public function query($query) {
+            $this->queries[] = $query;
+            return 1;
+        }
 
         public function __construct($base) {
             $this->prefix = $base->prefix;
@@ -283,7 +290,7 @@ it('reuses and resets existing open tournament on same date when duplicate entry
         }
 
         public function prepare($query, ...$args) {
-            return $query;
+            return sprintf(str_replace(['%d', '%s'], ['%s', '%s'], $query), ...$args);
         }
 
         public function get_row($query) {
@@ -309,11 +316,213 @@ it('reuses and resets existing open tournament on same date when duplicate entry
     expect($result['success'])->toBeTrue()
         ->and($result['tournament_id'])->toBe(42)
         ->and($openDuplicateWpdb->updated['data'])->toBe(['mode' => '5+0', 'round_count' => 2, 'counts_for_ranking' => 1, 'label' => ''])
-        ->and($openDuplicateWpdb->deletedTables)->toContain(
-            'wp_monatsblitz_tournament_players',
-            'wp_monatsblitz_games',
-            'wp_monatsblitz_results'
-        );
+        ->and($openDuplicateWpdb->deletedTables)->toContain('wp_monatsblitz_tournament_players')
+        ->and($openDuplicateWpdb->deletedTables)->not->toContain('wp_monatsblitz_games')
+        ->and($openDuplicateWpdb->queries)->toContain('DELETE FROM wp_monatsblitz_games WHERE tournament_id = 42 AND leg_type > 2');
+});
+
+it('reduces round_count to 1 on open tournament and deletes ONLY leg_type > 1 games, never all games', function () {
+    global $wpdb;
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'date' => '2026-06-24',
+                'mode' => '5+0',
+                'round_count' => 1,
+                'confirm_parallel' => true,
+            ];
+        }
+    };
+
+    $openDuplicateWpdb = new class($wpdb) {
+        public string $prefix;
+        public int $insert_id = 0;
+        public string $last_error = "Duplicate entry '2026-6-24' for key 'unique_tournament_date'";
+        public array $updated = [];
+        public array $deletedTables = [];
+        public array $queries = [];
+
+        public function query($query) {
+            $this->queries[] = $query;
+            return 1;
+        }
+
+        public function __construct($base) {
+            $this->prefix = $base->prefix;
+        }
+
+        public function insert($table, $data, $format = null) {
+            return false;
+        }
+
+        public function prepare($query, ...$args) {
+            return sprintf(str_replace(['%d', '%s'], ['%s', '%s'], $query), ...$args);
+        }
+
+        public function get_row($query) {
+            return (object)['id' => 42, 'status' => 'open'];
+        }
+
+        public function update($table, $data, $where, $format = null, $where_format = null) {
+            $this->updated = ['table' => $table, 'data' => $data, 'where' => $where];
+            return 1;
+        }
+
+        public function delete($table, $where, $where_format = null) {
+            $this->deletedTables[] = $table;
+            return 1;
+        }
+    };
+
+    $wpdb = $openDuplicateWpdb;
+
+    $handler = new CreateTournamentHandler();
+    $result  = $handler->handle($request);
+
+    expect($result['success'])->toBeTrue()
+        ->and($result['tournament_id'])->toBe(42)
+        ->and($openDuplicateWpdb->updated['data']['round_count'])->toBe(1)
+        ->and($openDuplicateWpdb->deletedTables)->not->toContain('wp_monatsblitz_games')
+        ->and($openDuplicateWpdb->deletedTables)->not->toContain('wp_monatsblitz_tournament_players')
+        ->and($openDuplicateWpdb->queries)->toContain('DELETE FROM wp_monatsblitz_games WHERE tournament_id = 42 AND leg_type > 1');
+
+    foreach ($openDuplicateWpdb->queries as $q) {
+        if (str_contains($q, 'DELETE FROM wp_monatsblitz_games')) {
+            expect($q)->toContain('leg_type > 1');
+            expect($q)->not->toBe('DELETE FROM wp_monatsblitz_games WHERE tournament_id = 42');
+        }
+    }
+});
+
+it('preserves existing tournament players when re-saving open tournament without player_ids', function () {
+    global $wpdb;
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'date' => '2026-06-24',
+                'mode' => '5+0',
+                'round_count' => 2,
+                'confirm_parallel' => true,
+                // player_ids intentionally omitted (e.g. mobile app sync)
+            ];
+        }
+    };
+
+    $openDuplicateWpdb = new class($wpdb) {
+        public string $prefix;
+        public int $insert_id = 0;
+        public string $last_error = "Duplicate entry '2026-6-24' for key 'unique_tournament_date'";
+        public array $deletedTables = [];
+        public array $queries = [];
+
+        public function query($query) {
+            $this->queries[] = $query;
+            return 1;
+        }
+
+        public function __construct($base) {
+            $this->prefix = $base->prefix;
+        }
+
+        public function insert($table, $data, $format = null) {
+            return false;
+        }
+
+        public function prepare($query, ...$args) {
+            return sprintf(str_replace(['%d', '%s'], ['%s', '%s'], $query), ...$args);
+        }
+
+        public function get_row($query) {
+            return (object)['id' => 42, 'status' => 'open'];
+        }
+
+        public function update($table, $data, $where, $format = null, $where_format = null) {
+            return 1;
+        }
+
+        public function delete($table, $where, $where_format = null) {
+            $this->deletedTables[] = $table;
+            return 1;
+        }
+    };
+
+    $wpdb = $openDuplicateWpdb;
+
+    $handler = new CreateTournamentHandler();
+    $result  = $handler->handle($request);
+
+    expect($result['success'])->toBeTrue()
+        ->and($openDuplicateWpdb->deletedTables)->toBeEmpty();
+});
+
+it('refuses to reset or delete games of a finalized tournament on duplicate date', function () {
+    global $wpdb;
+
+    $request = new class {
+        public function get_json_params() {
+            return [
+                'date' => '2026-06-24',
+                'mode' => '5+0',
+                'round_count' => 1,
+                'confirm_parallel' => true,
+                'player_ids' => [1, 2],
+            ];
+        }
+    };
+
+    $finalizedDuplicateWpdb = new class($wpdb) {
+        public string $prefix;
+        public int $insert_id = 0;
+        public string $last_error = "Duplicate entry '2026-6-24' for key 'unique_tournament_date'";
+        public array $deletedTables = [];
+        public array $queries = [];
+        public array $updated = [];
+
+        public function query($query) {
+            $this->queries[] = $query;
+            return 1;
+        }
+
+        public function __construct($base) {
+            $this->prefix = $base->prefix;
+        }
+
+        public function insert($table, $data, $format = null) {
+            return false;
+        }
+
+        public function prepare($query, ...$args) {
+            return sprintf(str_replace(['%d', '%s'], ['%s', '%s'], $query), ...$args);
+        }
+
+        public function get_row($query) {
+            // Tournament is already finalized!
+            return (object)['id' => 42, 'status' => 'finalized'];
+        }
+
+        public function update($table, $data, $where, $format = null, $where_format = null) {
+            $this->updated[] = compact('table', 'data', 'where');
+            return 1;
+        }
+
+        public function delete($table, $where, $where_format = null) {
+            $this->deletedTables[] = $table;
+            return 1;
+        }
+    };
+
+    $wpdb = $finalizedDuplicateWpdb;
+
+    $handler = new CreateTournamentHandler();
+    $result  = $handler->handle($request);
+
+    expect($result)->toBeInstanceOf(WP_Error::class)
+        ->and($result->code)->toBe('duplicate_tournament')
+        ->and($finalizedDuplicateWpdb->deletedTables)->toBeEmpty()
+        ->and($finalizedDuplicateWpdb->queries)->toBeEmpty()
+        ->and($finalizedDuplicateWpdb->updated)->toBeEmpty();
 });
 
 it('inserts assigned player_ids into monatsblitz_tournament_players when tournament is created', function () {

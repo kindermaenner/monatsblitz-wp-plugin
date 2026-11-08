@@ -196,7 +196,7 @@ class SettingsPage
             }
         }
 
-        echo '<div class="card" style="max-width:600px; margin:20px 0; padding:16px 20px;">';
+        echo '<div class="card" style="max-width:100%; margin:20px 0; padding:20px;">';
         echo '<h2 style="margin-top:0;">🔄 Plugin-Aktualisierung</h2>';
         echo '<p>Installierte Version: <strong>' . esc_html($installedVersion) . '</strong></p>';
         echo '<form method="post" style="margin-top:12px;">';

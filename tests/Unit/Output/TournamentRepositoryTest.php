@@ -61,3 +61,47 @@ it('counts winner games from the database', function () {
 
     expect($count)->toBe(3);
 });
+
+it('deletes only games exceeding round count 1 and never wipes all games', function () {
+    global $wpdb;
+
+    $repository = new TournamentRepository();
+    $repository->deleteGamesExceedingRoundCount(42, 1);
+
+    expect($wpdb->last_prepared_query)->toBe('DELETE FROM wp_monatsblitz_games WHERE tournament_id = %d AND leg_type > %d');
+    expect($wpdb->last_prepared_args)->toBe([42, 1]);
+    expect($wpdb->last_delete_table)->toBeNull();
+});
+
+it('deletes only games exceeding round count 2', function () {
+    global $wpdb;
+
+    $repository = new TournamentRepository();
+    $repository->deleteGamesExceedingRoundCount(99, 2);
+
+    expect($wpdb->last_prepared_query)->toBe('DELETE FROM wp_monatsblitz_games WHERE tournament_id = %d AND leg_type > %d');
+    expect($wpdb->last_prepared_args)->toBe([99, 2]);
+    expect($wpdb->last_delete_table)->toBeNull();
+});
+
+it('updates tournament round count in database', function () {
+    global $wpdb;
+
+    $repository = new TournamentRepository();
+    $repository->updateRoundCount(55, 3);
+
+    expect($wpdb->last_update_table)->toBe('wp_monatsblitz_tournaments');
+    expect($wpdb->last_update_data)->toBe(['round_count' => 3]);
+    expect($wpdb->last_update_where)->toBe(['id' => 55]);
+});
+
+it('marks tournament as finalized in database', function () {
+    global $wpdb;
+
+    $repository = new TournamentRepository();
+    $repository->markFinalized(55);
+
+    expect($wpdb->last_update_table)->toBe('wp_monatsblitz_tournaments');
+    expect($wpdb->last_update_data)->toBe(['status' => 'finalized']);
+    expect($wpdb->last_update_where)->toBe(['id' => 55]);
+});
